@@ -166,9 +166,24 @@ function App() {
                             </button>
                         )}
                         <div className="flex items-center gap-2">
-                            <button className="p-1.5 hover:bg-slate-800 rounded text-slate-400"><Minimize2 size={14} /></button>
-                            <button className="p-1.5 hover:bg-slate-800 rounded text-slate-400"><Maximize2 size={14} /></button>
-                            <button className="p-1.5 hover:bg-red-500/20 hover:text-red-400 rounded text-slate-400"><X size={14} /></button>
+                            <button
+                                onClick={() => window.electronAPI?.minimize()}
+                                className="p-1.5 hover:bg-slate-800 rounded text-slate-400"
+                            >
+                                <Minimize2 size={14} />
+                            </button>
+                            <button
+                                onClick={() => window.electronAPI?.maximize()}
+                                className="p-1.5 hover:bg-slate-800 rounded text-slate-400"
+                            >
+                                <Maximize2 size={14} />
+                            </button>
+                            <button
+                                onClick={() => window.electronAPI?.close()}
+                                className="p-1.5 hover:bg-red-500/20 hover:text-red-400 rounded text-slate-400"
+                            >
+                                <X size={14} />
+                            </button>
                         </div>
                     </div>
                 </header>
