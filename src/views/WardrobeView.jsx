@@ -4,10 +4,25 @@ import { SKINS } from '../data/mockData';
 
 const WardrobeView = () => {
     return (
-        <div className="flex-1 p-8 animate-in fade-in slide-in-from-bottom-4 duration-300 flex flex-col h-full overflow-hidden">
+        <div className="flex-1 p-8 animate-in fade-in slide-in-from-bottom-4 duration-300 flex flex-col h-full overflow-hidden relative">
             <h2 className="text-3xl font-bold text-white mb-6">Wardrobe</h2>
 
-            <div className="flex flex-col lg:flex-row gap-8 flex-1 min-h-0">
+            {/* Construction Overlay */}
+            <div className="absolute inset-0 z-50 flex items-center justify-center bg-slate-950/60 backdrop-blur-sm p-8">
+                <div className="bg-slate-900 border-2 border-amber-500/50 rounded-2xl p-12 max-w-2xl w-full text-center shadow-2xl shadow-black/50 transform rotate-1">
+                    <div className="inline-flex items-center justify-center w-24 h-24 rounded-full bg-amber-500/10 mb-6 border border-amber-500/30">
+                        <HardDrive size={48} className="text-amber-500" />
+                    </div>
+                    <h1 className="text-4xl font-bold text-white mb-4">Under Construction</h1>
+                    <p className="text-xl text-slate-400 max-w-lg mx-auto leading-relaxed">
+                        We're stitching together the ultimate skin manager details.
+                        <br />
+                        <span className="text-amber-500 font-bold">Coming Soon to CraftCorps!</span>
+                    </p>
+                </div>
+            </div>
+
+            <div className="flex flex-col lg:flex-row gap-8 flex-1 min-h-0 filter blur-sm pointer-events-none opacity-50 select-none">
                 {/* Left Column: Preview */}
                 <div className="lg:w-1/3 flex flex-col gap-4">
                     <div className="flex-1 bg-gradient-to-br from-slate-800 to-slate-900 rounded-2xl border border-slate-700 p-8 flex items-center justify-center relative overflow-hidden group">

@@ -30,9 +30,12 @@
     }
   },
   "dependencies": {
+    "crypto-js": "^4.2.0",
     "lucide-react": "^0.300.0",
+    "minecraft-launcher-core": "^3.18.2",
     "react": "^18.2.0",
-    "react-dom": "^18.2.0"
+    "react-dom": "^18.2.0",
+    "tree-kill": "^1.2.2"
   },
   "devDependencies": {
     "@types/react": "^18.2.43",

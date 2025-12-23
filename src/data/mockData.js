@@ -5,7 +5,7 @@ export const INITIAL_INSTANCES = [
         version: '1.20.4',
         loader: 'Fabric',
         status: 'Ready',
-        lastPlayed: '2 hours ago',
+        lastPlayed: null,
         iconColor: 'bg-emerald-500',
         bgGradient: 'from-emerald-900/40 to-slate-900'
     },
@@ -15,7 +15,7 @@ export const INITIAL_INSTANCES = [
         version: '1.19.2',
         loader: 'Forge',
         status: 'Update Available',
-        lastPlayed: '3 days ago',
+        lastPlayed: null,
         iconColor: 'bg-blue-500',
         bgGradient: 'from-blue-900/40 to-slate-900'
     },
@@ -25,17 +25,13 @@ export const INITIAL_INSTANCES = [
         version: '1.12.2',
         loader: 'Vanilla',
         status: 'Ready',
-        lastPlayed: '1 week ago',
+        lastPlayed: null,
         iconColor: 'bg-amber-500',
         bgGradient: 'from-amber-900/40 to-slate-900'
     }
 ];
 
-export const MOCK_ACCOUNTS = [
-    { id: 'acc_1', name: 'SteveTheFarmer', type: 'Microsoft', avatarColor: 'bg-emerald-700' },
-    { id: 'acc_2', name: 'AlexThePlanter', type: 'Mojang', avatarColor: 'bg-indigo-600' },
-    { id: 'acc_3', name: 'HerobrineReal', type: 'Microsoft', avatarColor: 'bg-red-900' },
-];
+export const MOCK_ACCOUNTS = [];
 
 export const SKINS = [
     { id: 1, name: 'Farmer Classic', type: 'Slim', used: true, color: 'bg-emerald-600' },
@@ -46,8 +42,8 @@ export const SKINS = [
 export const ADS = [
     {
         id: 1,
-        title: "IronGolem Hosting",
-        description: "Use code 'CROPS' for 50% off your first month!",
+        title: "Herobattles Server",
+        description: "Join now at play.herobattles.net",
         color: "text-amber-400",
         bg: "bg-amber-500/10",
         border: "border-amber-500/20"

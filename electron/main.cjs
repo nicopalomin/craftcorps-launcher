@@ -8,6 +8,9 @@ const path = require('path');
 
 let mainWindow;
 
+const preloadPath = path.join(__dirname, 'preload.cjs');
+console.log('Loading preload from:', preloadPath);
+
 function createWindow() {
     mainWindow = new BrowserWindow({
         width: 1200,
@@ -18,10 +21,11 @@ function createWindow() {
         transparent: true,
         backgroundColor: '#00000000', // Truly transparent for the rounded corners effect if css has it
         webPreferences: {
-            preload: path.join(__dirname, 'preload.cjs'),
+            preload: preloadPath,
             nodeIntegration: false,
             contextIsolation: true,
-            sandbox: false // Required for some preload features in some electron versions, but usually true is better. Start with defaults.
+            sandbox: false, // Required for contextBridge to reliably expose APIs in some environments
+            nodeIntegration: false,
         },
     });
 
@@ -32,6 +36,7 @@ function createWindow() {
         // mainWindow.webContents.openDevTools({ mode: 'detach' });
     } else {
         mainWindow.loadURL(startUrl);
+        // mainWindow.webContents.openDevTools(); // Uncomment if needed for prod debug
     }
 }
 
@@ -48,6 +53,32 @@ app.whenReady().then(() => {
         }
     });
     ipcMain.on('window-close', () => mainWindow?.close());
+
+    // Game Launcher Integration
+    const GameLauncher = require('./GameLauncher.cjs');
+    const launcher = new GameLauncher();
+
+    launcher.on('log', (log) => {
+        mainWindow?.webContents.send('game-log', log);
+    });
+
+    launcher.on('progress', (data) => {
+        mainWindow?.webContents.send('game-progress', data);
+    });
+
+    launcher.on('exit', (code) => {
+        mainWindow?.webContents.send('game-exit', code);
+    });
+
+    ipcMain.on('launch-game', (event, options) => {
+        // Here you would normally resolve paths to libraries/assets based on the version
+        // For now, we pass the raw options or defaults
+        launcher.launch(options);
+    });
+
+    ipcMain.on('stop-game', () => {
+        launcher.kill();
+    });
 
     app.on('activate', () => {
         if (BrowserWindow.getAllWindows().length === 0) {

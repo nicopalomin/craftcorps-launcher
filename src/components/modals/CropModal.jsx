@@ -33,14 +33,15 @@ const CropModal = ({ isOpen, onClose, onSave, editingCrop }) => {
         if (!name.trim()) return;
 
         onSave({
+            ...(editingCrop || {}), // Preserve existing ID, lastPlayed, status if editing
             id: editingCrop ? editingCrop.id : `inst_${Date.now()}`,
             name,
             loader,
             version,
             iconColor: selectedColor.class,
             bgGradient: selectedColor.grad,
-            status: 'Ready',
-            lastPlayed: 'Never',
+            status: editingCrop ? editingCrop.status : 'Ready',
+            lastPlayed: editingCrop ? editingCrop.lastPlayed : null,
         });
         onClose();
     };

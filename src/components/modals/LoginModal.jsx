@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
 import { User, X, Loader2, ShieldCheck, ChevronRight, WifiOff } from 'lucide-react';
 
+import { getOfflineUUID } from '../../utils/uuid';
+
 const LoginModal = ({ isOpen, onClose, onAddAccount }) => {
     const [activeMethod, setActiveMethod] = useState('selection'); // selection | offline
     const [offlineName, setOfflineName] = useState('');
@@ -15,7 +17,8 @@ const LoginModal = ({ isOpen, onClose, onAddAccount }) => {
             onAddAccount({
                 name: 'NewUser_' + Math.floor(Math.random() * 1000),
                 type: 'Microsoft',
-                avatarColor: 'bg-blue-600'
+                avatarColor: 'bg-blue-600',
+                uuid: '00000000-0000-0000-0000-000000000000' // Placeholder for MS
             });
             setIsLoading(false);
             onClose();
@@ -24,10 +27,15 @@ const LoginModal = ({ isOpen, onClose, onAddAccount }) => {
 
     const handleOfflineLogin = () => {
         if (!offlineName.trim()) return;
+
+        // Generate valid Offline UUID
+        const uuid = getOfflineUUID(offlineName);
+
         onAddAccount({
             name: offlineName,
             type: 'Offline',
-            avatarColor: 'bg-slate-600'
+            avatarColor: 'bg-slate-600',
+            uuid: uuid
         });
         setOfflineName('');
         setActiveMethod('selection');
