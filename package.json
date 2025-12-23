@@ -27,6 +27,14 @@
     "win": {
       "target": "nsis",
       "icon": "public/vite.svg"
+    },
+    "mac": {
+      "target": [
+        "dmg",
+        "zip"
+      ],
+      "category": "public.app-category.games",
+      "icon": "public/vite.svg"
     }
   },
   "dependencies": {

@@ -53,6 +53,19 @@ app.whenReady().then(() => {
         }
     });
     ipcMain.on('window-close', () => mainWindow?.close());
+    ipcMain.on('window-hide', () => mainWindow?.hide());
+    ipcMain.on('window-show', () => mainWindow?.show());
+
+    const { authenticateMicrosoft } = require('./microsoftAuth.cjs');
+    ipcMain.handle('microsoft-login', async () => {
+        try {
+            const account = await authenticateMicrosoft(mainWindow);
+            return { success: true, account };
+        } catch (error) {
+            console.error('Login Failed:', error);
+            return { success: false, error: error.message || error };
+        }
+    });
 
     // Game Launcher Integration
     const GameLauncher = require('./GameLauncher.cjs');

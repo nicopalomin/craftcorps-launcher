@@ -6,6 +6,10 @@ contextBridge.exposeInMainWorld('electronAPI', {
     minimize: () => ipcRenderer.send('window-minimize'),
     maximize: () => ipcRenderer.send('window-maximize'),
     close: () => ipcRenderer.send('window-close'),
+    hide: () => ipcRenderer.send('window-hide'),
+    show: () => ipcRenderer.send('window-show'),
+
+    microsoftLogin: () => ipcRenderer.invoke('microsoft-login'),
 
     launchGame: (options) => ipcRenderer.send('launch-game', options),
     stopGame: () => ipcRenderer.send('stop-game'),

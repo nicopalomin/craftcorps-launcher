@@ -1,36 +1,78 @@
 import React, { useState, useEffect } from 'react';
 import { X, Sprout, Save, Plus } from 'lucide-react';
-import { LOADERS, VERSIONS, COLORS } from '../../data/mockData';
+import { LOADERS, COLORS, FALLBACK_VERSIONS } from '../../data/mockData';
+import { fetchMinecraftVersions } from '../../utils/minecraftApi';
 
 const CropModal = ({ isOpen, onClose, onSave, editingCrop }) => {
     const [name, setName] = useState('');
     const [loader, setLoader] = useState(LOADERS[0]);
-    const [version, setVersion] = useState(VERSIONS[0]);
+    const [version, setVersion] = useState('');
     const [selectedColor, setSelectedColor] = useState(COLORS[0]);
+    const [versions, setVersions] = useState(FALLBACK_VERSIONS);
+    const [loadingVersions, setLoadingVersions] = useState(false);
+    const [errors, setErrors] = useState({});
+    const [autoConnect, setAutoConnect] = useState(false);
+    const [serverAddress, setServerAddress] = useState('');
+
+    // Fetch Minecraft versions on mount
+    useEffect(() => {
+        const loadVersions = async () => {
+            setLoadingVersions(true);
+            const fetchedVersions = await fetchMinecraftVersions();
+            setVersions(fetchedVersions);
+            setLoadingVersions(false);
+        };
+        loadVersions();
+    }, []);
 
     // Reset or populate form when modal opens
     useEffect(() => {
         if (isOpen) {
+            setErrors({}); // Clear errors when opening modal
             if (editingCrop) {
                 setName(editingCrop.name);
                 setLoader(editingCrop.loader);
                 setVersion(editingCrop.version);
+                setAutoConnect(editingCrop.autoConnect || false);
+                setServerAddress(editingCrop.serverAddress || '');
                 const color = COLORS.find(c => c.class === editingCrop.iconColor) || COLORS[0];
                 setSelectedColor(color);
             } else {
                 setName('');
                 setLoader(LOADERS[0]);
-                setVersion(VERSIONS[0]);
+                setVersion(versions[0] || '1.21.4');
+                setAutoConnect(false);
+                setServerAddress('');
                 setSelectedColor(COLORS[0]);
             }
         }
-    }, [isOpen, editingCrop]);
+    }, [isOpen, editingCrop, versions]);
 
     if (!isOpen) return null;
 
     const handleSubmit = (e) => {
         e.preventDefault();
-        if (!name.trim()) return;
+
+        // Validate fields
+        const newErrors = {};
+        if (!name.trim()) {
+            newErrors.name = true;
+        }
+        if (!version) {
+            newErrors.version = true;
+        }
+        if (autoConnect && !serverAddress.trim()) {
+            newErrors.serverAddress = true;
+        }
+
+        // If there are errors, set them and don't submit
+        if (Object.keys(newErrors).length > 0) {
+            setErrors(newErrors);
+            return;
+        }
+
+        // Clear errors and submit
+        setErrors({});
 
         onSave({
             ...(editingCrop || {}), // Preserve existing ID, lastPlayed, status if editing
@@ -42,6 +84,8 @@ const CropModal = ({ isOpen, onClose, onSave, editingCrop }) => {
             bgGradient: selectedColor.grad,
             status: editingCrop ? editingCrop.status : 'Ready',
             lastPlayed: editingCrop ? editingCrop.lastPlayed : null,
+            autoConnect,
+            serverAddress: autoConnect ? serverAddress.trim() : ''
         });
         onClose();
     };
@@ -86,13 +130,21 @@ const CropModal = ({ isOpen, onClose, onSave, editingCrop }) => {
 
                     {/* Name Input */}
                     <div>
-                        <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Crop Name</label>
+                        <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">
+                            Crop Name {errors.name && <span className="text-red-500">*Required</span>}
+                        </label>
                         <input
                             type="text"
                             value={name}
-                            onChange={(e) => setName(e.target.value)}
+                            onChange={(e) => {
+                                setName(e.target.value);
+                                if (errors.name) setErrors(prev => ({ ...prev, name: false }));
+                            }}
                             placeholder="My Awesome World"
-                            className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-emerald-500/50 transition-colors placeholder:text-slate-600"
+                            className={`w-full bg-slate-950 border rounded-xl px-4 py-3 text-white focus:outline-none transition-colors placeholder:text-slate-600 ${errors.name
+                                ? 'border-red-500 focus:border-red-500'
+                                : 'border-slate-800 focus:border-emerald-500/50'
+                                }`}
                             autoFocus
                         />
                     </div>
@@ -100,25 +152,119 @@ const CropModal = ({ isOpen, onClose, onSave, editingCrop }) => {
                     {/* Loader & Version Row */}
                     <div className="grid grid-cols-2 gap-4">
                         <div>
-                            <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Loader</label>
+                            <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">
+                                Loader <span className="text-xs font-normal text-slate-600">(Others coming soon)</span>
+                            </label>
                             <select
                                 value={loader}
                                 onChange={(e) => setLoader(e.target.value)}
                                 className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-emerald-500/50 transition-colors appearance-none"
                             >
-                                {LOADERS.map(l => <option key={l} value={l}>{l}</option>)}
+                                {LOADERS.map(l => (
+                                    <option
+                                        key={l}
+                                        value={l}
+                                        disabled={l !== 'Vanilla'}
+                                        className={l !== 'Vanilla' ? 'text-slate-600' : ''}
+                                    >
+                                        {l}{l !== 'Vanilla' ? ' (Coming Soon)' : ''}
+                                    </option>
+                                ))}
                             </select>
                         </div>
                         <div>
-                            <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Version</label>
+                            <div className="flex items-center justify-between mb-2">
+                                <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider">
+                                    Version {errors.version && <span className="text-red-500">*Required</span>}
+                                </label>
+                                <button
+                                    type="button"
+                                    onClick={() => {
+                                        setVersion(versions[0]);
+                                        if (errors.version) setErrors(prev => ({ ...prev, version: false }));
+                                    }}
+                                    disabled={loadingVersions}
+                                    className="text-xs font-bold text-emerald-500 hover:text-emerald-400 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                                >
+                                    Latest
+                                </button>
+                            </div>
                             <select
                                 value={version}
-                                onChange={(e) => setVersion(e.target.value)}
-                                className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-emerald-500/50 transition-colors appearance-none"
+                                onChange={(e) => {
+                                    setVersion(e.target.value);
+                                    if (errors.version) setErrors(prev => ({ ...prev, version: false }));
+                                }}
+                                className={`w-full bg-slate-950 border rounded-xl px-4 py-3 text-white focus:outline-none transition-colors appearance-none ${errors.version
+                                    ? 'border-red-500 focus:border-red-500'
+                                    : 'border-slate-800 focus:border-emerald-500/50'
+                                    }`}
+                                disabled={loadingVersions}
                             >
-                                {VERSIONS.map(v => <option key={v} value={v}>{v}</option>)}
+                                {loadingVersions ? (
+                                    <option>Loading versions...</option>
+                                ) : (
+                                    versions.map((v, index) => (
+                                        <option key={v} value={v}>
+                                            {index === 0 ? `${v} (Latest)` : v}
+                                        </option>
+                                    ))
+                                )}
                             </select>
                         </div>
+                    </div>
+
+                    {/* Color Picker */}
+                    <div>
+                        <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Theme Color</label>
+                        <div className="flex gap-2">
+                            {COLORS.map(color => (
+                                <button
+                                    key={color.name}
+                                    type="button"
+                                    onClick={() => setSelectedColor(color)}
+                                    className={`w-10 h-10 rounded-lg ${color.class} transition-all ${selectedColor.name === color.name ? 'ring-2 ring-white scale-110' : 'opacity-60 hover:opacity-100'}`}
+                                    title={color.name}
+                                />
+                            ))}
+                        </div>
+                    </div>
+
+                    {/* Server Auto-Connect */}
+                    <div className="border-t border-slate-800 pt-4">
+                        <label className="flex items-center gap-3 cursor-pointer group">
+                            <input
+                                type="checkbox"
+                                checked={autoConnect}
+                                onChange={(e) => setAutoConnect(e.target.checked)}
+                                className="w-5 h-5 rounded bg-slate-950 border-slate-700 text-emerald-600 focus:ring-emerald-500 focus:ring-offset-0 cursor-pointer"
+                            />
+                            <div>
+                                <span className="text-sm font-bold text-slate-200 group-hover:text-white transition-colors">Auto-connect to server</span>
+                                <p className="text-xs text-slate-500">Join a server automatically when launching</p>
+                            </div>
+                        </label>
+
+                        {autoConnect && (
+                            <div className="mt-3 animate-in fade-in slide-in-from-top-2 duration-200">
+                                <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">
+                                    Server Address {errors.serverAddress && <span className="text-red-500">*Required</span>}
+                                </label>
+                                <input
+                                    type="text"
+                                    value={serverAddress}
+                                    onChange={(e) => {
+                                        setServerAddress(e.target.value);
+                                        if (errors.serverAddress) setErrors(prev => ({ ...prev, serverAddress: false }));
+                                    }}
+                                    placeholder="play.hypixel.net"
+                                    className={`w-full bg-slate-950 border rounded-xl px-4 py-3 text-white focus:outline-none transition-colors placeholder:text-slate-600 font-mono text-sm ${errors.serverAddress
+                                        ? 'border-red-500 focus:border-red-500'
+                                        : 'border-slate-800 focus:border-emerald-500/50'
+                                        }`}
+                                />
+                            </div>
+                        )}
                     </div>
 
                     {/* Buttons */}

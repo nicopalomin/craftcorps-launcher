@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 
-export const useGameLaunch = (selectedInstance, ram, activeAccount, updateLastPlayed) => {
+export const useGameLaunch = (selectedInstance, ram, activeAccount, updateLastPlayed, hideOnLaunch) => {
     const [launchStatus, setLaunchStatus] = useState('idle'); // idle, launching, running
     const [launchProgress, setLaunchProgress] = useState(0);
     const [launchStep, setLaunchStep] = useState('Initializing...');
@@ -38,6 +38,10 @@ export const useGameLaunch = (selectedInstance, ram, activeAccount, updateLastPl
                         updateLastPlayed();
                     }
 
+                    if (hideOnLaunch && window.electronAPI) {
+                        window.electronAPI.hide();
+                    }
+
                     setTimeout(() => {
                         setLaunchStatus('running');
                     }, 500);
@@ -57,6 +61,11 @@ export const useGameLaunch = (selectedInstance, ram, activeAccount, updateLastPl
                 setLaunchStatus('idle');
                 setLaunchStep("Game exited.");
                 setLogs(prev => [...prev, { time: "Now", type: "INFO", message: `Process exited with code ${code}` }]);
+
+                if (window.electronAPI) {
+                    window.electronAPI.show();
+                }
+
                 // If it exited immediately/prematurely during launch, we might want to flag it?
                 // But usually this means user closed game or it crashed.
             });
@@ -66,12 +75,15 @@ export const useGameLaunch = (selectedInstance, ram, activeAccount, updateLastPl
                 maxMem: ram * 1024,
                 username: activeAccount.name,
                 uuid: activeAccount.uuid,
+                accessToken: activeAccount.accessToken,
+                userType: activeAccount.type, // 'Microsoft' or 'Offline'
                 useDefaultPath: true,
+                server: selectedInstance.autoConnect ? selectedInstance.serverAddress : null
             });
         } else {
             setLogs([{ time: "Now", type: "ERROR", message: "Electron API not found. Cannot launch native process." }]);
         }
-    }, [launchStatus, selectedInstance, ram, activeAccount, updateLastPlayed]);
+    }, [launchStatus, selectedInstance, ram, activeAccount, updateLastPlayed, hideOnLaunch]);
 
     const handleStop = useCallback(() => {
         if (launchStatus === 'launching') {

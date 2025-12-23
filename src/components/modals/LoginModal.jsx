@@ -10,19 +10,30 @@ const LoginModal = ({ isOpen, onClose, onAddAccount }) => {
 
     if (!isOpen) return null;
 
-    const handleMicrosoftLogin = () => {
+    const handleMicrosoftLogin = async () => {
         setIsLoading(true);
-        // Simulate auth delay
-        setTimeout(() => {
-            onAddAccount({
-                name: 'NewUser_' + Math.floor(Math.random() * 1000),
-                type: 'Microsoft',
-                avatarColor: 'bg-blue-600',
-                uuid: '00000000-0000-0000-0000-000000000000' // Placeholder for MS
-            });
+        try {
+            if (window.electronAPI) {
+                const result = await window.electronAPI.microsoftLogin();
+                if (result.success) {
+                    onAddAccount({
+                        ...result.account,
+                        avatarColor: 'bg-emerald-600', // Success color
+                    });
+                    onClose();
+                } else {
+                    console.error("Login failed:", result.error);
+                    // Optionally show error to user
+                    setIsLoading(false);
+                }
+            } else {
+                console.error("Electron API not available");
+                setIsLoading(false);
+            }
+        } catch (e) {
+            console.error("Login error:", e);
             setIsLoading(false);
-            onClose();
-        }, 2000);
+        }
     };
 
     const handleOfflineLogin = () => {

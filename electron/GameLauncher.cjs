@@ -51,7 +51,7 @@ class GameLauncher extends EventEmitter {
                 uuid: options.uuid || '00000000-0000-0000-0000-000000000000',
                 name: options.username || 'Player',
                 user_properties: '{}',
-                meta: { type: 'mojang' } // or 'msa'
+                meta: { type: options.userType === 'Microsoft' ? 'msa' : 'mojang' }
             },
             root: rootPath,
             version: {
@@ -67,6 +67,16 @@ class GameLauncher extends EventEmitter {
                 detached: false
             }
         };
+
+        // Add server auto-connect if specified using quickPlay
+        if (options.server) {
+            launchOptions.quickPlay = {
+                type: 'multiplayer',
+                identifier: options.server
+            };
+
+            this.emit('log', { type: 'INFO', message: `Auto-connecting to server: ${options.server}` });
+        }
 
         this.isCancelled = false; // Reset cancel flag on new launch
 

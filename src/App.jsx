@@ -23,6 +23,7 @@ import { useAccounts } from './hooks/useAccounts';
 function App() {
     const [activeTab, setActiveTab] = useState('home');
     const [ram, setRam] = useState(4);
+    const [hideOnLaunch, setHideOnLaunch] = useState(true);
     const [isLoading, setIsLoading] = useState(true);
 
     // Simulate app initialization
@@ -58,7 +59,8 @@ function App() {
         handleDeleteCrop,
         handleNewCrop,
         handleEditCrop,
-        updateLastPlayed
+        updateLastPlayed,
+        reorderInstances
     } = useInstances();
 
     const {
@@ -71,7 +73,7 @@ function App() {
         logs,
         handlePlay,
         handleStop
-    } = useGameLaunch(selectedInstance, ram, activeAccount, () => updateLastPlayed(selectedInstance?.id));
+    } = useGameLaunch(selectedInstance, ram, activeAccount, () => updateLastPlayed(selectedInstance?.id), hideOnLaunch);
 
     if (isLoading) {
         return <LoadingScreen />;
@@ -97,12 +99,12 @@ function App() {
             <main className="flex-1 flex flex-col min-w-0 bg-slate-950 relative overflow-hidden">
 
                 {/* Custom Window Title Bar (Drag Region) */}
-                <header className="absolute top-0 left-0 right-0 h-10 flex items-center justify-between px-4 z-50 select-none pointer-events-none">
-                    <div className="flex items-center gap-2 text-xs text-slate-500 pointer-events-auto">
+                <header className="absolute top-0 left-0 right-0 h-10 flex items-center justify-between px-4 z-50 select-none drag">
+                    <div className="flex items-center gap-2 text-xs text-slate-500 no-drag">
                         <span>CraftCrops Launcher v1.0.2</span>
                         {launchStatus === 'running' && <span className="text-emerald-500 flex items-center gap-1">● Game Running</span>}
                     </div>
-                    <div className="flex items-center gap-4 pointer-events-auto">
+                    <div className="flex items-center gap-4 no-drag">
                         {launchStatus !== 'idle' && (
                             <button
                                 onClick={() => setShowConsole(true)}
@@ -161,6 +163,7 @@ function App() {
                                 onManageAll={() => setActiveTab('instances')}
                                 setSelectedInstance={setSelectedInstance}
                                 onNewCrop={handleNewCrop}
+                                onEditCrop={handleEditCrop}
                             />
                         )
                     )}
@@ -171,10 +174,11 @@ function App() {
                             onEditCrop={handleEditCrop}
                             onDeleteCrop={handleDeleteCrop}
                             onNewCrop={handleNewCrop}
+                            onReorder={reorderInstances}
                         />
                     )}
                     {activeTab === 'wardrobe' && <WardrobeView skins={SKINS} />}
-                    {activeTab === 'settings' && <SettingsView ram={ram} setRam={setRam} />}
+                    {activeTab === 'settings' && <SettingsView ram={ram} setRam={setRam} hideOnLaunch={hideOnLaunch} setHideOnLaunch={setHideOnLaunch} />}
                     {activeTab === 'mods' && <ModsView />}
 
                 </div>

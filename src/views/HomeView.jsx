@@ -1,5 +1,5 @@
 import React from 'react';
-import { Sprout, Play, Loader2, X, ChevronRight, Plus } from 'lucide-react';
+import { Sprout, Play, Loader2, X, ChevronRight, Plus, Edit3, Server } from 'lucide-react';
 import QuickSelectCard from '../components/common/QuickSelectCard';
 import { formatLastPlayed } from '../utils/dateUtils';
 
@@ -14,6 +14,7 @@ const HomeView = ({
     onManageAll,
     setSelectedInstance,
     onNewCrop,
+    onEditCrop,
 }) => {
     if (!selectedInstance) {
         return (
@@ -38,6 +39,15 @@ const HomeView = ({
 
             {/* Main Content */}
             <div className="relative z-10 flex flex-col items-center text-center w-full max-w-4xl px-8">
+                {/* Edit Button - Top Right */}
+                <button
+                    onClick={() => onEditCrop(selectedInstance)}
+                    className="absolute top-4 right-8 p-3 rounded-xl text-slate-400 hover:text-white hover:bg-white/10 border border-slate-700 hover:border-slate-500 transition-all backdrop-blur-sm"
+                    title="Edit crop"
+                >
+                    <Edit3 size={24} />
+                </button>
+
                 {/* Instance Icon - Large */}
                 <div
                     className={`w-32 h-32 rounded-3xl ${selectedInstance.iconColor} flex items-center justify-center text-slate-900 shadow-2xl shadow-black/50 mb-8 transform hover:scale-105 transition-transform duration-300 ring-4 ring-white/10`}
@@ -56,6 +66,15 @@ const HomeView = ({
                     <span>{selectedInstance.loader}</span>
                     <span className="w-1 h-1 rounded-full bg-slate-500" />
                     <span className="text-emerald-400 font-medium">{selectedInstance.status}</span>
+                    {selectedInstance.autoConnect && (
+                        <>
+                            <span className="w-1 h-1 rounded-full bg-slate-500" />
+                            <div className="flex items-center gap-1 text-emerald-400" title={`Auto-connects to ${selectedInstance.serverAddress}`}>
+                                <Server size={14} />
+                                <span className="text-xs font-medium">{selectedInstance.serverAddress}</span>
+                            </div>
+                        </>
+                    )}
                 </div>
 
                 {/* Play / Stop */}
