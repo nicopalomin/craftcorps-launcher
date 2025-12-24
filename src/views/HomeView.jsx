@@ -1,6 +1,7 @@
 import React, { useRef, useEffect } from 'react';
 import { Sprout, Play, Loader2, X, ChevronRight, Plus, Edit3, Server, LogOut, PlusCircle, Check } from 'lucide-react';
 import QuickSelectCard from '../components/common/QuickSelectCard';
+import BackgroundBlobs from '../components/common/BackgroundBlobs';
 import { formatLastPlayed } from '../utils/dateUtils';
 
 const HomeView = ({
@@ -21,7 +22,8 @@ const HomeView = ({
     onAddAccount,
     onLogout,
     showProfileMenu,
-    setShowProfileMenu
+    setShowProfileMenu,
+    disableAnimations
 }) => {
     const profileMenuRef = useRef(null);
 
@@ -56,6 +58,9 @@ const HomeView = ({
             />
             <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] opacity-5" />
             <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/80 to-transparent" />
+
+            {/* Animated Blobs */}
+            <BackgroundBlobs disabled={disableAnimations} />
 
             {/* Account Pill & System - Top Right */}
             <div className="absolute top-8 right-8 z-50 pointer-events-auto" ref={profileMenuRef}>

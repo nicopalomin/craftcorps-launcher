@@ -24,6 +24,7 @@ function App() {
     const [activeTab, setActiveTab] = useState('home');
     const [ram, setRam] = useState(4);
     const [hideOnLaunch, setHideOnLaunch] = useState(true);
+    const [disableAnimations, setDisableAnimations] = useState(false);
     const [isLoading, setIsLoading] = useState(true);
 
     // Simulate app initialization
@@ -164,6 +165,7 @@ function App() {
                                 onLogout={handleLogout}
                                 showProfileMenu={showProfileMenu}
                                 setShowProfileMenu={setShowProfileMenu}
+                                disableAnimations={disableAnimations}
                             />
                         )
                     )}
@@ -178,7 +180,16 @@ function App() {
                         />
                     )}
                     {activeTab === 'wardrobe' && <WardrobeView skins={SKINS} />}
-                    {activeTab === 'settings' && <SettingsView ram={ram} setRam={setRam} hideOnLaunch={hideOnLaunch} setHideOnLaunch={setHideOnLaunch} />}
+                    {activeTab === 'settings' && (
+                        <SettingsView
+                            ram={ram}
+                            setRam={setRam}
+                            hideOnLaunch={hideOnLaunch}
+                            setHideOnLaunch={setHideOnLaunch}
+                            disableAnimations={disableAnimations}
+                            setDisableAnimations={setDisableAnimations}
+                        />
+                    )}
                     {activeTab === 'mods' && <ModsView />}
 
                 </div>
