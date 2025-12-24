@@ -86,13 +86,6 @@ function App() {
             <Sidebar
                 activeTab={activeTab}
                 onTabChange={setActiveTab}
-                accounts={accounts}
-                activeAccount={activeAccount}
-                onSwitchAccount={handleAccountSwitch}
-                onAddAccount={() => { setShowLoginModal(true); setShowProfileMenu(false); }}
-                showProfileMenu={showProfileMenu}
-                setShowProfileMenu={setShowProfileMenu}
-                onLogout={handleLogout}
             />
 
             {/* Main Content Area */}
@@ -164,6 +157,13 @@ function App() {
                                 setSelectedInstance={setSelectedInstance}
                                 onNewCrop={handleNewCrop}
                                 onEditCrop={handleEditCrop}
+                                // Account System Props
+                                accounts={accounts}
+                                onSwitchAccount={handleAccountSwitch}
+                                onAddAccount={() => { setShowLoginModal(true); setShowProfileMenu(false); }}
+                                onLogout={handleLogout}
+                                showProfileMenu={showProfileMenu}
+                                setShowProfileMenu={setShowProfileMenu}
                             />
                         )
                     )}
