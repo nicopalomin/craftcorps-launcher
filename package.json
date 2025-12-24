@@ -26,7 +26,7 @@
     ],
     "win": {
       "target": "nsis",
-      "icon": "public/vite.svg"
+      "icon": "public/icon.png"
     },
     "mac": {
       "target": [
@@ -34,7 +34,19 @@
         "zip"
       ],
       "category": "public.app-category.games",
-      "icon": "public/vite.svg"
+      "icon": "public/icon.png"
+    },
+    "linux": {
+      "target": "AppImage",
+      "icon": "public/icon.png",
+      "category": "Game"
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true
     }
   },
   "dependencies": {

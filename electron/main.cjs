@@ -12,7 +12,12 @@ const preloadPath = path.join(__dirname, 'preload.cjs');
 console.log('Loading preload from:', preloadPath);
 
 function createWindow() {
+    const iconPath = process.env.NODE_ENV === 'development'
+        ? path.join(__dirname, '../public/icon.png')
+        : path.join(__dirname, '../dist/icon.png');
+
     mainWindow = new BrowserWindow({
+        icon: iconPath,
         width: 1200,
         height: 800,
         minWidth: 940,
