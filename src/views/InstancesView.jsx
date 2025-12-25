@@ -1,8 +1,10 @@
 import React, { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Sprout, Edit3, Trash2, Plus, GripVertical, Server, X } from 'lucide-react';
 
 const InstancesView = ({ instances, onEditCrop, onDeleteCrop, onSelectInstance, onNewCrop, onReorder }) => {
     const [draggedIndex, setDraggedIndex] = useState(null);
+    const { t } = useTranslation();
     const [dragOverIndex, setDragOverIndex] = useState(null);
     const [searchQuery, setSearchQuery] = useState('');
 
@@ -68,14 +70,14 @@ const InstancesView = ({ instances, onEditCrop, onDeleteCrop, onSelectInstance, 
         <div className="flex-1 overflow-y-auto p-8 animate-in fade-in slide-in-from-bottom-4 duration-300 select-none">
             <div className="flex items-center justify-between mb-8">
                 <div>
-                    <h2 className="text-3xl font-bold text-white mb-1">Manage Crops</h2>
-                    <p className="text-slate-400 text-sm">Configure, update, or plant new instances.</p>
+                    <h2 className="text-3xl font-bold text-white mb-1">{t('instances_title')}</h2>
+                    <p className="text-slate-400 text-sm">{t('instances_subtitle')}</p>
                 </div>
                 <div className="flex gap-2">
                     <div className="relative">
                         <input
                             type="text"
-                            placeholder="Search crops..."
+                            placeholder={t('instances_search_placeholder')}
                             value={searchQuery}
                             onChange={(e) => setSearchQuery(e.target.value)}
                             className="bg-slate-900 border border-slate-800 rounded-lg pl-4 pr-8 py-2 text-sm text-slate-200 focus:outline-none focus:border-emerald-500/50 w-64 focus:ring-1 focus:ring-emerald-500/50 transition-all placeholder:text-slate-600"
@@ -93,7 +95,7 @@ const InstancesView = ({ instances, onEditCrop, onDeleteCrop, onSelectInstance, 
                         onClick={onNewCrop}
                         className="bg-emerald-600 hover:bg-emerald-500 text-white px-4 py-2 rounded-lg transition-colors flex items-center gap-2 font-medium"
                     >
-                        <Plus size={18} /> New Crop
+                        <Plus size={18} /> {t('instances_btn_new')}
                     </button>
                 </div>
             </div>
@@ -118,7 +120,7 @@ const InstancesView = ({ instances, onEditCrop, onDeleteCrop, onSelectInstance, 
                         {dragOverIndex === index && draggedIndex !== index && (
                             <div className="absolute inset-0 bg-emerald-500/10 backdrop-blur-[1px] z-20 flex items-center justify-center pointer-events-none">
                                 <div className="text-emerald-400 font-bold text-sm bg-slate-900/80 px-3 py-1 rounded-full border border-emerald-500/50">
-                                    Drop here
+                                    {t('instances_drop_here')}
                                 </div>
                             </div>
                         )}
@@ -153,7 +155,7 @@ const InstancesView = ({ instances, onEditCrop, onDeleteCrop, onSelectInstance, 
                             {inst.autoConnect && (
                                 <div className="flex items-center gap-1 text-xs text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-full border border-emerald-500/20" title={`Auto-connects to ${inst.serverAddress}`}>
                                     <Server size={10} />
-                                    <span className="font-medium">Server</span>
+                                    <span className="font-medium">{t('instances_server_badge')}</span>
                                 </div>
                             )}
                         </div>
@@ -161,7 +163,7 @@ const InstancesView = ({ instances, onEditCrop, onDeleteCrop, onSelectInstance, 
                             onClick={() => onSelectInstance(inst)}
                             className="w-full py-2 bg-slate-800 hover:bg-emerald-600 hover:text-white text-emerald-500 font-medium rounded-lg text-sm transition-colors relative z-10"
                         >
-                            Select & Play
+                            {t('instances_btn_play')}
                         </button>
                         {/* Subtle Gradient BG */}
                         <div className={`absolute inset-0 bg-gradient-to-br ${inst.bgGradient} opacity-10`} />

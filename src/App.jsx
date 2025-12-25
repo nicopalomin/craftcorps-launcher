@@ -21,9 +21,11 @@ import { useGameLaunch } from './hooks/useGameLaunch';
 import { useInstances } from './hooks/useInstances';
 import { useAccounts } from './hooks/useAccounts';
 import { useToast } from './contexts/ToastContext';
+import { useTranslation } from 'react-i18next';
 
 function App() {
     const { addToast } = useToast();
+    const { t } = useTranslation();
     const [activeTab, setActiveTab] = useState('home');
     const [ram, setRam] = useState(4);
     const [hideOnLaunch, setHideOnLaunch] = useState(true);
@@ -70,22 +72,22 @@ function App() {
     // Wrapped Handlers for Toasts
     const onSaveCropWithToast = (crop) => {
         handleSaveCrop(crop);
-        addToast(editingCrop ? 'Crop updated successfully' : 'New crop planted!', 'success');
+        addToast(editingCrop ? t('toast_crop_updated') : t('toast_crop_created'), 'success');
     };
 
     const onDeleteCropWithToast = (id) => {
         handleDeleteCrop(id);
-        addToast('Crop harvested (deleted)', 'info');
+        addToast(t('toast_crop_deleted'), 'info');
     };
 
     const onAddAccountWithToast = (account) => {
         handleAddAccount(account);
-        addToast(`Welcome, ${account.name}!`, 'success');
+        addToast(`${t('toast_welcome')}, ${account.name}!`, 'success');
     };
 
     const onLogoutWithToast = () => {
         handleLogout();
-        addToast('Signed out successfully', 'info');
+        addToast(t('toast_logout'), 'info');
     };
 
     const onAccountSwitchWithToast = (account) => {
@@ -125,7 +127,7 @@ function App() {
                 <header className="absolute top-0 left-0 right-0 h-10 flex items-center justify-between px-4 z-50 select-none drag">
                     <div className="flex items-center gap-2 text-xs text-slate-500">
                         <span>CraftCrops Launcher v1.0.2</span>
-                        {launchStatus === 'running' && <span className="text-emerald-500 flex items-center gap-1">● Game Running</span>}
+                        {launchStatus === 'running' && <span className="text-emerald-500 flex items-center gap-1">● {t('top_bar_running')}</span>}
                     </div>
                     <div className="flex items-center gap-4 no-drag">
                         {launchStatus !== 'idle' && (
@@ -133,7 +135,7 @@ function App() {
                                 onClick={() => setShowConsole(true)}
                                 className="text-xs flex items-center gap-1.5 text-slate-400 hover:text-emerald-400 transition-colors"
                             >
-                                <Terminal size={12} /> Console
+                                <Terminal size={12} /> {t('top_bar_console')}
                             </button>
                         )}
                         <div className="flex items-center gap-2">
@@ -176,9 +178,9 @@ function App() {
                                         <User size={40} className="text-white drop-shadow-md" />
                                     </div>
 
-                                    <h2 className="text-3xl font-bold text-white mb-3">Welcome Back</h2>
+                                    <h2 className="text-3xl font-bold text-white mb-3">{t('home_welcome_back')}</h2>
                                     <p className="text-slate-400 mb-8 leading-relaxed text-sm">
-                                        Connect your identity to access your crops, skins, and start your journey.
+                                        {t('home_connect_identity')}
                                     </p>
 
                                     <button
@@ -188,7 +190,7 @@ function App() {
                                         <div className="bg-emerald-700/50 p-1.5 rounded-lg group-hover:bg-emerald-600/50 transition-colors">
                                             <User size={18} className="text-emerald-100" />
                                         </div>
-                                        <span>Connect Identity</span>
+                                        <span>{t('home_btn_connect')}</span>
                                     </button>
                                 </div>
                             </div>

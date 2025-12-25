@@ -1,9 +1,11 @@
 import React, { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { X, Sprout, Save, Plus } from 'lucide-react';
 import { LOADERS, COLORS, FALLBACK_VERSIONS } from '../../data/mockData';
 import { fetchMinecraftVersions } from '../../utils/minecraftApi';
 
 const CropModal = ({ isOpen, onClose, onSave, editingCrop }) => {
+    const { t } = useTranslation();
     const [name, setName] = useState('');
     const [loader, setLoader] = useState(LOADERS[0]);
     const [version, setVersion] = useState('');
@@ -98,7 +100,7 @@ const CropModal = ({ isOpen, onClose, onSave, editingCrop }) => {
                 <div className="flex justify-between items-center mb-6 relative z-10">
                     <h3 className="text-xl font-bold text-white flex items-center gap-2">
                         <Sprout size={20} className="text-emerald-500" />
-                        {editingCrop ? 'Prune Crop' : 'Cultivate Crop'}
+                        {editingCrop ? t('crop_title_edit') : t('crop_title_new')}
                     </h3>
                     <button onClick={onClose} className="text-slate-500 hover:text-white transition-colors">
                         <X size={20} />
@@ -110,7 +112,7 @@ const CropModal = ({ isOpen, onClose, onSave, editingCrop }) => {
 
                     {/* Icon Selector */}
                     <div>
-                        <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Icon & Theme</label>
+                        <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">{t('crop_section_icon')}</label>
                         <div className="flex items-center gap-4">
                             <div className={`w-16 h-16 rounded-xl ${selectedColor.class} flex items-center justify-center text-slate-900 shadow-lg`}>
                                 <Sprout size={32} />
@@ -131,7 +133,7 @@ const CropModal = ({ isOpen, onClose, onSave, editingCrop }) => {
                     {/* Name Input */}
                     <div>
                         <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">
-                            Crop Name {errors.name && <span className="text-red-500">*Required</span>}
+                            {t('crop_label_name')} {errors.name && <span className="text-red-500">{t('crop_required')}</span>}
                         </label>
                         <input
                             type="text"
@@ -153,7 +155,7 @@ const CropModal = ({ isOpen, onClose, onSave, editingCrop }) => {
                     <div className="grid grid-cols-2 gap-4">
                         <div>
                             <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">
-                                Loader <span className="text-xs font-normal text-slate-600">(Others coming soon)</span>
+                                {t('crop_label_loader')} <span className="text-xs font-normal text-slate-600">{t('crop_loader_others')}</span>
                             </label>
                             <select
                                 value={loader}
@@ -167,7 +169,7 @@ const CropModal = ({ isOpen, onClose, onSave, editingCrop }) => {
                                         disabled={l !== 'Vanilla'}
                                         className={l !== 'Vanilla' ? 'text-slate-600' : ''}
                                     >
-                                        {l}{l !== 'Vanilla' ? ' (Coming Soon)' : ''}
+                                        {l === 'Vanilla' ? t('crop_loader_vanilla') : l}{l !== 'Vanilla' ? ` ${t('crop_coming_soon')}` : ''}
                                     </option>
                                 ))}
                             </select>
@@ -175,7 +177,7 @@ const CropModal = ({ isOpen, onClose, onSave, editingCrop }) => {
                         <div>
                             <div className="flex items-center justify-between mb-2">
                                 <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider">
-                                    Version {errors.version && <span className="text-red-500">*Required</span>}
+                                    {t('crop_label_version')} {errors.version && <span className="text-red-500">{t('crop_required')}</span>}
                                 </label>
                                 <button
                                     type="button"
@@ -186,7 +188,7 @@ const CropModal = ({ isOpen, onClose, onSave, editingCrop }) => {
                                     disabled={loadingVersions}
                                     className="text-xs font-bold text-emerald-500 hover:text-emerald-400 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                                 >
-                                    Latest
+                                    {t('crop_btn_latest')}
                                 </button>
                             </div>
                             <select
@@ -206,7 +208,7 @@ const CropModal = ({ isOpen, onClose, onSave, editingCrop }) => {
                                 ) : (
                                     versions.map((v, index) => (
                                         <option key={v} value={v}>
-                                            {index === 0 ? `${v} (Latest)` : v}
+                                            {index === 0 ? `${v} ${t('crop_version_latest')}` : v}
                                         </option>
                                     ))
                                 )}
@@ -216,7 +218,7 @@ const CropModal = ({ isOpen, onClose, onSave, editingCrop }) => {
 
                     {/* Color Picker */}
                     <div>
-                        <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Theme Color</label>
+                        <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">{t('crop_label_color')}</label>
                         <div className="flex gap-2">
                             {COLORS.map(color => (
                                 <button
@@ -240,15 +242,15 @@ const CropModal = ({ isOpen, onClose, onSave, editingCrop }) => {
                                 className="w-5 h-5 rounded bg-slate-950 border-slate-700 text-emerald-600 focus:ring-emerald-500 focus:ring-offset-0 cursor-pointer"
                             />
                             <div>
-                                <span className="text-sm font-bold text-slate-200 group-hover:text-white transition-colors">Auto-connect to server</span>
-                                <p className="text-xs text-slate-500">Join a server automatically when launching</p>
+                                <span className="text-sm font-bold text-slate-200 group-hover:text-white transition-colors">{t('crop_check_autoconnect')}</span>
+                                <p className="text-xs text-slate-500">{t('crop_desc_autoconnect')}</p>
                             </div>
                         </label>
 
                         {autoConnect && (
                             <div className="mt-3 animate-in fade-in slide-in-from-top-2 duration-200">
                                 <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">
-                                    Server Address {errors.serverAddress && <span className="text-red-500">*Required</span>}
+                                    {t('crop_label_server')} {errors.serverAddress && <span className="text-red-500">{t('crop_required')}</span>}
                                 </label>
                                 <input
                                     type="text"
@@ -274,14 +276,14 @@ const CropModal = ({ isOpen, onClose, onSave, editingCrop }) => {
                             onClick={onClose}
                             className="flex-1 px-4 py-3 rounded-xl font-bold text-slate-400 hover:bg-slate-800 transition-colors"
                         >
-                            Cancel
+                            {t('btn_cancel')}
                         </button>
                         <button
                             type="submit"
                             className="flex-[2] bg-emerald-600 hover:bg-emerald-500 text-white px-4 py-3 rounded-xl font-bold shadow-lg shadow-emerald-900/20 transition-all active:scale-95 flex items-center justify-center gap-2"
                         >
                             {editingCrop ? <Save size={18} /> : <Plus size={18} />}
-                            {editingCrop ? 'Update Crop' : 'Plant Crop'}
+                            {editingCrop ? t('crop_btn_save_edit') : t('crop_btn_save_new')}
                         </button>
                     </div>
                 </form>

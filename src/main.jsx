@@ -3,6 +3,7 @@ import ReactDOM from 'react-dom/client'
 import App from './App.jsx'
 import './index.css'
 import { ToastProvider } from './contexts/ToastContext';
+import './i18n';
 
 class ErrorBoundary extends React.Component {
     constructor(props) {

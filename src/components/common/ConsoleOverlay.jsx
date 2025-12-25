@@ -1,14 +1,16 @@
 import React from 'react';
+import { useTranslation } from 'react-i18next';
 import { Terminal, X } from 'lucide-react';
 
 const ConsoleOverlay = ({ logs, onClose, isOpen }) => {
+    const { t } = useTranslation();
     if (!isOpen) return null;
     return (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm p-8">
             <div className="bg-slate-900 w-full max-w-4xl h-[600px] rounded-xl border border-slate-700 shadow-2xl flex flex-col overflow-hidden animate-in zoom-in-95 duration-200">
                 <div className="h-10 bg-slate-800 flex items-center justify-between px-4 border-b border-slate-700">
                     <span className="text-sm font-mono text-slate-400 flex items-center gap-2">
-                        <Terminal size={14} /> Game Output
+                        <Terminal size={14} /> {t('console_title')}
                     </span>
                     <button onClick={onClose} className="text-slate-400 hover:text-white">
                         <X size={16} />
@@ -24,7 +26,7 @@ const ConsoleOverlay = ({ logs, onClose, isOpen }) => {
               `}>{log.type}</span>: {log.message}
                         </div>
                     ))}
-                    {logs.length === 0 && <span className="text-slate-600 animate-pulse">Waiting for game process...</span>}
+                    {logs.length === 0 && <span className="text-slate-600 animate-pulse">{t('console_waiting')}</span>}
                 </div>
             </div>
         </div>

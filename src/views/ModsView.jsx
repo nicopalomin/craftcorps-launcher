@@ -1,10 +1,12 @@
 import React from 'react';
+import { useTranslation } from 'react-i18next';
 import { HardDrive, Box, Download, Search, Filter } from 'lucide-react';
 
 const ModsView = () => {
+    const { t } = useTranslation();
     return (
         <div className="flex-1 p-8 animate-in fade-in slide-in-from-bottom-4 duration-300 flex flex-col h-full overflow-hidden relative select-none">
-            <h2 className="text-3xl font-bold text-white mb-6">Mod Vault</h2>
+            <h2 className="text-3xl font-bold text-white mb-6">{t('mods_title')}</h2>
 
             {/* Construction Overlay */}
             <div className="absolute inset-0 z-50 flex items-center justify-center bg-slate-950/60 backdrop-blur-sm p-8">
@@ -12,11 +14,11 @@ const ModsView = () => {
                     <div className="inline-flex items-center justify-center w-24 h-24 rounded-full bg-amber-500/10 mb-6 border border-amber-500/30">
                         <HardDrive size={48} className="text-amber-500" />
                     </div>
-                    <h1 className="text-4xl font-bold text-white mb-4">Under Construction</h1>
+                    <h1 className="text-4xl font-bold text-white mb-4">{t('mods_under_construction')}</h1>
                     <p className="text-xl text-slate-400 max-w-lg mx-auto leading-relaxed">
-                        We're assembling the ultimate mod repository.
+                        {t('mods_desc')}
                         <br />
-                        <span className="text-amber-500 font-bold">Coming Soon to CraftCorps!</span>
+                        <span className="text-amber-500 font-bold">{t('mods_coming_soon')}</span>
                     </p>
                 </div>
             </div>
@@ -28,10 +30,10 @@ const ModsView = () => {
                 <div className="flex gap-4">
                     <div className="flex-1 bg-slate-900 border border-slate-700 rounded-xl p-4 flex items-center gap-3">
                         <Search size={20} className="text-slate-500" />
-                        <span className="text-slate-600">Search 10,000+ mods...</span>
+                        <span className="text-slate-600">{t('mods_search_placeholder')}</span>
                     </div>
                     <div className="w-48 bg-slate-900 border border-slate-700 rounded-xl p-4 flex items-center justify-between">
-                        <span className="text-slate-400">All Categories</span>
+                        <span className="text-slate-400">{t('mods_all_categories')}</span>
                         <Filter size={16} className="text-slate-600" />
                     </div>
                 </div>

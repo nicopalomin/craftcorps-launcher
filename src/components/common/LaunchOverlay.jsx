@@ -1,7 +1,9 @@
 import React from 'react';
+import { useTranslation } from 'react-i18next';
 import { Loader2, X } from 'lucide-react';
 
 const LaunchOverlay = ({ isOpen, status, progress, onCancel, instanceName }) => {
+    const { t } = useTranslation();
     if (!isOpen) return null;
 
     return (
@@ -15,8 +17,8 @@ const LaunchOverlay = ({ isOpen, status, progress, onCancel, instanceName }) => 
                             <Loader2 size={24} className="animate-spin" />
                         </div>
                         <div>
-                            <h3 className="font-bold text-white text-lg leading-tight">Launching {instanceName}</h3>
-                            <p className="text-xs text-slate-400 font-medium tracking-wider uppercase mt-0.5">Preparing Game Environment</p>
+                            <h3 className="font-bold text-white text-lg leading-tight">{t('launch_prefix')} {instanceName}</h3>
+                            <p className="text-xs text-slate-400 font-medium tracking-wider uppercase mt-0.5">{t('launch_preparing')}</p>
                         </div>
                     </div>
                 </div>
@@ -33,7 +35,7 @@ const LaunchOverlay = ({ isOpen, status, progress, onCancel, instanceName }) => 
 
                 {/* Status Text */}
                 <div className="flex justify-between text-xs mb-6">
-                    <span className="text-slate-400 truncate max-w-[340px] font-medium">{status || 'Initializing...'}</span>
+                    <span className="text-slate-400 truncate max-w-[340px] font-medium">{status || t('launch_status_init')}</span>
                     <span className="text-emerald-500 font-mono font-bold">{progress}%</span>
                 </div>
 
@@ -43,7 +45,7 @@ const LaunchOverlay = ({ isOpen, status, progress, onCancel, instanceName }) => 
                         onClick={onCancel}
                         className="px-6 py-2 rounded-lg bg-slate-800 hover:bg-red-500/10 hover:text-red-400 text-slate-400 text-sm font-medium transition-all duration-200 border border-slate-700 hover:border-red-500/30 flex items-center gap-2"
                     >
-                        <X size={14} /> Cancel Launch
+                        <X size={14} /> {t('launch_btn_cancel')}
                     </button>
                 </div>
 

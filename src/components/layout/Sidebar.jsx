@@ -1,9 +1,11 @@
 import React, { useRef, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Sprout, Play, Edit3, HardDrive, Settings, Shirt } from 'lucide-react';
 import SidebarItem from './SidebarItem';
 import SneakyAd from '../common/SneakyAd';
 
 const Sidebar = ({ activeTab, onTabChange }) => {
+    const { t } = useTranslation();
     // Initialize from local storage or default to 256
     const [width, setWidth] = React.useState(() => {
         const saved = localStorage.getItem('sidebarWidth');
@@ -86,32 +88,32 @@ const Sidebar = ({ activeTab, onTabChange }) => {
             <nav className="flex-1 space-y-1 overflow-hidden">
                 <SidebarItem
                     icon={Play}
-                    label="Play"
+                    label={t('nav_play')}
                     active={activeTab === 'home'}
                     onClick={() => onTabChange('home')}
                 />
                 <SidebarItem
                     icon={Edit3}
-                    label="Edit Crops"
+                    label={t('nav_edit_crops')}
                     active={activeTab === 'instances'}
                     onClick={() => onTabChange('instances')}
                 />
                 <SidebarItem
                     icon={HardDrive}
-                    label="Mod Vault"
+                    label={t('nav_mod_vault')}
                     active={activeTab === 'mods'}
                     onClick={() => onTabChange('mods')}
                 />
                 <div className="pt-4 mt-4 border-t border-slate-800">
                     <SidebarItem
                         icon={Settings}
-                        label="Settings"
+                        label={t('nav_settings')}
                         active={activeTab === 'settings'}
                         onClick={() => onTabChange('settings')}
                     />
                     <SidebarItem
                         icon={Shirt}
-                        label="Wardrobe"
+                        label={t('nav_wardrobe')}
                         active={activeTab === 'wardrobe'}
                         onClick={() => onTabChange('wardrobe')}
                     />

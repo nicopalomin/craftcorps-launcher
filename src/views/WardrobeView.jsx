@@ -1,11 +1,13 @@
 import React from 'react';
+import { useTranslation } from 'react-i18next';
 import { Maximize2, Upload, HardDrive, User, Check, PlusCircle } from 'lucide-react';
 import { SKINS } from '../data/mockData';
 
 const WardrobeView = () => {
+    const { t } = useTranslation();
     return (
         <div className="flex-1 p-8 animate-in fade-in slide-in-from-bottom-4 duration-300 flex flex-col h-full overflow-hidden relative select-none">
-            <h2 className="text-3xl font-bold text-white mb-6">Wardrobe</h2>
+            <h2 className="text-3xl font-bold text-white mb-6">{t('wardrobe_title')}</h2>
 
             {/* Construction Overlay */}
             <div className="absolute inset-0 z-50 flex items-center justify-center bg-slate-950/60 backdrop-blur-sm p-8">
@@ -13,11 +15,11 @@ const WardrobeView = () => {
                     <div className="inline-flex items-center justify-center w-24 h-24 rounded-full bg-amber-500/10 mb-6 border border-amber-500/30">
                         <HardDrive size={48} className="text-amber-500" />
                     </div>
-                    <h1 className="text-4xl font-bold text-white mb-4">Under Construction</h1>
+                    <h1 className="text-4xl font-bold text-white mb-4">{t('wardrobe_under_construction')}</h1>
                     <p className="text-xl text-slate-400 max-w-lg mx-auto leading-relaxed">
-                        We're stitching together the ultimate skin manager details.
+                        {t('wardrobe_under_construction')}
                         <br />
-                        <span className="text-amber-500 font-bold">Coming Soon to CraftCorps!</span>
+                        <span className="text-amber-500 font-bold">{t('wardrobe_coming_soon')}</span>
                     </p>
                 </div>
             </div>
@@ -52,10 +54,10 @@ const WardrobeView = () => {
                     </div>
                     <div className="flex gap-2">
                         <button className="flex-1 bg-slate-800 hover:bg-slate-700 text-slate-200 py-3 rounded-lg font-medium text-sm flex items-center justify-center gap-2 transition-colors border border-slate-700">
-                            <Upload size={16} /> Upload Skin
+                            <Upload size={16} /> {t('wardrobe_btn_upload')}
                         </button>
                         <button className="flex-1 bg-emerald-600 hover:bg-emerald-500 text-white py-3 rounded-lg font-medium text-sm flex items-center justify-center gap-2 transition-colors">
-                            Save & Apply
+                            {t('wardrobe_btn_save')}
                         </button>
                     </div>
                 </div>
@@ -63,7 +65,7 @@ const WardrobeView = () => {
                 {/* Right Column: Library */}
                 <div className="flex-1 bg-slate-900/50 rounded-2xl border border-slate-800 p-6 flex flex-col min-h-0">
                     <h3 className="text-lg font-bold text-slate-200 mb-4 flex items-center gap-2">
-                        <HardDrive size={18} className="text-emerald-500" /> Skin Library
+                        <HardDrive size={18} className="text-emerald-500" /> {t('wardrobe_library_title')}
                     </h3>
                     <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4 overflow-y-auto pr-2 custom-scrollbar">
                         {SKINS.map(skin => (
@@ -73,7 +75,7 @@ const WardrobeView = () => {
                                     {skin.used && (
                                         <div className="absolute inset-0 bg-black/40 flex items-center justify-center backdrop-blur-[1px]">
                                             <span className="text-xs font-bold text-white bg-emerald-600 px-2 py-1 rounded-full flex items-center gap-1">
-                                                <Check size={10} /> Active
+                                                <Check size={10} /> {t('wardrobe_active')}
                                             </span>
                                         </div>
                                     )}
@@ -83,14 +85,14 @@ const WardrobeView = () => {
                                     <p className="text-xs text-slate-500">{skin.type}</p>
                                 </div>
                                 <button className="w-full py-1.5 rounded bg-slate-900 text-xs font-medium text-slate-400 group-hover:bg-slate-700 group-hover:text-white transition-colors">
-                                    {skin.used ? 'Selected' : 'Equip'}
+                                    {skin.used ? t('wardrobe_selected') : t('wardrobe_equip')}
                                 </button>
                             </div>
                         ))}
                         {/* Add New Placeholder */}
                         <div className="bg-slate-900/50 border border-dashed border-slate-700 rounded-xl flex flex-col items-center justify-center gap-2 text-slate-500 hover:text-emerald-400 hover:border-emerald-500/30 hover:bg-slate-900 transition-all cursor-pointer aspect-[3/5]">
                             <PlusCircle size={24} />
-                            <span className="text-xs font-medium">Add to Library</span>
+                            <span className="text-xs font-medium">{t('wardrobe_add')}</span>
                         </div>
                     </div>
                 </div>
