@@ -229,7 +229,7 @@ const HomeView = ({
 
                 {/* Last Played */}
                 <p className="mt-6 text-slate-500 text-sm font-medium">
-                    {t('home_last_harvested')} {formatLastPlayed(selectedInstance.lastPlayed)}
+                    {t('home_last_harvested')} {formatLastPlayed(selectedInstance.lastPlayed, t)}
                 </p>
 
 

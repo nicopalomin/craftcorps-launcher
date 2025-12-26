@@ -9,11 +9,13 @@ const LoginModal = ({ isOpen, onClose, onAddAccount }) => {
     const [activeMethod, setActiveMethod] = useState('selection'); // selection | offline
     const [offlineName, setOfflineName] = useState('');
     const [isLoading, setIsLoading] = useState(false);
+    const [errorMsg, setErrorMsg] = useState(null);
 
     if (!isOpen) return null;
 
     const handleMicrosoftLogin = async () => {
         setIsLoading(true);
+        setErrorMsg(null);
         try {
             if (window.electronAPI) {
                 const result = await window.electronAPI.microsoftLogin();
@@ -25,15 +27,32 @@ const LoginModal = ({ isOpen, onClose, onAddAccount }) => {
                     onClose();
                 } else {
                     console.error("Login failed:", result.error);
-                    // Optionally show error to user
+
+                    // Map error codes to translation keys
+                    let key = 'auth_err_unknown';
+                    const err = result.error;
+
+                    if (err.includes('AUTH_MS_TOKEN_FAILED')) key = 'auth_err_ms_token';
+                    else if (err.includes('AUTH_XBOX_LIVE_FAILED')) key = 'auth_err_xbox_live';
+                    else if (err.includes('AUTH_NO_XBOX_ACCOUNT')) key = 'auth_err_no_xbox';
+                    else if (err.includes('AUTH_CHILD_ACCOUNT')) key = 'auth_err_child';
+                    else if (err.includes('AUTH_XSTS_FAILED')) key = 'auth_err_xsts';
+                    else if (err.includes('AUTH_MC_LOGIN_FAILED')) key = 'auth_err_mc_login';
+                    else if (err.includes('AUTH_NO_MINECRAFT')) key = 'auth_err_no_mc';
+                    else if (err.includes('AUTH_PROFILE_FAILED')) key = 'auth_err_profile';
+                    else if (err.includes('AUTH_INVALID_APP_CONFIG')) key = 'auth_err_invalid_app_config';
+
+                    setErrorMsg(t(key));
                     setIsLoading(false);
                 }
             } else {
                 console.error("Electron API not available");
+                setErrorMsg("Electron API not available");
                 setIsLoading(false);
             }
         } catch (e) {
             console.error("Login error:", e);
+            setErrorMsg(e.message || t('auth_err_unknown'));
             setIsLoading(false);
         }
     };
@@ -79,6 +98,13 @@ const LoginModal = ({ isOpen, onClose, onAddAccount }) => {
                         </div>
                     ) : (
                         <div className="space-y-4">
+                            {errorMsg && (
+                                <div className="bg-red-500/10 border border-red-500/20 text-red-400 p-3 rounded-xl text-sm flex items-start gap-2">
+                                    <ShieldCheck size={16} className="mt-0.5 shrink-0" />
+                                    <span>{errorMsg}</span>
+                                </div>
+                            )}
+
                             <button
                                 onClick={handleMicrosoftLogin}
                                 className="w-full bg-[#0078D4] hover:bg-[#006cbd] text-white p-4 rounded-xl flex items-center justify-between group transition-all"
