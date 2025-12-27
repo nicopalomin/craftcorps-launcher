@@ -63,6 +63,10 @@ class GameLauncher extends EventEmitter {
                 min: options.minMem ? options.minMem + "M" : "1G"
             },
             javaPath: options.javaPath || 'java',
+            customArgs: process.platform === 'darwin' ? [
+                '-Xdock:name=CraftCorps',
+                '-Xdock:icon=' + path.join(__dirname, '..', 'public', 'icon.png')
+            ] : [],
             overrides: {
                 detached: false
             }
