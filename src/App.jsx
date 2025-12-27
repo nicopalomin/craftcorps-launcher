@@ -9,6 +9,7 @@ import BackgroundBlobs from './components/common/BackgroundBlobs';
 import CropModal from './components/modals/CropModal';
 import LoginModal from './components/modals/LoginModal';
 import JavaInstallModal from './components/modals/JavaInstallModal';
+import ErrorModal from './components/modals/ErrorModal';
 
 import HomeView from './views/HomeView';
 import InstancesView from './views/InstancesView';
@@ -152,7 +153,9 @@ function App() {
         showJavaModal,
         setShowJavaModal,
         handleJavaInstallComplete,
-        requiredJavaVersion
+        requiredJavaVersion,
+        errorModal,
+        setErrorModal
     } = useGameLaunch(selectedInstance, ram, activeAccount, () => updateLastPlayed(selectedInstance?.id), hideOnLaunch, javaPath, setJavaPath);
 
     // Update Discord RPC based on activeTab
@@ -370,6 +373,12 @@ function App() {
                 onClose={() => setShowJavaModal(false)}
                 onInstallComplete={handleJavaInstallComplete}
                 version={requiredJavaVersion}
+            />
+
+            <ErrorModal
+                isOpen={!!errorModal}
+                onClose={() => setErrorModal(null)}
+                error={errorModal}
             />
         </div>
     );

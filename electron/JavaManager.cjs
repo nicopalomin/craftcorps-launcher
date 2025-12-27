@@ -14,7 +14,7 @@ class JavaManager {
         this.arch = process.arch; // 'x64', 'arm64'
         this.dl = null;
 
-        this.execName = this.platform === 'win32' ? 'javaw.exe' : 'java';
+        this.execName = this.platform === 'win32' ? 'java.exe' : 'java';
 
         // URL Generators based on OS/Arch
         this.getDownloadUrl = (version) => {

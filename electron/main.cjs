@@ -235,7 +235,7 @@ Date: ${new Date().toISOString()}
 
     launcher.on('log', (data) => {
         const { type, message } = data;
-        // Log to file
+        // Log to file (Launcher/Sys logs only)
         if (type === 'ERROR') log.error(`[MCLC] ${message}`);
         else if (type === 'WARN') log.warn(`[MCLC] ${message}`);
         else log.info(`[MCLC] ${message}`);
@@ -244,8 +244,19 @@ Date: ${new Date().toISOString()}
         mainWindow?.webContents.send('game-log', data);
     });
 
+    launcher.on('game-output', (text) => {
+        // Send directly to UI console, skip writing to main.log file
+        // Construct a log object for the frontend
+        mainWindow?.webContents.send('game-log', { type: 'INFO', message: text });
+    });
+
     launcher.on('progress', (data) => {
         mainWindow?.webContents.send('game-progress', data);
+    });
+
+    launcher.on('launch-error', (error) => {
+        log.error(`[Main] Launch Error: ${error.summary}`);
+        mainWindow?.webContents.send('launch-error', error);
     });
 
     launcher.on('exit', (code) => {
@@ -279,6 +290,11 @@ Date: ${new Date().toISOString()}
                     const lower = path.basename(options.javaPath).toLowerCase();
                     if (lower.includes('java')) {
                         javaValid = true;
+                        // Force java.exe over javaw.exe on Windows for MCLC compatibility
+                        if (process.platform === 'win32' && lower === 'javaw.exe') {
+                            options.javaPath = options.javaPath.replace(/javaw\.exe$/i, 'java.exe');
+                            log.info(`[Launch] Swapped javaw.exe to java.exe: ${options.javaPath}`);
+                        }
                     }
                 }
             } catch (e) { }
