@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { User, X, Loader2, ShieldCheck, ChevronRight, WifiOff } from 'lucide-react';
+import { User, X, Loader2, ShieldCheck, ChevronRight, WifiOff, Info } from 'lucide-react';
 
 import { getOfflineUUID } from '../../utils/uuid';
 
@@ -143,12 +143,19 @@ const LoginModal = ({ isOpen, onClose, onAddAccount }) => {
                                 </div>
                             </div>
 
-                            <div className="bg-slate-950/50 rounded-xl p-4 border border-slate-800">
+                            <div className="bg-slate-950/50 rounded-xl p-4 border border-slate-800 relative">
+                                <div className="absolute top-2 right-2 z-10 group">
+                                    <Info size={16} className="text-slate-600 hover:text-slate-400 cursor-help transition-colors" />
+                                    <div className="absolute right-0 bottom-full mb-2 w-48 p-2 bg-black text-xs text-slate-300 rounded border border-slate-700 shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 pointer-events-none z-50">
+                                        {t('auth_offline_warning')}
+                                    </div>
+                                </div>
+
                                 <div className="flex items-center gap-3 mb-3">
                                     <div className="bg-slate-800 p-2 rounded-lg text-slate-400">
                                         <WifiOff size={20} />
                                     </div>
-                                    <div className="text-left">
+                                    <div className="text-left flex-1 pr-6">
                                         <div className="font-bold text-sm text-slate-300">{t('auth_offline')}</div>
                                         <div className="text-xs text-slate-500">{t('auth_singleplayer_only')}</div>
                                     </div>
