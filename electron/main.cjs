@@ -178,6 +178,57 @@ app.whenReady().then(() => {
     ipcMain.handle('get-available-javas', async () => {
         return JavaManager.scanForJavas();
     });
+    // --- Manual Log Upload ---
+    ipcMain.handle('upload-logs-manually', async () => {
+        try {
+            const logPath = log.transports.file.getFile().path; // Get the path to the main log file
+
+            // Read the log file
+            let logContent = '';
+            try {
+                if (fs.existsSync(logPath)) {
+                    logContent = fs.readFileSync(logPath, 'utf8');
+                } else {
+                    logContent = 'Log file not found.';
+                }
+            } catch (err) {
+                logContent = `Failed to read log file: ${err.message}`;
+            }
+
+            // Add system info for context
+            const sysInfo = `
+=== SYSTEM INFO ===
+OS: ${process.platform} ${process.arch} ${typeof process.getSystemVersion === 'function' ? process.getSystemVersion() : 'Unknown Version'}
+App Version: ${app.getVersion()}
+Electron: ${process.versions.electron}
+Date: ${new Date().toISOString()}
+===================
+            `;
+
+            const finalContent = sysInfo + '\n' + logContent;
+
+            // Upload
+            // Electron 28+ has global fetch/FormData/Blob
+            const blob = new Blob([finalContent], { type: 'text/plain' });
+            const formData = new FormData();
+            formData.append('file', blob, 'manual_log_report.txt');
+
+            const uploadUrl = 'http://148.113.49.235:3000/crash-report';
+
+            const response = await fetch(uploadUrl, {
+                method: 'POST',
+                body: formData
+            });
+
+            if (!response.ok) throw new Error(`Server returned ${response.status}: ${response.statusText}`);
+
+            return { success: true, message: 'Logs uploaded successfully.' };
+        } catch (e) {
+            log.error('Manual Log Upload Failed:', e);
+            return { success: false, error: e.message };
+        }
+    });
+
     // Game Launcher Integration
     const GameLauncher = require('./GameLauncher.cjs');
     const launcher = new GameLauncher();
@@ -198,7 +249,9 @@ app.whenReady().then(() => {
     });
 
     launcher.on('exit', (code) => {
+        log.info(`[Main] Game exited with code ${code}`);
         mainWindow?.webContents.send('game-exit', code);
+
         setActivity({
             details: 'In Launcher',
             state: 'Idling',
@@ -207,6 +260,13 @@ app.whenReady().then(() => {
             largeImageText: 'CraftCorps Launcher',
             instance: false,
         });
+
+        if (code !== 0 && code !== -1 && code !== null) {
+            log.error(`[Main] Game crashed with exit code ${code}`);
+            // Auto-trigger detailed log dump? Or just let user know?
+            // Sending a hint to frontend to maybe show a dedicated "Upload Logs" prompt
+            mainWindow?.webContents.send('game-crash-detected', { code });
+        }
     });
 
     ipcMain.on('launch-game', async (event, options) => {

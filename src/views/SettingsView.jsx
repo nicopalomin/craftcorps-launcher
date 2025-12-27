@@ -185,12 +185,29 @@ const SettingsView = ({ ram, setRam, javaPath, setJavaPath, hideOnLaunch, setHid
                             <p className="text-sm text-slate-200 font-medium">{t('settings_logs')}</p>
                             <p className="text-xs text-slate-500">{t('settings_logs_desc')}</p>
                         </div>
-                        <button
-                            onClick={() => window.electronAPI.openLogsFolder()}
-                            className="px-4 py-2 bg-slate-800 hover:bg-slate-700 rounded-lg text-sm font-medium text-slate-200 transition-colors"
-                        >
-                            {t('btn_open_logs')}
-                        </button>
+                        <div className="flex gap-2">
+                            <button
+                                onClick={() => window.electronAPI.openLogsFolder()}
+                                className="px-4 py-2 bg-slate-800 hover:bg-slate-700 rounded-lg text-sm font-medium text-slate-200 transition-colors"
+                            >
+                                {t('btn_open_logs')}
+                            </button>
+                            <button
+                                onClick={async () => {
+                                    const btn = document.getElementById('upload-logs-btn');
+                                    if (btn) { btn.disabled = true; btn.innerText = "Uploading..."; }
+                                    try {
+                                        const res = await window.electronAPI.uploadLogsManually();
+                                        alert(res.success ? "Logs uploaded successfully!" : "Upload failed: " + res.error);
+                                    } catch (e) { alert("Error uploading logs"); }
+                                    if (btn) { btn.disabled = false; btn.innerText = "Upload to Support"; }
+                                }}
+                                id="upload-logs-btn"
+                                className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 rounded-lg text-sm font-medium text-white transition-colors shadow-lg shadow-emerald-900/20"
+                            >
+                                Upload to Support
+                            </button>
+                        </div>
                     </div>
                 </div>
             </div>

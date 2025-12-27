@@ -29,6 +29,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
     onGameLog: (callback) => ipcRenderer.on('game-log', (_event, value) => callback(value)),
     onGameProgress: (callback) => ipcRenderer.on('game-progress', (_event, value) => callback(value)),
     onGameExit: (callback) => ipcRenderer.on('game-exit', (_event, value) => callback(value)),
+    onGameCrashDetected: (callback) => ipcRenderer.on('game-crash-detected', (_event, value) => callback(value)),
+    uploadLogsManually: () => ipcRenderer.invoke('upload-logs-manually'),
     removeLogListeners: () => {
         ipcRenderer.removeAllListeners('game-log');
         ipcRenderer.removeAllListeners('game-progress');
