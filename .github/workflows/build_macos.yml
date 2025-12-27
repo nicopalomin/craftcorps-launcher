@@ -1,15 +1,15 @@
-name: Build & Publish macOS
+name: Build macOS
 
 on:
   push:
-    tags:
-      - 'v*'
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+  workflow_dispatch:
 
 jobs:
-  build-and-release:
+  build-mac:
     runs-on: macos-latest
-    permissions:
-      contents: write
 
     steps:
       - name: Checkout Code
@@ -24,18 +24,15 @@ jobs:
       - name: Install Dependencies
         run: npm ci
 
-      - name: Build macOS App
+      - name: Build macOS Application
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: npm run electron:build -- --mac
 
-      - name: Create GitHub Release
-        uses: softprops/action-gh-release@v1
-        if: startsWith(github.ref, 'refs/tags/')
+      - name: Upload Artifacts
+        uses: actions/upload-artifact@v4
         with:
-          files: |
+          name: macOS-Build
+          path: |
             release/*.dmg
             release/*.zip
-          draft: false
-          prerelease: false
-          generate_release_notes: true
