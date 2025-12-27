@@ -123,9 +123,13 @@ app.whenReady().then(() => {
     });
 
     ipcMain.handle('select-file', async () => {
+        const filters = process.platform === 'win32'
+            ? [{ name: 'Executables', extensions: ['exe'] }]
+            : []; // Allow any file on Mac/Linux (binaries usually have no extension)
+
         const result = await dialog.showOpenDialog(mainWindow, {
             properties: ['openFile'],
-            filters: [{ name: 'Executables', extensions: ['exe'] }]
+            filters: filters
         });
         return result.canceled ? null : result.filePaths[0];
     });

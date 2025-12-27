@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CraftCorps - Premium Minecraft Launcher</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        slate: {
+                            850: '#151F2E',
+                            950: '#020617',
+                        }
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+
+        .bg-grid {
+            background-image: url('data:image/svg+xml,%3Csvg width="40" height="40" viewBox="0 0 40 40" xmlns="http://www.w3.org/2000/svg"%3E%3Cpath d="M0 0h40v40H0V0zm1 1h38v38H1V1z" fill="%23FFFFFF" fill-opacity="0.03" fill-rule="evenodd"/%3E%3C/svg%3E');
+        }
+    </style>
+</head>
+
+<body class="bg-slate-950 text-slate-200 antialiased selection:bg-emerald-500/30">
+
+    <div class="fixed inset-0 bg-grid pointer-events-none"></div>
+    <div
+        class="fixed top-0 left-0 right-0 h-96 bg-gradient-to-b from-emerald-900/20 to-transparent pointer-events-none">
+    </div>
+
+    <div class="relative max-w-6xl mx-auto px-6 py-24 flex flex-col items-center text-center">
+
+        <!-- Badge -->
+        <div
+            class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-sm font-medium mb-8 animate-fade-in-up">
+            <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+            v1.0.2 Now Available
+        </div>
+
+        <!-- Hero -->
+        <h1
+            class="text-5xl md:text-7xl font-bold text-white mb-6 tracking-tight bg-clip-text text-transparent bg-gradient-to-b from-white to-slate-400">
+            CraftCorps
+        </h1>
+        <p class="text-xl text-slate-400 max-w-2xl mb-12 leading-relaxed">
+            The premium Minecraft instance manager tailored for performance, aesthetics, and ease of use.
+            Cultivate your perfect gaming experience.
+        </p>
+
+        <!-- Buttons -->
+        <div class="flex flex-col sm:flex-row items-center gap-4 w-full justify-center mb-20">
+            <a href="YOUR_GITHUB_RELEASE_LINK_HERE/CraftCorps.Setup.1.0.2.exe"
+                class="group relative w-full sm:w-auto min-w-[200px] px-8 py-4 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl font-bold transition-all shadow-lg shadow-emerald-900/20 hover:shadow-emerald-500/30 hover:-translate-y-1">
+                <div class="flex items-center justify-center gap-2">
+                    <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+                        <path
+                            d="M0 3.449L9.75 2.1v9.451H0v-8.1zm10.949-1.55L24 0v11.023h-13.05V1.899zm-10.949 9.95L0 20.551l9.75 1.35H9.75v-9.451H0zm10.949 0.524h13.05v10.126l-13.05-1.749V12.373z" />
+                    </svg>
+                    <span>Download for Windows</span>
+                </div>
+                <p
+                    class="absolute -bottom-8 left-0 right-0 text-[10px] text-slate-500 opacity-0 group-hover:opacity-100 transition-opacity">
+                    Installer (.exe) • x64
+                </p>
+            </a>
+
+            <a href="YOUR_GITHUB_RELEASE_LINK_HERE/CraftCorps-1.0.2-arm64.dmg"
+                class="group w-full sm:w-auto min-w-[200px] px-8 py-4 bg-slate-800 hover:bg-slate-700 text-white rounded-xl font-bold transition-all border border-slate-700 hover:border-slate-500">
+                <div class="flex items-center justify-center gap-2">
+                    <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+                        <path
+                            d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.77-1.32 0-2.22-1.23-3.05-2.47-1.4-2.1-2.43-5.32-1.02-8.3 1.24-2.6 3.47-3.9 5.86-3.9 1.48 0 2.58.91 3.26.91s1.95-1.14 3.65-1.12c.79.02 2.87.32 4.19 1.96-3.4 1.76-2.81 5.68.25 7.15-.46 1.34-1.1 2.67-1.89 3.84h-.05zM13 3.5c.74-1.14 1.25-2.58 1.1-3.5-1.11.06-2.54.79-3.35 1.74-.69.81-1.28 2.22-1.12 3.14 1.26.09 2.58-.6 3.37-1.38z" />
+                    </svg>
+                    <span>Download for Mac</span>
+                </div>
+            </a>
+        </div>
+
+        <!-- Features Grid -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-8 w-full max-w-5xl">
+            <div class="p-6 rounded-2xl bg-slate-900/50 border border-slate-800 backdrop-blur-sm">
+                <div
+                    class="w-12 h-12 bg-emerald-500/10 rounded-xl flex items-center justify-center mb-4 mx-auto text-emerald-400">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z" />
+                    </svg>
+                </div>
+                <h3 class="text-lg font-bold text-white mb-2">Blazing Fast</h3>
+                <p class="text-sm text-slate-400">Built with Electron and Vite for instant startup times and responsive
+                    interactions.</p>
+            </div>
+            <div class="p-6 rounded-2xl bg-slate-900/50 border border-slate-800 backdrop-blur-sm">
+                <div
+                    class="w-12 h-12 bg-blue-500/10 rounded-xl flex items-center justify-center mb-4 mx-auto text-blue-400">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round"
+                            d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                </div>
+                <h3 class="text-lg font-bold text-white mb-2">Auto-Java Detection</h3>
+                <p class="text-sm text-slate-400">Smartly finds and manages the correct Java runtime for every modpack
+                    version.</p>
+            </div>
+            <div class="p-6 rounded-2xl bg-slate-900/50 border border-slate-800 backdrop-blur-sm">
+                <div
+                    class="w-12 h-12 bg-purple-500/10 rounded-xl flex items-center justify-center mb-4 mx-auto text-purple-400">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round"
+                            d="M4 5a1 1 0 011-1h14a1 1 0 011 1v2a1 1 0 01-1 1H5a1 1 0 01-1-1V5zM4 13a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1H5a1 1 0 01-1-1v-6zM16 13a1 1 0 011-1h2a1 1 0 011 1v6a1 1 0 01-1 1h-2a1 1 0 01-1-1v-6z" />
+                    </svg>
+                </div>
+                <h3 class="text-lg font-bold text-white mb-2">Premium Design</h3>
+                <p class="text-sm text-slate-400">A meticulously crafted interface that feels as good as it looks.</p>
+            </div>
+        </div>
+
+        <footer class="mt-24 pt-8 border-t border-slate-800/50 text-slate-600 text-sm">
+            <p>&copy; 2025 CraftCorps Authors. Not affiliated with Mojang or Microsoft.</p>
+        </footer>
+
+    </div>
+</body>
+
+</html>

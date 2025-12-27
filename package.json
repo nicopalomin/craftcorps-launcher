@@ -29,10 +29,13 @@
       "icon": "public/icon.png"
     },
     "mac": {
-      "target": [
-        "dmg",
-        "zip"
-      ],
+      "target": {
+        "target": "dmg",
+        "arch": [
+          "x64",
+          "arm64"
+        ]
+      },
       "category": "public.app-category.games",
       "icon": "public/icon.png"
     },
