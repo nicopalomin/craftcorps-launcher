@@ -39,13 +39,19 @@ let mainWindow;
 const preloadPath = path.join(__dirname, 'preload.cjs');
 console.log('Loading preload from:', preloadPath);
 
-const Store = require('electron-store');
-const store = new Store();
+// Global reference
+let store;
 
-function createWindow() {
+async function createWindow() {
     const iconPath = process.env.NODE_ENV === 'development'
         ? path.join(__dirname, '../public/icon.png')
         : path.join(__dirname, '../dist/icon.png');
+
+    // Dynamic import for ESM module support
+    if (!store) {
+        const { default: Store } = await import('electron-store');
+        store = new Store();
+    }
 
     // Restore saved window state
     const { width, height } = store.get('windowBounds', { width: 1200, height: 800 });
@@ -95,8 +101,8 @@ function createWindow() {
 // Helper to access mainWindow from handlers
 const getMainWindow = () => mainWindow;
 
-app.whenReady().then(() => {
-    createWindow();
+app.whenReady().then(async () => {
+    await createWindow();
 
     // Lazy load handlers to prioritize window creation
     const { initDiscordRPC } = require('./discordRpc.cjs');
