@@ -27,6 +27,10 @@ const LoginModal = ({ isOpen, onClose, onAddAccount }) => {
     if (!isOpen) return null;
 
     const handleMicrosoftLogin = async () => {
+        // Show widget instead of alert
+        setErrorMsg("Coming soon, we're waiting approval from mojang");
+
+        /* Temporarily Loading Disabled
         setIsLoading(true);
         setErrorMsg(null);
         try {
@@ -68,6 +72,7 @@ const LoginModal = ({ isOpen, onClose, onAddAccount }) => {
             setErrorMsg(e.message || t('auth_err_unknown'));
             setIsLoading(false);
         }
+        */
     };
 
     const handleOfflineLogin = () => {
@@ -205,7 +210,7 @@ const LoginModal = ({ isOpen, onClose, onAddAccount }) => {
                                         rel="noopener noreferrer"
                                         className="text-blue-500 hover:text-blue-400 underline text-xs mt-1 text-center block transition-colors"
                                     >
-                                        Purchase Minecraft
+                                        Purchase Minecraft From Here
                                     </a>
                                 </div>
                             </div>
