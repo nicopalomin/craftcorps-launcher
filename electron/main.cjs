@@ -1,14 +1,8 @@
 const { app, BrowserWindow, ipcMain, dialog } = require('electron');
 const path = require('path');
 const log = require('electron-log');
-const { initDiscordRPC } = require('./discordRpc.cjs');
 
-// Import Handlers
-const { setupWindowHandlers } = require('./handlers/windowHandler.cjs');
-const { setupAuthHandlers } = require('./handlers/authHandler.cjs');
-const { setupJavaHandlers } = require('./handlers/javaHandler.cjs');
-const { setupAppHandlers } = require('./handlers/appHandler.cjs');
-const { setupGameHandlers } = require('./handlers/gameHandler.cjs');
+// Import Handlers - Moved to app.whenReady for faster startup
 
 // Configure logging
 log.transports.file.level = 'info';
@@ -57,8 +51,8 @@ function createWindow() {
         minWidth: 940,
         minHeight: 600,
         frame: false,
-        transparent: true,
-        backgroundColor: '#00000000',
+        transparent: false, // Disabled for faster startup (rect shows immediately)
+        backgroundColor: '#020617', // Slate-950
         webPreferences: {
             preload: preloadPath,
             nodeIntegration: false,
@@ -75,11 +69,14 @@ function createWindow() {
         mainWindow.loadURL(startUrl);
     }
 
+    // Show immediately to feel faster (splash screen style)
+    mainWindow.show();
+    mainWindow.focus();
+
     mainWindow.once('ready-to-show', () => {
-        mainWindow.show();
+        // Just ensure focus/top if needed
         mainWindow.setAlwaysOnTop(true);
         mainWindow.setAlwaysOnTop(false);
-        mainWindow.focus();
     });
 }
 
@@ -88,6 +85,14 @@ const getMainWindow = () => mainWindow;
 
 app.whenReady().then(() => {
     createWindow();
+
+    // Lazy load handlers to prioritize window creation
+    const { initDiscordRPC } = require('./discordRpc.cjs');
+    const { setupWindowHandlers } = require('./handlers/windowHandler.cjs');
+    const { setupAuthHandlers } = require('./handlers/authHandler.cjs');
+    const { setupJavaHandlers } = require('./handlers/javaHandler.cjs');
+    const { setupAppHandlers } = require('./handlers/appHandler.cjs');
+    const { setupGameHandlers } = require('./handlers/gameHandler.cjs');
 
     // Start Discord RPC
     initDiscordRPC();
