@@ -353,7 +353,7 @@ function App() {
                             setEnableDiscordRPC={setEnableDiscordRPC}
                         />
                     )}
-                    {activeTab === 'mods' && <ModsView />}
+                    {activeTab === 'mods' && <ModsView selectedInstance={selectedInstance} />}
 
                 </div>
             </main>

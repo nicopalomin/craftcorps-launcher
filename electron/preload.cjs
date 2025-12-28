@@ -40,4 +40,10 @@ contextBridge.exposeInMainWorld('electronAPI', {
     // Discord RPC
     setDiscordActivity: (activity) => ipcRenderer.invoke('discord-set-activity', activity),
     clearDiscordActivity: () => ipcRenderer.invoke('discord-clear-activity'),
+
+    // Modrinth
+    modrinthSearch: (params) => ipcRenderer.invoke('modrinth-search', params),
+    modrinthGetVersions: (params) => ipcRenderer.invoke('modrinth-get-versions', params),
+    modrinthInstallMod: (params) => ipcRenderer.invoke('modrinth-install-mod', params),
+    modrinthInstallModpack: (params) => ipcRenderer.invoke('modrinth-install-modpack', params),
 });
