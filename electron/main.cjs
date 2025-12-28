@@ -39,26 +39,38 @@ let mainWindow;
 const preloadPath = path.join(__dirname, 'preload.cjs');
 console.log('Loading preload from:', preloadPath);
 
+const Store = require('electron-store');
+const store = new Store();
+
 function createWindow() {
     const iconPath = process.env.NODE_ENV === 'development'
         ? path.join(__dirname, '../public/icon.png')
         : path.join(__dirname, '../dist/icon.png');
 
+    // Restore saved window state
+    const { width, height } = store.get('windowBounds', { width: 1200, height: 800 });
+
     mainWindow = new BrowserWindow({
         icon: iconPath,
-        width: 1200,
-        height: 800,
+        width: width,
+        height: height,
         minWidth: 940,
         minHeight: 600,
         frame: false,
-        transparent: false, // Disabled for faster startup (rect shows immediately)
-        backgroundColor: '#020617', // Slate-950
+        transparent: false, // Disabled for faster startup
+        backgroundColor: '#020617',
         webPreferences: {
             preload: preloadPath,
             nodeIntegration: false,
             contextIsolation: true,
             sandbox: false,
         },
+    });
+
+    // Save window state on resize
+    mainWindow.on('resize', () => {
+        const { width, height } = mainWindow.getBounds();
+        store.set('windowBounds', { width, height });
     });
 
     const startUrl = process.env.ELECTRON_START_URL || `file://${path.join(__dirname, '../dist/index.html')}`;
