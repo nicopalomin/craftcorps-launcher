@@ -226,6 +226,15 @@ const SettingsView = ({ ram, setRam, javaPath, setJavaPath, hideOnLaunch, setHid
                         </div>
                     </div>
                 </div>
+                {/* Version Info */}
+                <div className="text-center pt-8 pb-4">
+                    <p className="text-slate-600 text-xs font-mono">
+                        CraftCorps Launcher v{typeof __APP_VERSION__ !== 'undefined' ? __APP_VERSION__ : '1.0.0'}
+                    </p>
+                    <p className="text-slate-700 text-[10px] mt-1">
+                        &copy; 2025 CraftCorps Authors
+                    </p>
+                </div>
             </div>
         </div>
     );

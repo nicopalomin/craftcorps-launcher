@@ -123,6 +123,9 @@ const Sidebar = ({ activeTab, onTabChange }) => {
             {/* Ad Space (Preserved) */}
             <div className={`mt-auto pt-4 border-t border-slate-800 relative flex flex-col overflow-hidden transition-opacity duration-200 ${width < 200 ? 'opacity-0 pointer-events-none' : 'opacity-100'}`}>
                 <SneakyAd />
+                <div className="text-[10px] text-slate-600 text-center pb-2 font-mono opacity-50 hover:opacity-100 transition-opacity">
+                    v{typeof __APP_VERSION__ !== 'undefined' ? __APP_VERSION__ : '1.0.0'}
+                </div>
             </div>
         </aside>
     );

@@ -1,7 +1,7 @@
 {
   "name": "craftcorps-launcher",
   "private": true,
-  "version": "1.0.2",
+  "version": "0.1.6",
   "main": "electron/main.cjs",
   "author": "CraftCorps Authors",
   "description": "Premium Minecraft Instance Manager",
@@ -12,7 +12,7 @@
     "lint": "eslint . --ext js,jsx --report-unused-disable-directives --max-warnings 0",
     "preview": "vite preview",
     "start": "concurrently -k \"cross-env BROWSER=none npm run dev\" \"wait-on tcp:5173 && cross-env NODE_ENV=development electron .\"",
-    "electron:build": "vite build && electron-builder"
+    "electron:build": "node electron/increment-version.js && vite build && electron-builder"
   },
   "build": {
     "appId": "com.craftcorps.launcher",
@@ -26,7 +26,8 @@
     ],
     "win": {
       "target": "nsis",
-      "icon": "public/icon.png"
+      "icon": "public/icon.png",
+      "artifactName": "${productName}-Setup.exe"
     },
     "mac": {
       "target": {
@@ -49,7 +50,9 @@
       "perMachine": false,
       "allowToChangeInstallationDirectory": true,
       "createDesktopShortcut": true,
-      "createStartMenuShortcut": true
+      "createStartMenuShortcut": true,
+      "artifactName": "${productName}-Setup.exe",
+      "include": "build/installer.nsh"
     }
   },
   "dependencies": {
