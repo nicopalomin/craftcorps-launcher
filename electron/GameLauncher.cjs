@@ -14,7 +14,11 @@ class GameLauncher extends EventEmitter {
         // Resolve paths
         let rootPath = options.gameDir || process.cwd();
 
-        if (options.useDefaultPath) {
+        if (options.instancePath) {
+            // Isolate instance (Modpacks)
+            rootPath = options.instancePath;
+        } else if (options.useDefaultPath) {
+            // Standard Launch
             const os = process.platform;
             const home = process.env.HOME || process.env.USERPROFILE;
             if (os === 'win32') {
