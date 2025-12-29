@@ -5,7 +5,7 @@ const path = require('path');
 const CLIENT_ID = "c36a9fb6-4f2a-41ff-90bd-ae7cc92031eb"; // Custom Application ID
 // NOTE: If you get "Invalid app registration" (AUTH_INVALID_APP_CONFIG), it means Mojang has not approved your App ID.
 // For DEVELOPMENT ONLY, you can test with a known ID (e.g. Prism Launcher's ID) to verify your code works:
-// const CLIENT_ID = "d173c8d1-561b-4b2d-9b1b-4d7a8d7a1240"; // Prism Launcher (Open Source) - USE ONLY FOR DEV TEST
+// const CLIENT_ID = "c36a9fb6-4f2a-41ff-90bd-ae7cc92031eb"; // Prism Launcher (Open Source) - USE ONLY FOR DEV TEST
 const REDIRECT_URI = "http://localhost";
 
 function post(url, data, headers = {}) {

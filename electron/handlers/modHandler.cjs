@@ -14,6 +14,26 @@ const client = new ModrinthV2Client({
 
 function setupModHandlers(getMainWindow) {
 
+    // Track active installations for cancellation
+    const activeInstalls = new Map();
+
+    /**
+     * Cancel Installation
+     */
+    ipcMain.handle('modrinth-cancel-install', async (event, { projectId }) => {
+        if (activeInstalls.has(projectId)) {
+            const task = activeInstalls.get(projectId);
+            task.cancelled = true;
+            if (task.downloader) {
+                task.downloader.stop(); // This triggers 'end' or 'error' depending on implementation usually, or we handle it manually
+            }
+            log.info(`[Modrinth] Usage requested cancellation for project ${projectId}`);
+            activeInstalls.delete(projectId);
+            return { success: true };
+        }
+        return { success: false, error: 'No active installation found' };
+    });
+
     /**
      * Search Modrinth
      * @param {string} query - Search query
@@ -48,9 +68,18 @@ function setupModHandlers(getMainWindow) {
      * Install Mod
      * Downloads a mod to the specified instance folder (or default .minecraft/mods)
      */
-    ipcMain.handle('modrinth-install-mod', async (event, { project, instancePath, gameVersion, loader }) => {
+    ipcMain.handle('modrinth-install-mod', async (event, { project, instancePath, gameVersion, loader, versionId }) => {
+        const projectId = project.project_id;
+
         try {
-            const projectId = project.project_id;
+            // Check if already installing
+            if (activeInstalls.has(projectId)) {
+                return { success: false, error: "Installation already in progress" };
+            }
+
+            // Register task
+            const task = { cancelled: false, downloader: null };
+            activeInstalls.set(projectId, task);
 
             // 1. Resolve Target Directory
             let targetDir = instancePath;
@@ -67,22 +96,33 @@ function setupModHandlers(getMainWindow) {
             }
 
             // 2. Get Version
-            // We need to find the version compatible with the game version and loader
-            const versions = await client.getProjectVersions(projectId, {
-                loaders: [loader || 'fabric'], // Default to fabric if not specified? Or maybe vanilla (which implies specific mods)
-                gameVersions: [gameVersion]
-            });
+            let bestVersion;
 
-            if (!versions || versions.length === 0) {
-                throw new Error(`No compatible version found for ${gameVersion} (${loader})`);
+            if (versionId) {
+                // Fetch specific version
+                const versions = await client.getProjectVersionsById([versionId]);
+                bestVersion = versions[0];
+            } else {
+                // Find compatible
+                const versions = await client.getProjectVersions(projectId, {
+                    loaders: [loader || 'fabric'],
+                    gameVersions: [gameVersion]
+                });
+
+                if (!versions || versions.length === 0) {
+                    throw new Error(`No compatible version found for ${gameVersion} (${loader})`);
+                }
+                bestVersion = versions[0];
             }
 
-            const bestVersion = versions[0]; // First one is usually latest
             const primaryFile = bestVersion.files.find(f => f.primary) || bestVersion.files[0];
 
             if (!primaryFile) {
                 throw new Error("No file found for this version");
             }
+
+            // Check cancellation before download
+            if (task.cancelled) throw new Error("Cancelled by user");
 
             // 3. Download
             log.info(`[Modrinth] Downloading ${primaryFile.filename} to ${modsDir}`);
@@ -92,15 +132,41 @@ function setupModHandlers(getMainWindow) {
                 override: true
             });
 
-            return new Promise((resolve, reject) => {
+            task.downloader = dl;
+
+            await new Promise((resolve, reject) => {
                 dl.on('end', () => resolve({ success: true, file: primaryFile.filename }));
                 dl.on('error', (err) => reject(new Error(`Download failed: ${err.message}`)));
-                // dl.on('progress', (stats) => ... send progress via event if needed ... );
+                dl.on('stop', () => reject(new Error("Cancelled by user"))); // Handle explicit stop
+                dl.on('progress', (stats) => {
+                    if (task.cancelled) {
+                        dl.stop();
+                        return;
+                    }
+                    event.sender.send('install-progress', {
+                        projectId,
+                        step: 'Downloading Mod',
+                        progress: stats.progress,
+                        downloaded: stats.downloaded,
+                        total: stats.total,
+                        speed: stats.speed,
+                        remaining: stats.remaining
+                    });
+                });
                 dl.start();
             });
 
+            activeInstalls.delete(projectId);
+            return { success: true, file: primaryFile.filename };
+
         } catch (error) {
+            activeInstalls.delete(projectId);
             log.error(`[Modrinth] Install failed: ${error.message}`);
+            // If cancelled, we might want to return a specific "cancelled" flag if UI needs it, 
+            // but error message usually suffices.
+            if (error.message.includes("Cancelled")) {
+                return { success: false, error: "Installation cancelled" };
+            }
             return { success: false, error: error.message };
         }
     });
@@ -109,9 +175,17 @@ function setupModHandlers(getMainWindow) {
      * Install Modpack
      * Downloads an mrpack, extracts it (TODO: Resolve dependencies), and sets up an instance.
      */
-    ipcMain.handle('modrinth-install-modpack', async (event, { project, instanceName }) => {
+    ipcMain.handle('modrinth-install-modpack', async (event, { project, instanceName, versionId }) => {
+        const projectId = project.project_id;
+
         try {
-            const projectId = project.project_id;
+            // Check if already installing
+            if (activeInstalls.has(projectId)) {
+                return { success: false, error: "Installation already in progress" };
+            }
+
+            const task = { cancelled: false, downloader: null };
+            activeInstalls.set(projectId, task);
 
             // 1. Resolve Instances Directory
             const os = process.platform;
@@ -126,21 +200,39 @@ function setupModHandlers(getMainWindow) {
             if (!fs.existsSync(instancesDir)) fs.mkdirSync(instancesDir);
 
             // Sanitize name
-            const safeName = (instanceName || project.title).replace(/[^a-zA-Z0-9 -]/g, "").trim();
-            const instanceDir = path.join(instancesDir, safeName);
+            let safeName = (instanceName || project.title).replace(/[^a-zA-Z0-9 -]/g, "").trim();
+            let finalName = safeName;
+            let instanceDir = path.join(instancesDir, safeName);
 
-            if (fs.existsSync(instanceDir)) {
-                throw new Error(`Instance '${safeName}' already exists.`);
+            let counter = 1;
+            while (fs.existsSync(instanceDir)) {
+                finalName = `${safeName} (${counter})`;
+                instanceDir = path.join(instancesDir, finalName);
+                counter++;
             }
+            // Create dir tentatively - we might want to clean it up if cancelled?
             fs.mkdirSync(instanceDir);
 
-            // 2. Get Version (Get latest stable)
-            const versions = await client.getProjectVersions(projectId, {
-                loaders: [], // Any loader
-                gameVersions: []
-            });
-            const bestVersion = versions[0];
+            // 2. Get Version
+            let bestVersion;
+
+            if (task.cancelled) throw new Error("Cancelled by user");
+
+            if (versionId) {
+                // Fetch specific version
+                const versions = await client.getProjectVersionsById([versionId]);
+                bestVersion = versions[0];
+            } else {
+                const versions = await client.getProjectVersions(projectId, {
+                    loaders: [], // Any loader
+                    gameVersions: []
+                });
+                bestVersion = versions[0];
+            }
+
             const primaryFile = bestVersion.files.find(f => f.primary) || bestVersion.files[0];
+
+            if (task.cancelled) throw new Error("Cancelled by user");
 
             // 3. Download mrpack
             log.info(`[Modrinth] Downloading Modpack ${primaryFile.filename}`);
@@ -150,25 +242,40 @@ function setupModHandlers(getMainWindow) {
                 fileName: primaryFile.filename,
                 override: true
             });
+            task.downloader = dl;
 
             await new Promise((resolve, reject) => {
                 dl.on('end', () => resolve());
                 dl.on('error', reject);
+                dl.on('stop', () => reject(new Error("Cancelled by user")));
+                dl.on('progress', (stats) => {
+                    if (task.cancelled) { dl.stop(); return; }
+                    event.sender.send('install-progress', {
+                        projectId,
+                        step: 'Downloading Modpack',
+                        progress: stats.progress,
+                        downloaded: stats.downloaded,
+                        total: stats.total,
+                        speed: stats.speed,
+                        remaining: stats.remaining
+                    });
+                });
                 dl.start();
             });
 
-            // 4. Extract (Simple Unzip for now - full mrpack parsing is complex)
-            // mrpack is just a zip. Inside is "modrinth.index.json" and "overrides".
-            // For a REAL implementation, we must parse index.json and download each file.
-            // For MVP: We just unzip and hope (this won't work for mods, only overrides).
-            // ACTUALLY: We MUST parse index.json to get the mods.
+            if (task.cancelled) throw new Error("Cancelled by user");
 
+            // 4. Extract
             log.info(`[Modrinth] Extracting ${mrpackPath}`);
+            event.sender.send('install-progress', { projectId, step: 'Extracting...', progress: 100 });
+
             const zip = new AdmZip(mrpackPath);
             zip.extractAllTo(instanceDir, true);
 
             // Clean up
             fs.unlinkSync(mrpackPath);
+
+            if (task.cancelled) throw new Error("Cancelled by user");
 
             // 5. Process modrinth.index.json
             const indexPath = path.join(instanceDir, 'modrinth.index.json');
@@ -178,44 +285,89 @@ function setupModHandlers(getMainWindow) {
                 // Download all files
                 if (indexData.files && indexData.files.length > 0) {
                     log.info(`[Modrinth] Downloading ${indexData.files.length} dependencies...`);
+                    const totalFiles = indexData.files.length;
+                    let processed = 0;
 
-                    // We'll download sequentially to avoid overwhelmed net/fs, or small batches
                     for (const file of indexData.files) {
+                        if (task.cancelled) throw new Error("Cancelled by user");
+
                         const fileUrl = file.downloads[0];
                         const filePath = path.join(instanceDir, file.path); // e.g. mods/fabric-api.jar
                         const fileDir = path.dirname(filePath);
 
                         if (!fs.existsSync(fileDir)) fs.mkdirSync(fileDir, { recursive: true });
 
-                        log.info(`[Modrinth] Downloading dependency: ${path.basename(filePath)}`);
-                        // Simple download (ignoring env like client/server specific for now)
                         try {
-                            const dl = new DownloaderHelper(fileUrl, fileDir, {
+                            const dld = new DownloaderHelper(fileUrl, fileDir, {
                                 fileName: path.basename(filePath),
                                 override: true
                             });
+                            task.downloader = dld;
+
                             await new Promise((res, rej) => {
-                                dl.on('end', res);
-                                dl.on('error', rej);
-                                dl.start();
+                                dld.on('end', res);
+                                dld.on('error', rej);
+                                dld.on('stop', () => rej(new Error("Cancelled by user")));
+                                dld.start();
                             });
                         } catch (e) {
+                            if (e.message === "Cancelled by user") throw e;
                             log.error(`Failed to download ${path.basename(filePath)}: ${e.message}`);
-                            // Continue? Or fail? Usually modpacks need all mods.
                         }
+
+                        processed++;
+                        event.sender.send('install-progress', {
+                            projectId,
+                            step: `Downloading Files (${processed}/${totalFiles})`,
+                            progress: (processed / totalFiles) * 100,
+                            // Speed/Total is harder to aggregate here without tracking all DLs,
+                            // so we omit or just send null.
+                        });
                     }
                 }
             }
 
+            activeInstalls.delete(projectId);
             return {
                 success: true,
                 instancePath: instanceDir,
+                instanceName: finalName,
                 version: bestVersion.game_versions[0],
                 loader: bestVersion.loaders[0]
             };
 
         } catch (error) {
+            activeInstalls.delete(projectId);
             log.error(`[Modrinth] Modpack Install failed: ${error.message}`);
+            if (error.message.includes("Cancelled")) {
+                return { success: false, error: "Installation cancelled" };
+            }
+            return { success: false, error: error.message };
+        }
+    });
+
+    /**
+     * Get Project Details
+     */
+    ipcMain.handle('modrinth-get-project', async (event, { projectId }) => {
+        try {
+            const project = await client.getProject(projectId);
+            return { success: true, data: project };
+        } catch (error) {
+            log.error(`[Modrinth] Get project failed: ${error.message}`);
+            return { success: false, error: error.message };
+        }
+    });
+
+    /**
+     * Get Multiple Projects (Batch)
+     */
+    ipcMain.handle('modrinth-get-projects', async (event, { projectIds }) => {
+        try {
+            const projects = await client.getProjects(projectIds);
+            return { success: true, data: projects };
+        } catch (error) {
+            log.error(`[Modrinth] Get projects batch failed: ${error.message}`);
             return { success: false, error: error.message };
         }
     });
@@ -227,8 +379,8 @@ function setupModHandlers(getMainWindow) {
     ipcMain.handle('modrinth-get-versions', async (event, { projectId, loaders, gameVersions }) => {
         try {
             const versions = await client.getProjectVersions(projectId, {
-                loaders: loaders, // e.g. ['fabric', 'forge']
-                gameVersions: gameVersions // e.g. ['1.20.1']
+                loaders: loaders && loaders.length > 0 ? loaders : undefined,
+                gameVersions: gameVersions && gameVersions.length > 0 ? gameVersions : undefined
             });
             return { success: true, data: versions };
         } catch (error) {

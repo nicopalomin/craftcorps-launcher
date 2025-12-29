@@ -43,7 +43,12 @@ contextBridge.exposeInMainWorld('electronAPI', {
 
     // Modrinth
     modrinthSearch: (params) => ipcRenderer.invoke('modrinth-search', params),
+    modrinthGetProject: (projectId) => ipcRenderer.invoke('modrinth-get-project', { projectId }),
+    modrinthGetProjects: (projectIds) => ipcRenderer.invoke('modrinth-get-projects', { projectIds }),
     modrinthGetVersions: (params) => ipcRenderer.invoke('modrinth-get-versions', params),
+    onInstallProgress: (callback) => ipcRenderer.on('install-progress', (event, data) => callback(data)),
+    removeInstallProgressListeners: () => ipcRenderer.removeAllListeners('install-progress'),
     modrinthInstallMod: (params) => ipcRenderer.invoke('modrinth-install-mod', params),
     modrinthInstallModpack: (params) => ipcRenderer.invoke('modrinth-install-modpack', params),
+    modrinthCancelInstall: (projectId) => ipcRenderer.invoke('modrinth-cancel-install', { projectId }),
 });

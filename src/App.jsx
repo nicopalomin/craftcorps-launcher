@@ -353,7 +353,12 @@ function App() {
                             setEnableDiscordRPC={setEnableDiscordRPC}
                         />
                     )}
-                    {activeTab === 'mods' && <ModsView selectedInstance={selectedInstance} />}
+                    {activeTab === 'mods' && (
+                        <ModsView
+                            selectedInstance={selectedInstance}
+                            onInstanceCreated={onSaveCropWithToast}
+                        />
+                    )}
 
                 </div>
             </main>

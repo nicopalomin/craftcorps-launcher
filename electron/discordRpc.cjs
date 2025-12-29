@@ -8,24 +8,37 @@ let rpcReady = false;
 
 function initDiscordRPC() {
     // DiscordRPC.register(clientId); // Not strictly needed for IPC presence and can cause issues on some systems
-    rpc = new DiscordRPC.Client({ transport: 'ipc' });
 
-    rpc.on('ready', () => {
-        rpcReady = true;
-        log.info('[Discord RPC] Ready');
-        setActivity({
-            details: 'In Launcher',
-            state: 'Idling',
-            startTimestamp: Date.now(),
-            largeImageKey: 'icon',
-            largeImageText: 'CraftCorps Launcher',
-            instance: false,
-        });
-    });
+    // Defer RPC initialization to avoid blocking main process/window rendering on startup
+    // Especially if connection fails or times out.
+    setTimeout(() => {
+        try {
+            log.info('[Discord RPC] Initializing...');
+            rpc = new DiscordRPC.Client({ transport: 'ipc' });
 
-    rpc.login({ clientId }).catch(err => log.error(`[Discord RPC] Login failed: ${err}`));
+            rpc.on('ready', () => {
+                rpcReady = true;
+                log.info('[Discord RPC] Ready');
+                setActivity({
+                    details: 'In Launcher',
+                    state: 'Idling',
+                    startTimestamp: Date.now(),
+                    largeImageKey: 'icon',
+                    largeImageText: 'CraftCorps Launcher',
+                    instance: false,
+                });
+            });
 
-    // Register IPC handlers
+            rpc.login({ clientId }).catch(err => {
+                log.warn(`[Discord RPC] Login failed (non-fatal): ${err.message}`);
+            });
+        } catch (e) {
+            log.error(`[Discord RPC] Initialization failed: ${e.message}`);
+        }
+    }, 1500); // 1.5s delay to let app load first
+
+    // Register IPC handlers immediately so frontend doesn't crash if it calls them too early
+    // We just return early if rpc isn't ready.
     ipcMain.handle('discord-set-activity', async (event, activity) => {
         return setActivity(activity);
     });
