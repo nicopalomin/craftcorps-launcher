@@ -3,11 +3,28 @@ const fs = require('fs');
 const LauncherNetwork = require('./LauncherNetwork.cjs');
 
 class VersionManager {
-    static async bootstrapManifest(root, emit) {
+    static async bootstrapManifest(root, emit, targetVersion) {
         const cacheDir = path.join(root, 'cache', 'json');
         const manifestPath = path.join(cacheDir, 'version_manifest.json');
 
-        if (!fs.existsSync(manifestPath)) {
+        let shouldDownload = !fs.existsSync(manifestPath);
+
+        if (!shouldDownload && targetVersion) {
+            try {
+                const manifestData = JSON.parse(fs.readFileSync(manifestPath, 'utf-8'));
+                // Simple check: Look for the version ID
+                const found = manifestData.versions && manifestData.versions.some(v => v.id === targetVersion);
+                if (!found) {
+                    emit('log', { type: 'INFO', message: `Version ${targetVersion} not found in local cache. Refreshing manifest...` });
+                    shouldDownload = true;
+                }
+            } catch (e) {
+                emit('log', { type: 'WARN', message: `Localized manifest check failed: ${e.message}. Will re-download.` });
+                shouldDownload = true;
+            }
+        }
+
+        if (shouldDownload) {
             try {
                 emit('log', { type: 'INFO', message: 'Bootstrapping launcher cache...' });
                 fs.mkdirSync(cacheDir, { recursive: true });
@@ -35,18 +52,8 @@ class VersionManager {
 
                 if (!validVersions.has(version)) {
                     emit('log', { type: 'WARN', message: `Requested version '${version}' is NOT in the official manifest.` });
-
-                    if (version.includes('1.21.11')) {
-                        emit('log', { type: 'WARN', message: `Heuristic: '${version}' looks like a Bedrock version. Auto-correcting to '1.21.1'.` });
-                        return '1.21.1';
-                    } else {
-                        emit('log', { type: 'WARN', message: "Proceeding with unknown version. Launch may fail." });
-                    }
+                    emit('log', { type: 'WARN', message: "Proceeding with unknown version. Launch may fail." });
                 } else {
-                    if (version === '1.21.11') {
-                        emit('log', { type: 'WARN', message: `Version 1.21.11 detected in manifest but is known to be problematic. Correcting to 1.21.1.` });
-                        return '1.21.1';
-                    }
                     emit('log', { type: 'DEBUG', message: `Version '${version}' validated against manifest.` });
                 }
             }

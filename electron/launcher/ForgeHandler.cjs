@@ -62,6 +62,26 @@ class ForgeHandler {
             }
         }
 
+        // FIX: Corrupt Main JAR Check
+        // If the Forge version jar exists but is empty (0 bytes), delete it to force installer run
+        const versionJarPath = path.join(specificVersionDir, `${forgeVersionId}.jar`);
+        if (fs.existsSync(versionJarPath)) {
+            try {
+                const stats = fs.statSync(versionJarPath);
+                if (stats.size === 0) {
+                    emit('log', { type: 'WARN', message: `Detected empty/corrupt Forge JAR: ${versionJarPath}` });
+                    emit('log', { type: 'INFO', message: 'Deleting corrupt JAR to allow re-installation.' });
+                    fs.unlinkSync(versionJarPath);
+                    // Force re-run of installer by ensuring json is also gone or just ignoring it?
+                    // If json exists, we might skip installer.
+                    // Let's ensure strict check later.
+                    if (fs.existsSync(versionJson)) fs.unlinkSync(versionJson);
+                }
+            } catch (e) {
+                // ignore
+            }
+        }
+
         // 3. Check if installed
         let needsInstall = !fs.existsSync(versionJson);
 

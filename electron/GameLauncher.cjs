@@ -28,7 +28,7 @@ class GameLauncher extends EventEmitter {
         // 2. Bootstrap & Validation via VersionManager
         if (options.version) {
             try {
-                const manifestPath = await VersionManager.bootstrapManifest(commonRoot, (t, m) => this.emit(t === 'log' ? 'log' : t, m));
+                const manifestPath = await VersionManager.bootstrapManifest(commonRoot, (t, m) => this.emit(t === 'log' ? 'log' : t, m), options.version);
                 options.version = VersionManager.validateVersion(options.version, manifestPath, (t, m) => this.emit(t === 'log' ? 'log' : t, m));
             } catch (e) {
                 if (e.summary) {

@@ -64,6 +64,19 @@ class FabricHandler {
             emit('log', { type: 'DEBUG', message: `Fabric JSON exists. Size: ${fs.statSync(versionJsonPath).size} bytes` });
         }
 
+        // FIX: Corrupt Main JAR Check (ZipException: zip file is empty)
+        // MCLC sometimes creates an empty jar file if download fails or is interrupted.
+        // We check if the jar exists and is invalid (size 0), then delete it.
+        const versionJarPath = path.join(versionsDir, `${fabricVersionId}.jar`);
+        if (fs.existsSync(versionJarPath)) {
+            const stats = fs.statSync(versionJarPath);
+            if (stats.size === 0) {
+                emit('log', { type: 'WARN', message: `Detected empty/corrupt version JAR: ${versionJarPath}` });
+                emit('log', { type: 'INFO', message: 'Deleting corrupt JAR to allow redownload.' });
+                fs.unlinkSync(versionJarPath);
+            }
+        }
+
         // WORKAROUND: MCLC Crash "Cannot read properties of undefined (reading 'client')"
         try {
             const vanillaData = JSON.parse(fs.readFileSync(vanillaJson, 'utf-8'));
@@ -104,34 +117,35 @@ class FabricHandler {
                         changed = true;
                     }
 
+                    // SANITIZATION: Remove conflicting Vanilla ASM libs (Fixes duplicate ASM crash)
+                    // Even if we already merged libraries, we must check for conflicts (e.g. from previous broken runs)
+                    const vanillaAsmLibs = vanillaData.libraries.filter(l => l.name.includes('org.ow2.asm'));
+                    if (vanillaAsmLibs.length > 0) {
+                        const preCount = fabricData.libraries.length;
+                        fabricData.libraries = fabricData.libraries.filter(fl => {
+                            // If this lib is one of the Vanilla ASM libs, remove it (Fabric provides its own compatible version)
+                            const isBis = vanillaAsmLibs.some(vl => vl.name === fl.name);
+                            if (isBis) return false;
+                            return true;
+                        });
+
+                        if (fabricData.libraries.length !== preCount) {
+                            emit('log', { type: 'INFO', message: 'Sanitized Fabric JSON: Removed conflicting Vanilla ASM libraries.' });
+                            changed = true;
+                        }
+                    }
+
                     const firstVanillaLib = vanillaData.libraries[0];
                     const alreadyHasVanilla = firstVanillaLib && fabricData.libraries.some(l => l.name === firstVanillaLib.name);
 
                     if (!alreadyHasVanilla) {
                         emit('log', { type: 'INFO', message: 'Patching Fabric JSON with Vanilla libraries...' });
 
-                        // FIX: Duplicate ASM classes crash (java.lang.ExceptionInInitializerError)
-                        // Fabric Loader bundles ASM, but vanilla (1.18+) often includes newer 'org.ow2.asm' libs.
-                        // Sometimes older asm-commons/asm-util libs conflict.
-                        // We filter out vanilla ASM libs that might conflict.
+                        // MERGE: Add all vanilla libs EXCEPT ASM ones
                         const filteredVanillaLibs = vanillaData.libraries.filter(lib => {
-                            // Filter out explicit 'org.ow2.asm:asm-all' or similar if problematic
-                            // But usually the issue is duplicate versions of asm/asm-commons/asm-util
-
-                            // Let's filter out older asm versions if we suspect conflict, 
-                            // OR just trust the user report: "duplicate ASM classes found... asm-9.9.jar ... asm-9.6.jar"
-
-                            if (lib.name.includes('org.ow2.asm') || lib.name.includes('asm-all')) {
-                                // If Fabric already provides ASM (which it does indirectly or via boot), we might be double adding.
-                                // However, we need vanilla libs for Realms/etc usually.
-
-                                // Specific Fix: The crash shows conflict between ASM 9.9 and ASM 9.6.
-                                // If vanilla has 9.9 and we (or fabric) added 9.6, that's bad.
-                                // Fabric usually adds its own dependencies.
-
-                                // Improved approach: Don't add Vanilla's ASM libs if Fabric has its own ASM libs
-                                const hasFabricAsm = fabricData.libraries.some(fl => fl.name && fl.name.includes('org.ow2.asm') && fl.name.split(':')[1] === lib.name.split(':')[1]);
-                                return !hasFabricAsm;
+                            if (lib.name.includes('org.ow2.asm')) {
+                                // emit('log', { type: 'DEBUG', message: `Skipping Vanilla lib: ${lib.name}` });
+                                return false;
                             }
                             return true;
                         });
@@ -140,15 +154,43 @@ class FabricHandler {
                         changed = true;
                     }
 
-                    // PATCH 4: Ensure --gameDir argument exists
-                    if (!fabricData.arguments) fabricData.arguments = {};
-                    if (!fabricData.arguments.game) fabricData.arguments.game = [];
-
-                    const hasGameDir = fabricData.arguments.game.includes('--gameDir');
-                    if (!hasGameDir) {
-                        emit('log', { type: 'INFO', message: 'Patching Fabric JSON with --gameDir argument...' });
-                        fabricData.arguments.game.push('--gameDir', '${game_directory}');
+                    // PATCH 4: Merge Arguments (Fixes missing --assetsDir, duplicates, etc)
+                    if (vanillaData.arguments) {
+                        if (!fabricData.arguments) {
+                            // If Fabric has no args, just take Vanilla's
+                            fabricData.arguments = JSON.parse(JSON.stringify(vanillaData.arguments));
+                        } else {
+                            // Merge Game Args
+                            if (vanillaData.arguments.game) {
+                                if (!fabricData.arguments.game) fabricData.arguments.game = [];
+                                // Combine: Fabric args + Vanilla args
+                                fabricData.arguments.game = [...fabricData.arguments.game, ...vanillaData.arguments.game];
+                            }
+                            // Merge JVM Args
+                            if (vanillaData.arguments.jvm) {
+                                if (!fabricData.arguments.jvm) fabricData.arguments.jvm = [];
+                                fabricData.arguments.jvm = [...fabricData.arguments.jvm, ...vanillaData.arguments.jvm];
+                            }
+                        }
                         changed = true;
+                    } else if (vanillaData.minecraftArguments) {
+                        // Legacy handling (1.12 and older)
+                        if (!fabricData.minecraftArguments && !fabricData.arguments) {
+                            fabricData.minecraftArguments = vanillaData.minecraftArguments;
+                            changed = true;
+                        }
+                    }
+
+                    // FINAL CHECK: Ensure --gameDir exists
+                    // Vanilla usually provides it, but just in case:
+                    if (fabricData.arguments && fabricData.arguments.game) {
+                        // Note: args can be strings or objects. We look for the string flag.
+                        const hasGameDir = fabricData.arguments.game.some(arg => typeof arg === 'string' && arg === '--gameDir');
+                        if (!hasGameDir) {
+                            emit('log', { type: 'INFO', message: 'Patching Fabric JSON with --gameDir argument...' });
+                            fabricData.arguments.game.push('--gameDir', '${game_directory}');
+                            changed = true;
+                        }
                     }
                 }
 

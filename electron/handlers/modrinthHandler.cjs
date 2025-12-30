@@ -271,9 +271,29 @@ function setupModrinthHandlers() {
 
             if (task.cancelled) throw new Error("Cancelled by user");
 
+            let gVersion = bestVersion.game_versions[0];
+            let loaderVersion = bestVersion.loaders[0];
+
             const indexPath = path.join(instanceDir, 'modrinth.index.json');
             if (fs.existsSync(indexPath)) {
                 const indexData = JSON.parse(fs.readFileSync(indexPath, 'utf-8'));
+
+                // FIX: Trust local index dependencies over API metadata for game/loader versions
+                if (indexData.dependencies) {
+                    if (indexData.dependencies.minecraft) {
+                        gVersion = indexData.dependencies.minecraft;
+                        log.info(`[Modrinth] Detected Minecraft version from index: ${gVersion}`);
+                    }
+
+                    // Also try to detect specific loader version
+                    if (indexData.dependencies['fabric-loader']) {
+                        loaderVersion = indexData.dependencies['fabric-loader'];
+                        log.info(`[Modrinth] Detected Fabric Loader version from index: ${loaderVersion}`);
+                    } else if (indexData.dependencies['forge']) {
+                        // Handle forge
+                        loaderVersion = indexData.dependencies['forge'];
+                    }
+                }
 
                 if (indexData.files && indexData.files.length > 0) {
                     log.info(`[Modrinth] Downloading ${indexData.files.length} dependencies...`);
@@ -317,9 +337,6 @@ function setupModrinthHandlers() {
                 }
             }
 
-            let gVersion = bestVersion.game_versions[0];
-            // Removed patch for version correction as per user request in previous step/edit.
-
             // Persist Instance Metadata (instance.json)
             const instanceId = `inst_${Date.now()}`;
             // Pick rand color/gradient defaults for backend-created instance? 
@@ -329,8 +346,9 @@ function setupModrinthHandlers() {
             const instanceData = {
                 id: instanceId,
                 name: finalName,
-                version: gVersion,
-                loader: bestVersion.loaders[0] || 'Fabric',
+                version: gVersion, // Now using trust-source from index
+                loader: bestVersion.loaders[0] || 'Fabric', // Loader Type (Fabric/Forge)
+                loaderVersion: loaderVersion, // Explicit loader version if found
                 path: instanceDir,
                 status: 'Ready',
                 lastPlayed: null,
