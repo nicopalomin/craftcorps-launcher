@@ -4,38 +4,68 @@ const BackgroundBlobs = ({ disabled }) => {
     const [blobs, setBlobs] = useState([]);
 
     useEffect(() => {
-        if (disabled) {
-            setBlobs([]);
-            return;
-        }
+        // Spawn initial blobs immediately
+        const initialBlobs = Array.from({ length: 3 }).map(() => ({
+            id: Date.now() + Math.random(),
+            size: Math.random() * 150 + 100,
+            left: Math.random() * 100,
+            top: Math.random() * 100,
+            duration: Math.random() * 10 + 10,
+            delay: Math.random() * 2,
+            color: Math.random() > 0.5 ? 'bg-emerald-500' : 'bg-cyan-500'
+        }));
+        setBlobs(initialBlobs);
 
         const interval = setInterval(() => {
-            const id = Date.now();
-            const size = Math.random() * 150 + 100; // 100-250px
-            const left = Math.random() * 100; // 0-100%
-            const top = Math.random() * 100; // 0-100%
-            const duration = Math.random() * 10 + 10; // 10-20s
-            const delay = Math.random() * 5; // 0-5s
-            const color = Math.random() > 0.5 ? 'bg-emerald-500' : 'bg-cyan-500';
+            setBlobs(prev => {
+                // Limit max blobs to prevent overcrowding
+                if (prev.length >= 8) return prev;
 
-            const newBlob = { id, size, left, top, duration, delay, color };
+                const id = Date.now();
+                const size = Math.random() * 150 + 100;
+                const duration = Math.random() * 10 + 10;
+                const delay = Math.random() * 2;
+                const color = Math.random() > 0.5 ? 'bg-emerald-500' : 'bg-cyan-500';
 
-            setBlobs(prev => [...prev, newBlob]);
+                // Try to find a position not too close to others
+                let left, top, valid;
+                let attempts = 0;
 
-            // Remove blob after duration + delay
-            setTimeout(() => {
-                setBlobs(prev => prev.filter(b => b.id !== id));
-            }, (duration + delay) * 1000 + 100);
+                do {
+                    left = Math.random() * 90; // Keep somewhat within bounds
+                    top = Math.random() * 90;
+                    valid = true;
+                    // Simple distance check against existing blobs
+                    for (const b of prev) {
+                        const db = Math.sqrt(Math.pow(b.left - left, 2) + Math.pow(b.top - top, 2));
+                        if (db < 25) { // If closer than roughly 25% screen width/height
+                            valid = false;
+                            break;
+                        }
+                    }
+                    attempts++;
+                } while (!valid && attempts < 5);
 
-        }, 1000); // New blob every 1 second
+                // If we couldn't find a spot, skip this spawn cycle
+                if (!valid && prev.length > 3) return prev;
+
+                const newBlob = { id, size, left, top, duration, delay, color };
+
+                // Schedule cleanup
+                setTimeout(() => {
+                    setBlobs(current => current.filter(b => b.id !== id));
+                }, (duration + delay) * 1000 + 100);
+
+                return [...prev, newBlob];
+            });
+
+        }, 4000); // New blob every 4 seconds
 
         return () => clearInterval(interval);
-    }, [disabled]);
-
-    if (disabled) return null;
+    }, []);
 
     return (
-        <div className="absolute inset-0 overflow-hidden pointer-events-none z-0">
+        <div className={`absolute inset-0 overflow-hidden pointer-events-none z-0 transition-opacity ${disabled ? 'duration-75' : 'duration-[2000ms]'} ${disabled ? 'opacity-0' : 'opacity-100'}`}>
             {blobs.map(blob => (
                 <div
                     key={blob.id}

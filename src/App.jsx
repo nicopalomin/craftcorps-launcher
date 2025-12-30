@@ -4,7 +4,7 @@ import { Terminal, Maximize2, Minimize2, X, User } from 'lucide-react';
 import Sidebar from './components/layout/Sidebar';
 import ConsoleOverlay from './components/common/ConsoleOverlay';
 import LaunchOverlay from './components/common/LaunchOverlay';
-import LoadingScreen from './components/common/LoadingScreen';
+
 import BackgroundBlobs from './components/common/BackgroundBlobs';
 import CropModal from './components/modals/CropModal';
 import LoginModal from './components/modals/LoginModal';
@@ -46,7 +46,7 @@ function App() {
         return stored !== null ? stored === 'true' : true; // Default true
     });
     const [availableJavas, setAvailableJavas] = useState([]);
-    const [isLoading, setIsLoading] = useState(true);
+
 
     const refreshJavas = async () => {
         if (window.electronAPI) {
@@ -73,9 +73,7 @@ function App() {
                     refreshJavas(); // Refresh list so the new path appears
                 });
             }
-            setTimeout(() => {
-                setIsLoading(false);
-            }, 1000);
+
         };
         init();
 
@@ -107,7 +105,8 @@ function App() {
         setShowLoginModal,
         handleAccountSwitch,
         handleAddAccount,
-        handleLogout
+        handleLogout,
+        isRefreshing
     } = useAccounts();
 
     const {
@@ -148,6 +147,7 @@ function App() {
     };
 
     const onAccountSwitchWithToast = (account) => {
+        if (activeAccount?.id === account.id) return;
         handleAccountSwitch(account);
         addToast(`Switched to ${account.name}`, 'info');
     }
@@ -216,9 +216,7 @@ function App() {
 
     }, [activeTab, launchStatus, enableDiscordRPC]);
 
-    if (isLoading) {
-        return <LoadingScreen />;
-    }
+
 
     return (
         <div className="flex h-screen bg-slate-950 text-slate-200 font-sans selection:bg-emerald-500/30">
@@ -354,9 +352,15 @@ function App() {
                         />
                     )}
                     {activeTab === 'mods' && (
+
                         <ModsView
                             selectedInstance={selectedInstance}
-                            onInstanceCreated={onSaveCropWithToast}
+                            instances={instances}
+                            onInstanceCreated={(newInstance) => {
+                                onSaveCropWithToast(newInstance);
+                                setSelectedInstance(newInstance);
+                                setActiveTab('home');
+                            }}
                         />
                     )}
 
@@ -379,9 +383,10 @@ function App() {
             />
 
             <LoginModal
-                isOpen={showLoginModal}
+                isOpen={showLoginModal || isRefreshing}
                 onClose={() => setShowLoginModal(false)}
                 onAddAccount={onAddAccountWithToast}
+                isAutoRefreshing={isRefreshing}
             />
 
             {/* Crop (Edit/Create) Modal */}

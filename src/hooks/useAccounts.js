@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 
 export const useAccounts = () => {
     const [accounts, setAccounts] = useState(() => {
@@ -22,6 +22,84 @@ export const useAccounts = () => {
 
     const [showProfileMenu, setShowProfileMenu] = useState(false);
     const [showLoginModal, setShowLoginModal] = useState(false);
+    const [isRefreshing, setIsRefreshing] = useState(false);
+
+    // Track active account ID to prevent race conditions during async refresh
+    const activeAccountIdRef = useRef(activeAccount?.id);
+    const hasRefreshedRef = useRef(false); // Ref to prevent double execution in Strict Mode
+
+    useEffect(() => {
+        activeAccountIdRef.current = activeAccount?.id;
+    }, [activeAccount]);
+
+    // Auto-refresh tokens on startup
+    useEffect(() => {
+        const refreshTokens = async () => {
+            // Prevent double refresh (Strict Mode)
+            if (hasRefreshedRef.current || !window.electronAPI?.microsoftRefresh) return;
+
+            const accountsToRefresh = accounts.filter(a => a.type === 'Microsoft' && a.refreshToken);
+            if (accountsToRefresh.length === 0) return;
+
+            // Mark as running
+            hasRefreshedRef.current = true;
+            setIsRefreshing(true);
+            console.log(`[Auth] Attempting to refresh ${accountsToRefresh.length} accounts sequentially...`);
+
+            let updatesMade = false;
+            let currentAccounts = [...accounts]; // Local copy to update incrementally if needed
+
+            // Sequential Loop
+            for (const acc of accountsToRefresh) {
+                try {
+                    console.log(`[Auth] Refreshing: ${acc.name}`);
+                    const result = await window.electronAPI.microsoftRefresh(acc.refreshToken);
+
+                    if (result.success && result.account) {
+                        console.log(`[Auth] Success: ${acc.name}`);
+                        // Update local copy
+                        const idx = currentAccounts.findIndex(a => a.id === acc.id);
+                        if (idx !== -1) {
+                            currentAccounts[idx] = { ...currentAccounts[idx], ...result.account };
+                            updatesMade = true;
+                        }
+                    } else {
+                        console.warn(`[Auth] Failed to refresh ${acc.name}:`, result.error);
+                    }
+
+                    // Delay between requests to avoid Rate Limiting (TOO_MANY_REQUESTS)
+                    if (accountsToRefresh.length > 1) {
+                        await new Promise(r => setTimeout(r, 1500));
+                    }
+                } catch (e) {
+                    console.error(`[Auth] Error refreshing ${acc.name}:`, e);
+                }
+            }
+
+            if (updatesMade) {
+                setAccounts(currentAccounts);
+                localStorage.setItem('craftcorps_accounts', JSON.stringify(currentAccounts));
+
+                // Update active account if matches ref
+                if (activeAccountIdRef.current) {
+                    const updatedActive = currentAccounts.find(a => a.id === activeAccountIdRef.current);
+                    if (updatedActive) {
+                        setActiveAccount(updatedActive);
+                        localStorage.setItem('craftcorps_active_account', JSON.stringify(updatedActive));
+                    }
+                }
+                console.log(`[Auth] Refresh cycle complete. Updates made.`);
+            } else {
+                console.log(`[Auth] Refresh cycle complete. No updates.`);
+            }
+
+            // Keep visible briefly
+            setTimeout(() => setIsRefreshing(false), 500);
+        };
+
+        refreshTokens();
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []); // Run once on mount
 
     const handleAccountSwitch = (account) => {
         setActiveAccount(account);
@@ -71,6 +149,7 @@ export const useAccounts = () => {
         setShowLoginModal,
         handleAccountSwitch,
         handleAddAccount,
-        handleLogout
+        handleLogout,
+        isRefreshing
     };
 };

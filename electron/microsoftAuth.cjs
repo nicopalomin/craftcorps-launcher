@@ -83,8 +83,106 @@ function get(url, headers = {}) {
     });
 }
 
+
+// ... (start of file)
+
+async function refreshMicrosoftAuth(refreshToken) {
+    try {
+        // 1. Refresh MS Token
+        let msTokenData;
+        try {
+            msTokenData = await post('https://login.live.com/oauth20_token.srf', {
+                client_id: CLIENT_ID,
+                refresh_token: refreshToken,
+                grant_type: 'refresh_token',
+                redirect_uri: REDIRECT_URI
+            });
+        } catch (e) {
+            console.error('Failed to refresh MS token:', e);
+            throw new Error('AUTH_REFRESH_FAILED');
+        }
+
+        // 2. Xbox Live Auth
+        let xblData;
+        try {
+            xblData = await post('https://user.auth.xboxlive.com/user/authenticate', {
+                Properties: {
+                    AuthMethod: 'RPS',
+                    SiteName: 'user.auth.xboxlive.com',
+                    RpsTicket: `d=${msTokenData.access_token}`
+                },
+                RelyingParty: 'http://auth.xboxlive.com',
+                TokenType: 'JWT'
+            }, { 'Content-Type': 'application/json' });
+        } catch (e) {
+            throw new Error('AUTH_XBOX_LIVE_FAILED');
+        }
+
+        // 3. XSTS Auth
+        let xstsData;
+        try {
+            xstsData = await post('https://xsts.auth.xboxlive.com/xsts/authorize', {
+                Properties: {
+                    SandboxId: 'RETAIL',
+                    UserTokens: [xblData.Token]
+                },
+                RelyingParty: 'rp://api.minecraftservices.com/',
+                TokenType: 'JWT'
+            }, { 'Content-Type': 'application/json' });
+        } catch (e) {
+            if (e && e.XErr) {
+                switch (e.XErr) {
+                    case 2148916233: // No Xbox Account
+                        throw new Error('AUTH_NO_XBOX_ACCOUNT');
+                    case 2148916238: // Child Account / Family Settings
+                        throw new Error('AUTH_CHILD_ACCOUNT');
+                    default:
+                        throw new Error(`AUTH_XSTS_FAILED_${e.XErr}`);
+                }
+            }
+            throw new Error('AUTH_XSTS_FAILED');
+        }
+
+        // 4. Minecraft Auth
+        let mcLoginData;
+        try {
+            mcLoginData = await post('https://api.minecraftservices.com/authentication/login_with_xbox', {
+                identityToken: `XBL3.0 x=${xblData.DisplayClaims.xui[0].uhs};${xstsData.Token}`
+            }, { 'Content-Type': 'application/json' });
+        } catch (e) {
+            console.error('Minecraft Login Request Failed:', e);
+            throw new Error(`AUTH_MC_LOGIN_FAILED: ${JSON.stringify(e)}`);
+        }
+
+        // 5. Get Profile
+        try {
+            const profile = await get('https://api.minecraftservices.com/minecraft/profile', {
+                'Authorization': `Bearer ${mcLoginData.access_token}`
+            });
+
+            if (profile.error) {
+                throw new Error('AUTH_NO_MINECRAFT');
+            }
+
+            return {
+                uuid: profile.id,
+                name: profile.name,
+                accessToken: mcLoginData.access_token,
+                refreshToken: msTokenData.refresh_token || refreshToken, // specific logic might vary, usually new one is provided.
+                type: 'Microsoft'
+            };
+        } catch (e) {
+            throw new Error('AUTH_PROFILE_FAILED');
+        }
+
+    } catch (err) {
+        throw err;
+    }
+}
+
 async function authenticateMicrosoft(mainWindow) {
     return new Promise((resolve, reject) => {
+        let isAuthInProgress = false;
         const authWindow = new BrowserWindow({
             width: 800,
             height: 600,
@@ -109,6 +207,7 @@ async function authenticateMicrosoft(mainWindow) {
             if (url.startsWith(REDIRECT_URI)) {
                 // Prevent actually loading the redirect page
                 event.preventDefault();
+                isAuthInProgress = true;
                 authWindow.close();
 
                 const urlObj = new URL(url);
@@ -223,6 +322,7 @@ async function authenticateMicrosoft(mainWindow) {
                                 uuid: profile.id,
                                 name: profile.name,
                                 accessToken: mcLoginData.access_token,
+                                refreshToken: msTokenData.refresh_token,
                                 type: 'Microsoft'
                             });
                         } catch (e) {
@@ -237,12 +337,11 @@ async function authenticateMicrosoft(mainWindow) {
         });
 
         authWindow.on('closed', () => {
-            // If promise not settled (no code found), reject
-            // We can't easy check if resolved, but usually user closing window implies cancellation
-            // If we already resolved/rejected, this might be redundant but safe
-            // reject(new Error('User closed login window'));
+            if (!isAuthInProgress) {
+                reject(new Error('AUTH_CANCELLED_BY_USER'));
+            }
         });
     });
 }
 
-module.exports = { authenticateMicrosoft };
+module.exports = { authenticateMicrosoft, refreshMicrosoftAuth };

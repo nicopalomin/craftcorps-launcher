@@ -11,8 +11,10 @@ contextBridge.exposeInMainWorld('electronAPI', {
 
 
     microsoftLogin: () => ipcRenderer.invoke('microsoft-login'),
+    microsoftRefresh: (refreshToken) => ipcRenderer.invoke('refresh-microsoft-token', refreshToken),
     selectFile: () => ipcRenderer.invoke('select-file'),
     openLogsFolder: () => ipcRenderer.invoke('open-logs-folder'),
+    openPath: (path) => ipcRenderer.invoke('open-path', path),
     log: (level, message) => ipcRenderer.send('renderer-log', { level, message }),
     installJava: (version) => ipcRenderer.invoke('install-java', version),
     getAvailableJavas: () => ipcRenderer.invoke('get-available-javas'),
@@ -25,6 +27,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
 
 
     launchGame: (options) => ipcRenderer.send('launch-game', options),
+    getNewInstancePath: (name) => ipcRenderer.invoke('get-new-instance-path', name),
+    deleteInstanceFolder: (path) => ipcRenderer.invoke('delete-instance-folder', path),
     stopGame: () => ipcRenderer.send('stop-game'),
     onGameLog: (callback) => ipcRenderer.on('game-log', (_event, value) => callback(value)),
     onGameProgress: (callback) => ipcRenderer.on('game-progress', (_event, value) => callback(value)),
@@ -49,6 +53,11 @@ contextBridge.exposeInMainWorld('electronAPI', {
     onInstallProgress: (callback) => ipcRenderer.on('install-progress', (event, data) => callback(data)),
     removeInstallProgressListeners: () => ipcRenderer.removeAllListeners('install-progress'),
     modrinthInstallMod: (params) => ipcRenderer.invoke('modrinth-install-mod', params),
+    getInstanceMods: (instancePath) => ipcRenderer.invoke('get-instance-mods', instancePath),
+    deleteMod: (filePath) => ipcRenderer.invoke('delete-mod', filePath),
+    addInstanceMods: (instancePath, filePaths) => ipcRenderer.invoke('add-instance-mods', { instancePath, filePaths }),
+    selectModFiles: () => ipcRenderer.invoke('select-mod-files'),
     modrinthInstallModpack: (params) => ipcRenderer.invoke('modrinth-install-modpack', params),
     modrinthCancelInstall: (projectId) => ipcRenderer.invoke('modrinth-cancel-install', { projectId }),
+    getInstanceResourcePacks: (instancePath) => ipcRenderer.invoke('get-instance-resource-packs', instancePath),
 });

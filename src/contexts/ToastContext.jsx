@@ -41,7 +41,7 @@ const ToastItem = ({ id, message, type, removeCallback }) => {
     React.useEffect(() => {
         const timer = setTimeout(() => {
             handleClose();
-        }, 5000);
+        }, 3000);
         return () => clearTimeout(timer);
     }, []);
 

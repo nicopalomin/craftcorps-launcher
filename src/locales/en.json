@@ -65,6 +65,7 @@
     "auth_err_no_mc": "No Minecraft license found. If you use Game Pass, ensure you have created a Java Profile.",
     "auth_err_profile": "Failed to load Minecraft profile.",
     "auth_err_invalid_app_config": "Invalid App Configuration (Client ID).",
+    "auth_err_network": "Network error: Unable to connect to authentication servers. Please check your internet connection or VPN.",
     "crop_title_new": "Cultivate Crop",
     "crop_title_edit": "Prune Crop",
     "crop_section_icon": "Icon & Theme",

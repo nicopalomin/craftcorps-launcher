@@ -33,6 +33,22 @@ function setupAppHandlers(getMainWindow) {
         return shell.showItemInFolder(logPath);
     });
 
+    // Open Any Path (Folder or File)
+    ipcMain.handle('open-path', async (event, targetPath) => {
+        if (!targetPath) return { success: false, error: 'No path provided' };
+        try {
+            const error = await shell.openPath(targetPath);
+            if (error) {
+                log.error(`Failed to open path ${targetPath}: ${error}`);
+                return { success: false, error };
+            }
+            return { success: true };
+        } catch (e) {
+            log.error(`Exception opening path ${targetPath}: ${e.message}`);
+            return { success: false, error: e.message };
+        }
+    });
+
     // Manual Log Upload
     ipcMain.handle('upload-logs-manually', async () => {
         try {

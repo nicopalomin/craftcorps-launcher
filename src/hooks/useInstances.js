@@ -51,13 +51,29 @@ export const useInstances = () => {
         }
     };
 
-    const handleDeleteCrop = (id) => {
+    const handleDeleteCrop = async (id) => {
+        const instanceToDelete = instances.find(i => i.id === id);
+
+        // Remove from state first (optimistic UI update)
         const newInstances = instances.filter(i => i.id !== id);
         setInstances(newInstances);
 
         // If we deleted the currently selected one, fallback to first available or null
         if (selectedInstance && selectedInstance.id === id) {
             setSelectedInstance(newInstances.length > 0 ? newInstances[0] : null);
+        }
+
+        // Delete File System Folder
+        if (instanceToDelete && instanceToDelete.path && window.electronAPI) {
+            try {
+                console.log("Deleting instance folder:", instanceToDelete.path);
+                const res = await window.electronAPI.deleteInstanceFolder(instanceToDelete.path);
+                if (!res.success) {
+                    console.error("Failed to delete folder:", res.error);
+                }
+            } catch (e) {
+                console.error("Error invoking delete:", e);
+            }
         }
     };
 

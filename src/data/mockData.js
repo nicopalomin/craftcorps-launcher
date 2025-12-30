@@ -8,6 +8,29 @@ export const INITIAL_INSTANCES = [
         lastPlayed: null,
         iconColor: 'bg-emerald-500',
         bgGradient: 'from-emerald-900/40 to-slate-900'
+    },
+    {
+        id: 'inst_2',
+        name: 'Fabric Kingdom',
+        version: '1.20.1',
+        loader: 'Fabric',
+        status: 'Ready',
+        lastPlayed: null,
+        iconColor: 'bg-indigo-500',
+        bgGradient: 'from-indigo-900/40 to-slate-900',
+        mods: [
+            { name: 'Sodium', version: '0.5.3', enabled: true },
+            { name: 'Lithium', version: '0.11.2', enabled: true },
+            { name: 'Iris Shaders', version: '1.6.10', enabled: true },
+            { name: 'Mod Menu', version: '7.2.2', enabled: true },
+            { name: 'Fabric API', version: '0.90.0', enabled: true },
+            { name: 'Indium', version: '1.0.2', enabled: false },
+            { name: 'Continuity', version: '3.0.0-beta', enabled: true },
+        ],
+        resourcePacks: [
+            { name: 'Faithful 32x', enabled: true },
+            { name: 'Fresh Animations', enabled: true }
+        ]
     }
 ];
 

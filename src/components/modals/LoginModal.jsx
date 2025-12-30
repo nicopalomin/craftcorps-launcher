@@ -4,7 +4,7 @@ import { User, X, Loader2, ShieldCheck, ChevronRight, WifiOff, Info } from 'luci
 
 import { getOfflineUUID } from '../../utils/uuid';
 
-const LoginModal = ({ isOpen, onClose, onAddAccount }) => {
+const LoginModal = ({ isOpen, onClose, onAddAccount, isAutoRefreshing }) => {
     const { t } = useTranslation();
     const [activeMethod, setActiveMethod] = useState('selection'); // selection | offline
     const [offlineName, setOfflineName] = useState('');
@@ -58,6 +58,7 @@ const LoginModal = ({ isOpen, onClose, onAddAccount }) => {
                     else if (err.includes('AUTH_NO_MINECRAFT')) key = 'auth_err_no_mc';
                     else if (err.includes('AUTH_PROFILE_FAILED')) key = 'auth_err_profile';
                     else if (err.includes('AUTH_INVALID_APP_CONFIG')) key = 'auth_err_invalid_app_config';
+                    else if (err.includes('ENOTFOUND')) key = 'auth_err_network';
 
                     setErrorMsg(t(key));
                     setIsLoading(false);
@@ -69,6 +70,10 @@ const LoginModal = ({ isOpen, onClose, onAddAccount }) => {
             }
         } catch (e) {
             console.error("Login error:", e);
+            if (e.message && e.message.includes('AUTH_CANCELLED_BY_USER')) {
+                setIsLoading(false);
+                return;
+            }
             setErrorMsg(e.message || t('auth_err_unknown'));
             setIsLoading(false);
         }
@@ -108,11 +113,15 @@ const LoginModal = ({ isOpen, onClose, onAddAccount }) => {
 
                 {/* Content */}
                 <div className="relative z-10">
-                    {isLoading ? (
+                    {isLoading || isAutoRefreshing ? (
                         <div className="h-48 flex flex-col items-center justify-center text-center">
                             <Loader2 size={48} className="text-emerald-500 animate-spin mb-4" />
-                            <h4 className="text-lg font-bold text-white mb-1">{t('auth_authenticating')}</h4>
-                            <p className="text-sm text-slate-500">{t('auth_browser_instruction')}</p>
+                            <h4 className="text-lg font-bold text-white mb-1">
+                                {isAutoRefreshing ? t('auth_refreshing_session', { defaultValue: 'Verifying Session...' }) : t('auth_authenticating')}
+                            </h4>
+                            <p className="text-sm text-slate-500">
+                                {isAutoRefreshing ? t('auth_refreshing_detail', { defaultValue: 'Checking your credentials...' }) : t('auth_browser_instruction')}
+                            </p>
                         </div>
                     ) : (
                         <div className="space-y-4">

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
-import { X, Sprout, Save, Plus } from 'lucide-react';
+import { X, Sprout, Save, Plus, FolderOpen } from 'lucide-react';
 import { LOADERS, COLORS, FALLBACK_VERSIONS } from '../../data/mockData';
 import { fetchMinecraftVersions } from '../../utils/minecraftApi';
 
@@ -52,7 +52,7 @@ const CropModal = ({ isOpen, onClose, onSave, editingCrop }) => {
 
     if (!isOpen) return null;
 
-    const handleSubmit = (e) => {
+    const handleSubmit = async (e) => {
         e.preventDefault();
 
         // Validate fields
@@ -73,8 +73,20 @@ const CropModal = ({ isOpen, onClose, onSave, editingCrop }) => {
             return;
         }
 
-        // Clear errors and submit
+        // Clear errors
         setErrors({});
+
+        let path = editingCrop?.path;
+        // Generate path for new instances
+        if (!editingCrop && window.electronAPI) {
+            try {
+                path = await window.electronAPI.getNewInstancePath(name);
+            } catch (err) {
+                console.error("Failed to generate instance path:", err);
+                // Fallback? Or just let it be null (defaults to root)
+                // But we want IT TO BE FIXED
+            }
+        }
 
         onSave({
             ...(editingCrop || {}), // Preserve existing ID, lastPlayed, status if editing
@@ -87,7 +99,8 @@ const CropModal = ({ isOpen, onClose, onSave, editingCrop }) => {
             status: editingCrop ? editingCrop.status : 'Ready',
             lastPlayed: editingCrop ? editingCrop.lastPlayed : null,
             autoConnect,
-            serverAddress: autoConnect ? serverAddress.trim() : ''
+            serverAddress: autoConnect ? serverAddress.trim() : '',
+            path: path // Ensure path is saved
         });
         onClose();
     };
@@ -271,6 +284,16 @@ const CropModal = ({ isOpen, onClose, onSave, editingCrop }) => {
 
                     {/* Buttons */}
                     <div className="flex gap-3 pt-2">
+                        {editingCrop && editingCrop.path && (
+                            <button
+                                type="button"
+                                onClick={() => window.electronAPI.openPath(editingCrop.path)}
+                                className="px-4 py-3 rounded-xl font-bold text-slate-400 hover:bg-slate-800 hover:text-white transition-colors flex items-center gap-2"
+                                title={t('crop_btn_open_folder', { defaultValue: 'Open Folder' })}
+                            >
+                                <FolderOpen size={20} />
+                            </button>
+                        )}
                         <button
                             type="button"
                             onClick={onClose}

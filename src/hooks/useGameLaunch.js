@@ -166,7 +166,9 @@ export const useGameLaunch = (selectedInstance, ram, activeAccount, updateLastPl
                 useDefaultPath: !selectedInstance.path,
                 gameDir: selectedInstance.path || null,
                 server: selectedInstance.autoConnect ? selectedInstance.serverAddress : null,
-                javaPath: javaPath
+                javaPath: javaPath,
+                loader: selectedInstance.loader,
+                loaderVersion: selectedInstance.loaderVersion
             });
 
             if (window.electronAPI.log) {
@@ -178,13 +180,22 @@ export const useGameLaunch = (selectedInstance, ram, activeAccount, updateLastPl
     }, [launchStatus, selectedInstance, ram, activeAccount, updateLastPlayed, hideOnLaunch, javaPath]);
 
     const handleStop = useCallback(() => {
+        launchStatusRef.current = 'idle'; // Update ref immediately to prevent race conditions with onGameExit
+
         if (launchStatus === 'launching') {
             setLaunchFeedback('cancelled');
-            setTimeout(() => setLaunchFeedback(null), 1500);
+            // Clear the cancelled message after a short delay
+            setTimeout(() => {
+                setLaunchFeedback(prev => prev === 'cancelled' ? null : prev);
+            }, 2000);
         }
 
-        if (window.electronAPI) {
-            window.electronAPI.stopGame();
+        try {
+            if (window.electronAPI) {
+                window.electronAPI.stopGame();
+            }
+        } catch (error) {
+            console.error("Error stopping game:", error);
         }
         setLaunchStatus('idle');
     }, [launchStatus]);

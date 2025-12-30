@@ -8,7 +8,7 @@ import { useToast } from '../contexts/ToastContext';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 
-const ModsView = ({ selectedInstance, onInstanceCreated }) => {
+const ModsView = ({ selectedInstance, instances = [], onInstanceCreated }) => {
     const { t } = useTranslation();
     const { addToast } = useToast();
 
@@ -160,7 +160,7 @@ const ModsView = ({ selectedInstance, onInstanceCreated }) => {
     };
 
     const handleInstall = async (project, version = null) => {
-        if (!selectedInstance) {
+        if (!selectedInstance && project.project_type !== 'modpack') {
             addToast("Please select an instance in the Home tab first!", 'error');
             return;
         }
@@ -169,6 +169,19 @@ const ModsView = ({ selectedInstance, onInstanceCreated }) => {
         const versionId = targetVersion ? targetVersion.id : null;
         const versionName = targetVersion ? targetVersion.name : 'Latest';
         const projectId = project.project_id;
+
+        // CHECK IF ALREADY INSTALLED (Modpacks only)
+        if (project.project_type === 'modpack' && instances) {
+            const existing = instances.find(inst =>
+                inst.modpackProjectId === projectId &&
+                (inst.modpackVersionId === versionId || (!inst.modpackVersionId && !versionId))
+            );
+
+            if (existing) {
+                addToast(`This version is already installed as "${existing.name}"`, 'warning');
+                return;
+            }
+        }
 
         setInstallingStates(prev => ({ ...prev, [projectId]: true }));
         setInstallProgress(prev => ({ ...prev, [projectId]: { progress: 0, step: 'Starting...' } }));
@@ -208,10 +221,28 @@ const ModsView = ({ selectedInstance, onInstanceCreated }) => {
                             lastPlayed: null,
                             iconColor: colors[idx],
                             bgGradient: gradients[idx],
-                            autoConnect: false
+                            autoConnect: false,
+                            modpackProjectId: projectId,
+                            modpackVersionId: versionId
                         };
 
+
                         onInstanceCreated(newInstance);
+
+                        // Wait a moment for the new instance to be registered, then potentially switch view
+                        // Assuming onInstanceCreated updates the parent state or re-fetches instances
+                        // We can't force view switch here unless we have a prop for it, but the Toast confirms it.
+                        // Actually, user probably wants to go to Home to play it.
+                        addToast(`Redirecting to Home...`, 'info');
+                        // Use a global event or prop if available, otherwise just rely on success toast
+                        // If we have access to a "setView" prop we could use it.
+                        // For now, let's trigger a reload of instances if needed.
+                    }
+
+                    // Optional: Switch to Home View if possible
+                    if (window.electronAPI) {
+                        // Maybe send an event to App.jsx to switch tab?
+                        // Or just let user click it.
                     }
                 } else {
                     addToast(`Failed: ${res.error}`, 'error');
@@ -330,7 +361,7 @@ const ModsView = ({ selectedInstance, onInstanceCreated }) => {
                                     ) : (
                                         <>
                                             <Download size={20} />
-                                            <span>{selectedVersion ? `Install ${selectedVersion.version_number || selectedVersion.name}` : 'Install Log'}</span>
+                                            <span>{selectedVersion ? `Install ${selectedVersion.version_number || selectedVersion.name}` : (isLoadingDetails ? 'Loading...' : 'Select Version')}</span>
                                         </>
                                     )}
                                 </div>
