@@ -171,6 +171,7 @@ function setupGameHandlers(getMainWindow) {
     ipcMain.on('stop-game', () => {
         launcher.kill();
     });
+
     ipcMain.handle('delete-instance-folder', async (event, folderPath) => {
         if (!folderPath) return { success: false, error: 'No path provided' };
 
@@ -196,6 +197,69 @@ function setupGameHandlers(getMainWindow) {
             }
         } catch (e) {
             log.error(`[Instance] Failed to delete folder ${norm}: ${e.message}`);
+            return { success: false, error: e.message };
+        }
+    });
+
+    /**
+     * Get All Instances
+     * Scans the instances directory for valid instance.json files
+     */
+    ipcMain.handle('get-instances', async () => {
+        const userData = app.getPath('userData');
+        const instancesDir = path.join(userData, 'instances');
+
+        if (!fs.existsSync(instancesDir)) {
+            try { fs.mkdirSync(instancesDir, { recursive: true }); } catch (e) { }
+            return [];
+        }
+
+        try {
+            const dirs = fs.readdirSync(instancesDir, { withFileTypes: true });
+            const instances = [];
+
+            for (const dir of dirs) {
+                if (dir.isDirectory()) {
+                    const fullPath = path.join(instancesDir, dir.name);
+                    const jsonPath = path.join(fullPath, 'instance.json');
+
+                    if (fs.existsSync(jsonPath)) {
+                        try {
+                            const data = JSON.parse(fs.readFileSync(jsonPath, 'utf8'));
+                            // Ensure the path is correct (in case folder moved? unlikely but safer)
+                            data.path = fullPath;
+                            instances.push(data);
+                        } catch (e) {
+                            log.warn(`[Instance] Failed to parse instance.json in ${dir.name}: ${e.message}`);
+                        }
+                    } else {
+                        // Optional: Handle legacy folders? 
+                        // For now we ignore them to avoid cluttering with temp folders or broken installs.
+                    }
+                }
+            }
+            return instances;
+        } catch (e) {
+            log.error(`[Instance] Failed to scan instances: ${e.message}`);
+            return [];
+        }
+    });
+
+    /**
+     * Save/Update Instance
+     */
+    ipcMain.handle('save-instance', async (event, instanceData) => {
+        if (!instanceData || !instanceData.path) return { success: false, error: 'Invalid instance data' };
+
+        try {
+            if (!fs.existsSync(instanceData.path)) {
+                fs.mkdirSync(instanceData.path, { recursive: true });
+            }
+            const jsonPath = path.join(instanceData.path, 'instance.json');
+            fs.writeFileSync(jsonPath, JSON.stringify(instanceData, null, 4));
+            return { success: true };
+        } catch (e) {
+            log.error(`[Instance] Failed to save instance: ${e.message}`);
             return { success: false, error: e.message };
         }
     });

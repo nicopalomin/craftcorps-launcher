@@ -295,6 +295,29 @@ const ModsView = ({ selectedInstance, instances = [], onInstanceCreated }) => {
         }
     };
 
+    // Helper to check if a specific version (or project generally) is installed
+    const getInstallStatus = (project, version = null) => {
+        if (!instances || project.project_type !== 'modpack') return false;
+
+        const projectId = project.project_id;
+        const versionId = version ? version.id : null;
+
+        // Check if ANY instance matches this project ID
+        // If versionId provided, match strict. If not, maybe just check if existing? 
+        // Be explicit: 
+        if (versionId) {
+            const exactMatch = instances.find(inst => inst.modpackProjectId === projectId && inst.modpackVersionId === versionId);
+            if (exactMatch) return { installed: true, instanceName: exactMatch.name };
+        }
+
+        // If we only care about project level (e.g. "is this modpack installed at all?")
+        // used for general UI cues maybe? But "Install" usually refers to potentially a NEW instance.
+        // However, user request said "don't let them download it again and say 'installed'".
+
+        // Let's stick to version-based checking for the button.
+        return { installed: false };
+    };
+
     const renderDetailView = () => {
         if (!selectedProject) return null;
 
@@ -302,6 +325,10 @@ const ModsView = ({ selectedInstance, instances = [], onInstanceCreated }) => {
         const projectId = selectedProject.project_id;
         const isInstalling = installingStates[projectId];
         const progress = installProgress[projectId];
+
+        // Check if currently selected version is installed
+        const installStatus = getInstallStatus(selectedProject, selectedVersion);
+        const isInstalled = installStatus.installed;
 
         return (
             <div className="flex flex-col h-full animate-in slide-in-from-right-10 duration-300">
@@ -333,13 +360,16 @@ const ModsView = ({ selectedInstance, instances = [], onInstanceCreated }) => {
                         </p>
                     </div>
 
-                    <div className="flex flex-col items-end gap-2 min-w-[200px]">
+                    <div className="flex flex-col items-end gap-2 min-w-[220px]">
                         <div className="flex items-center gap-2 w-full">
                             {/* Main Install Button (Selected Version) */}
                             <button
                                 onClick={() => handleInstall(selectedProject, selectedVersion)}
-                                disabled={isInstalling || !selectedVersion}
-                                className={`flex-1 relative overflow-hidden bg-emerald-600 hover:bg-emerald-500 text-white px-6 py-3 rounded-xl font-bold shadow-lg shadow-emerald-900/20 flex items-center justify-center gap-2 transition-all active:scale-95 disabled:opacity-80 disabled:pointer-events-none`}
+                                disabled={isInstalling || !selectedVersion || isInstalled}
+                                className={`flex-1 relative overflow-hidden text-white px-6 py-3 rounded-xl font-bold shadow-lg flex items-center justify-center gap-2 transition-all active:scale-95 disabled:opacity-80 disabled:pointer-events-none ${isInstalled
+                                        ? 'bg-slate-700 text-slate-300 shadow-none cursor-not-allowed'
+                                        : 'bg-emerald-600 hover:bg-emerald-500 shadow-emerald-900/20'
+                                    }`}
                             >
                                 {isInstalling && progress ? (
                                     <div className="absolute inset-0 bg-emerald-700 z-0">
@@ -353,15 +383,18 @@ const ModsView = ({ selectedInstance, instances = [], onInstanceCreated }) => {
                                 <div className="relative z-10 flex items-center gap-2">
                                     {isInstalling ? (
                                         <>
-                                            {/* <Loader2 size={20} className="animate-spin" /> */}
                                             <span className="text-sm font-medium">
                                                 {progress ? `${Math.round(progress.progress)}%` : 'installing...'}
                                             </span>
                                         </>
                                     ) : (
                                         <>
-                                            <Download size={20} />
-                                            <span>{selectedVersion ? `Install ${selectedVersion.version_number || selectedVersion.name}` : (isLoadingDetails ? 'Loading...' : 'Select Version')}</span>
+                                            {isInstalled ? <Check size={20} className="text-emerald-400" /> : <Download size={20} />}
+                                            <span>
+                                                {isInstalled
+                                                    ? 'Installed'
+                                                    : (selectedVersion ? `Install ${selectedVersion.version_number || selectedVersion.name}` : (isLoadingDetails ? 'Loading...' : 'Select Version'))}
+                                            </span>
                                         </>
                                     )}
                                 </div>
@@ -377,6 +410,12 @@ const ModsView = ({ selectedInstance, instances = [], onInstanceCreated }) => {
                                 </button>
                             )}
                         </div>
+
+                        {isInstalled && (
+                            <div className="text-xs text-emerald-500 font-medium">
+                                Instance: {installStatus.instanceName}
+                            </div>
+                        )}
 
                         {isInstalling && progress && (
                             <div className="text-xs text-right text-slate-400 font-mono space-y-0.5">
@@ -446,41 +485,48 @@ const ModsView = ({ selectedInstance, instances = [], onInstanceCreated }) => {
                                         <div className="col-span-3 text-right">Action</div>
                                     </div>
                                     {versions.length === 0 && <p className="text-center text-slate-500 py-10">No versions found.</p>}
-                                    {versions.map(ver => (
-                                        <div
-                                            key={ver.id}
-                                            onClick={() => setSelectedVersion(ver)}
-                                            className={`grid grid-cols-12 gap-4 items-center border rounded-lg p-3 transition-colors cursor-pointer ${selectedVersion?.id === ver.id
-                                                ? 'bg-emerald-900/20 border-emerald-500/50'
-                                                : 'bg-slate-800/50 hover:bg-slate-800 border-white/5'
-                                                }`}
-                                        >
-                                            <div className="col-span-4 font-medium text-slate-200 truncate flex items-center gap-2">
-                                                {selectedVersion?.id === ver.id && <Check size={14} className="text-emerald-500" />}
-                                                <span title={ver.name}>{ver.name}</span>
+                                    {versions.map(ver => {
+                                        const verStatus = getInstallStatus(selectedProject, ver);
+                                        const verInstalled = verStatus.installed;
+
+                                        return (
+                                            <div
+                                                key={ver.id}
+                                                onClick={() => setSelectedVersion(ver)}
+                                                className={`grid grid-cols-12 gap-4 items-center border rounded-lg p-3 transition-colors cursor-pointer ${selectedVersion?.id === ver.id
+                                                    ? 'bg-emerald-900/20 border-emerald-500/50'
+                                                    : 'bg-slate-800/50 hover:bg-slate-800 border-white/5'
+                                                    }`}
+                                            >
+                                                <div className="col-span-4 font-medium text-slate-200 truncate flex items-center gap-2">
+                                                    {selectedVersion?.id === ver.id && <Check size={14} className="text-emerald-500" />}
+                                                    {verInstalled && <span className="bg-emerald-900/30 text-emerald-400 text-[10px] px-1.5 py-0.5 rounded uppercase font-bold">Inst</span>}
+                                                    <span title={ver.name}>{ver.name}</span>
+                                                </div>
+                                                <div className="col-span-3 flex flex-wrap gap-1">
+                                                    {ver.game_versions.slice(0, 3).map(gv => (
+                                                        <span key={gv} className="px-1.5 py-0.5 bg-slate-900 rounded text-xs text-slate-400">{gv}</span>
+                                                    ))}
+                                                    {ver.game_versions.length > 3 && <span className="text-xs text-slate-500">+{ver.game_versions.length - 3}</span>}
+                                                </div>
+                                                <div className="col-span-2 flex flex-wrap gap-1">
+                                                    {ver.loaders.map(l => (
+                                                        <span key={l} className="px-1.5 py-0.5 bg-emerald-900/30 text-emerald-400 rounded text-xs uppercase">{l}</span>
+                                                    ))}
+                                                </div>
+                                                <div className="col-span-3 flex justify-end">
+                                                    <button
+                                                        onClick={(e) => { e.stopPropagation(); if (!verInstalled) handleInstall(selectedProject, ver); }}
+                                                        disabled={verInstalled}
+                                                        className={`p-2 rounded-lg transition-colors ${verInstalled ? 'text-emerald-500 bg-emerald-900/20 cursor-default' : 'hover:bg-emerald-600 text-slate-400 hover:text-white'}`}
+                                                        title={verInstalled ? "Installed" : "Quick Install"}
+                                                    >
+                                                        {verInstalled ? <Check size={16} /> : <Download size={16} />}
+                                                    </button>
+                                                </div>
                                             </div>
-                                            <div className="col-span-3 flex flex-wrap gap-1">
-                                                {ver.game_versions.slice(0, 3).map(gv => (
-                                                    <span key={gv} className="px-1.5 py-0.5 bg-slate-900 rounded text-xs text-slate-400">{gv}</span>
-                                                ))}
-                                                {ver.game_versions.length > 3 && <span className="text-xs text-slate-500">+{ver.game_versions.length - 3}</span>}
-                                            </div>
-                                            <div className="col-span-2 flex flex-wrap gap-1">
-                                                {ver.loaders.map(l => (
-                                                    <span key={l} className="px-1.5 py-0.5 bg-emerald-900/30 text-emerald-400 rounded text-xs uppercase">{l}</span>
-                                                ))}
-                                            </div>
-                                            <div className="col-span-3 flex justify-end">
-                                                <button
-                                                    onClick={(e) => { e.stopPropagation(); handleInstall(selectedProject, ver); }}
-                                                    className="p-2 hover:bg-emerald-600 rounded-lg text-slate-400 hover:text-white transition-colors"
-                                                    title="Quick Install"
-                                                >
-                                                    <Download size={16} />
-                                                </button>
-                                            </div>
-                                        </div>
-                                    ))}
+                                        )
+                                    })}
                                 </div>
                             )}
 
