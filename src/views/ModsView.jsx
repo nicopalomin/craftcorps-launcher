@@ -15,9 +15,16 @@ const ModsView = ({ selectedInstance, instances = [], onInstanceCreated }) => {
     // -- State: Search --
     const [searchQuery, setSearchQuery] = useState('');
     const [projectType, setProjectType] = useState('mod'); // 'mod' or 'modpack'
+    const [filterVersion, setFilterVersion] = useState('');
+    const [filterCategory, setFilterCategory] = useState('');
     const [results, setResults] = useState([]);
     const [isSearching, setIsSearching] = useState(false);
     const [searchError, setSearchError] = useState(null);
+
+    // Filter Options State
+    const [availableVersions, setAvailableVersions] = useState([]);
+    const [availableCategories, setAvailableCategories] = useState([]);
+    const [isLoadingFilters, setIsLoadingFilters] = useState(false);
 
     // -- State: Detail View --
     const [selectedProject, setSelectedProject] = useState(null); // The basic project info from search
@@ -62,13 +69,82 @@ const ModsView = ({ selectedInstance, instances = [], onInstanceCreated }) => {
         return `${minutes}m ${seconds % 60}s`;
     };
 
+    // Helper: Compare Versions (v1 >= v2)
+    const isVersionAtLeast = (v1, v2) => {
+        const p1 = v1.split('.').map(Number);
+        const p2 = v2.split('.').map(Number);
+        for (let i = 0; i < Math.max(p1.length, p2.length); i++) {
+            const n1 = p1[i] || 0;
+            const n2 = p2[i] || 0;
+            if (n1 > n2) return true;
+            if (n1 < n2) return false;
+        }
+        return true;
+    };
+
+    // Initial Filter Load
+    useEffect(() => {
+        const loadFilters = async () => {
+            if (!window.electronAPI?.modrinthGetTags) return;
+            setIsLoadingFilters(true);
+            try {
+                // Fetch Versions
+                const vRes = await window.electronAPI.modrinthGetTags('game_version');
+                if (vRes.success) {
+                    // Filter for release versions only, sort descending by date (assume API order or name)
+                    // The API returns objects with `version`, `version_type`, etc.
+                    // We only want `release` types generally, or allow snapshots if user wants (stick to release for now)
+                    const releases = vRes.data
+                        .filter(v => v.version_type === 'release')
+                        .map(v => v.version)
+                        .filter(v => isVersionAtLeast(v, '1.7.10')); // Limit to >= 1.7.10
+                    setAvailableVersions(releases);
+                }
+
+                // Fetch Categories
+                const cRes = await window.electronAPI.modrinthGetTags('category');
+                if (cRes.success) {
+                    console.log("Categories fetched:", cRes.data); // Debug log
+                    // Map to {label, value}
+                    // Relaxed filtering: just check if 'project_type' matches or is effectively generic
+                    const cats = cRes.data
+                        // .filter(c => !c.header) // Removed potential aggressive filter
+                        .filter(c => {
+                            // Some categories might be purely for display headers in Modrinth UI, but API usually returns flat list
+                            // If 'header' exists, it might be a header item, but let's check name.
+                            // We want items that are selectable categories.
+                            // Modrinth categories usually have an icon too.
+                            return c.project_type === projectType || !c.project_type || c.project_type === 'mod' || c.project_type === 'modpack';
+                        })
+                        .map(c => ({
+                            label: c.name.charAt(0).toUpperCase() + c.name.slice(1),
+                            value: c.name.toLowerCase()
+                        }));
+
+                    // Deduplicate just in case
+                    const uniqueCats = [...new Map(cats.map(item => [item.value, item])).values()];
+                    // Sort alphabetically
+                    uniqueCats.sort((a, b) => a.label.localeCompare(b.label));
+
+                    setAvailableCategories(uniqueCats);
+                }
+
+            } catch (e) {
+                console.error("Failed to load filters", e);
+            } finally {
+                setIsLoadingFilters(false);
+            }
+        };
+        loadFilters();
+    }, [projectType]); // Reload categories if project type changes? Some categories are specific.
+
     // -- Effects: Search --
     useEffect(() => {
         const timer = setTimeout(() => {
             performSearch(searchQuery);
         }, 500);
         return () => clearTimeout(timer);
-    }, [searchQuery, projectType]);
+    }, [searchQuery, projectType, filterVersion, filterCategory]);
 
     // -- Effects: Load Details --
     useEffect(() => {
@@ -94,6 +170,8 @@ const ModsView = ({ selectedInstance, instances = [], onInstanceCreated }) => {
             const response = await window.electronAPI.modrinthSearch({
                 query: query,
                 type: projectType,
+                version: filterVersion || undefined,
+                category: filterCategory || undefined,
                 limit: 24
             });
             if (response.success) {
@@ -367,8 +445,8 @@ const ModsView = ({ selectedInstance, instances = [], onInstanceCreated }) => {
                                 onClick={() => handleInstall(selectedProject, selectedVersion)}
                                 disabled={isInstalling || !selectedVersion || isInstalled}
                                 className={`flex-1 relative overflow-hidden text-white px-6 py-3 rounded-xl font-bold shadow-lg flex items-center justify-center gap-2 transition-all active:scale-95 disabled:opacity-80 disabled:pointer-events-none ${isInstalled
-                                        ? 'bg-slate-700 text-slate-300 shadow-none cursor-not-allowed'
-                                        : 'bg-emerald-600 hover:bg-emerald-500 shadow-emerald-900/20'
+                                    ? 'bg-slate-700 text-slate-300 shadow-none cursor-not-allowed'
+                                    : 'bg-emerald-600 hover:bg-emerald-500 shadow-emerald-900/20'
                                     }`}
                             >
                                 {isInstalling && progress ? (
@@ -562,40 +640,70 @@ const ModsView = ({ selectedInstance, instances = [], onInstanceCreated }) => {
 
     const renderGridView = () => (
         <>
-            <div className="flex items-center justify-between mb-6">
-                <h2 className="text-3xl font-bold text-white">{t('mods_title') || 'Marketplace'}</h2>
-                <div className="flex bg-slate-900 border border-slate-800 rounded-lg p-1">
-                    <button
-                        onClick={() => { setProjectType('mod'); setSelectedProject(null); }}
-                        className={`px-4 py-1.5 rounded-md text-sm font-medium transition-colors flex items-center gap-2 ${projectType === 'mod' ? 'bg-emerald-600 text-white shadow-lg' : 'text-slate-400 hover:text-white'}`}
-                    >
-                        <Box size={16} /> Mods
-                    </button>
-                    <button
-                        onClick={() => { setProjectType('modpack'); setSelectedProject(null); }}
-                        className={`px-4 py-1.5 rounded-md text-sm font-medium transition-colors flex items-center gap-2 ${projectType === 'modpack' ? 'bg-purple-600 text-white shadow-lg' : 'text-slate-400 hover:text-white'}`}
-                    >
-                        <Package size={16} /> Modpacks
-                    </button>
-                </div>
-            </div>
-
-            <div className="flex gap-4 mb-6">
-                <div className="flex-1 bg-slate-900 border border-slate-700 rounded-xl px-4 py-3 flex items-center gap-3 focus-within:border-emerald-500/50 focus-within:ring-2 focus-within:ring-emerald-500/20 transition-all">
-                    <Search size={20} className="text-slate-500" />
-                    <input
-                        type="text"
-                        value={searchQuery}
-                        onChange={(e) => setSearchQuery(e.target.value)}
-                        placeholder={`Search ${projectType}s for ${selectedInstance ? selectedInstance.version : 'Minecraft'}...`}
-                        className="bg-transparent border-none focus:outline-none text-slate-200 w-full placeholder:text-slate-600"
-                    />
-                </div>
-                {isSearching && (
-                    <div className="flex items-center justify-center w-12 text-emerald-500 animate-spin">
-                        <Loader2 size={24} />
+            <div className="flex flex-col gap-4 mb-6">
+                <div className="flex items-center justify-between">
+                    <h2 className="text-3xl font-bold text-white">{t('mods_title') || 'Marketplace'}</h2>
+                    <div className="flex bg-slate-900 border border-slate-800 rounded-lg p-1">
+                        <button
+                            onClick={() => { setProjectType('mod'); setSelectedProject(null); }}
+                            className={`px-4 py-1.5 rounded-md text-sm font-medium transition-colors flex items-center gap-2 ${projectType === 'mod' ? 'bg-emerald-600 text-white shadow-lg' : 'text-slate-400 hover:text-white'}`}
+                        >
+                            <Box size={16} /> Mods
+                        </button>
+                        <button
+                            onClick={() => { setProjectType('modpack'); setSelectedProject(null); }}
+                            className={`px-4 py-1.5 rounded-md text-sm font-medium transition-colors flex items-center gap-2 ${projectType === 'modpack' ? 'bg-purple-600 text-white shadow-lg' : 'text-slate-400 hover:text-white'}`}
+                        >
+                            <Package size={16} /> Modpacks
+                        </button>
                     </div>
-                )}
+                </div>
+
+                <div className="flex gap-2 items-center">
+                    {/* Search Bar */}
+                    <div className="flex-1 bg-slate-900 border border-slate-700 rounded-xl px-4 py-3 flex items-center gap-3 focus-within:border-emerald-500/50 focus-within:ring-2 focus-within:ring-emerald-500/20 transition-all">
+                        <Search size={20} className="text-slate-500" />
+                        <input
+                            type="text"
+                            value={searchQuery}
+                            onChange={(e) => setSearchQuery(e.target.value)}
+                            placeholder={`Search ${projectType}s...`}
+                            className="bg-transparent border-none focus:outline-none text-slate-200 w-full placeholder:text-slate-600"
+                        />
+                    </div>
+
+                    {/* Version Filter */}
+                    <select
+                        value={filterVersion}
+                        onChange={(e) => setFilterVersion(e.target.value)}
+                        disabled={isLoadingFilters}
+                        className="bg-slate-900 border border-slate-700 text-slate-300 text-sm rounded-xl px-4 py-3 focus:ring-emerald-500 focus:border-emerald-500 block outline-none appearance-none disabled:opacity-50"
+                    >
+                        <option value="">All Versions</option>
+                        {availableVersions.map(v => (
+                            <option key={v} value={v}>{v}</option>
+                        ))}
+                    </select>
+
+                    {/* Category Filter */}
+                    <select
+                        value={filterCategory}
+                        onChange={(e) => setFilterCategory(e.target.value)}
+                        disabled={isLoadingFilters}
+                        className="bg-slate-900 border border-slate-700 text-slate-300 text-sm rounded-xl px-4 py-3 focus:ring-emerald-500 focus:border-emerald-500 block outline-none appearance-none disabled:opacity-50"
+                    >
+                        <option value="">All Categories</option>
+                        {availableCategories.map(c => (
+                            <option key={c.value} value={c.value}>{c.label}</option>
+                        ))}
+                    </select>
+
+                    {isSearching && (
+                        <div className="flex items-center justify-center w-12 text-emerald-500 animate-spin">
+                            <Loader2 size={24} />
+                        </div>
+                    )}
+                </div>
             </div>
 
             <div className="flex-1 overflow-y-auto custom-scrollbar pr-2">

@@ -35,11 +35,17 @@ function setupModrinthHandlers() {
     /**
      * Search Modrinth
      */
-    ipcMain.handle('modrinth-search', async (event, { query, type, offset = 0, limit = 20 }) => {
+    ipcMain.handle('modrinth-search', async (event, { query, type, version, category, offset = 0, limit = 20 }) => {
         try {
             const facets = [];
             if (type) {
                 facets.push([`project_type:${type}`]);
+            }
+            if (version) {
+                facets.push([`versions:${version}`]);
+            }
+            if (category) {
+                facets.push([`categories:${category}`]);
             }
 
             const results = await client.searchProjects({
@@ -52,6 +58,30 @@ function setupModrinthHandlers() {
             return { success: true, data: results };
         } catch (error) {
             log.error(`[Modrinth] Search failed: ${error.message}`);
+            return { success: false, error: error.message };
+        }
+    });
+
+    /**
+     * Get Modrinth Tags (Categories, Versions, Loaders)
+     */
+    ipcMain.handle('modrinth-get-tags', async (event, { type }) => {
+        try {
+            // type can be 'category', 'game_version', 'loader'
+            // Endpoint: /v2/tag/{type}
+            // The client library might not expose direct 'getTags', lets use raw HTTP or check client methods. 
+            // Checking xmcl docs or types... client has request method?
+            // Actually, just using built-in fetch or axios if the client doesn't support it directly
+            // is safer. But wait, we can just use the provided fetch from electron? No, use node-fetch or native fetch in 18+
+
+            // Let's rely on native fetch since Electron uses Node 18+
+            const baseUrl = 'https://api.modrinth.com/v2';
+            const res = await fetch(`${baseUrl}/tag/${type}`);
+            if (!res.ok) throw new Error(`API Error: ${res.statusText}`);
+            const data = await res.json();
+            return { success: true, data };
+        } catch (error) {
+            log.error(`[Modrinth] Get Tags ${type} failed: ${error.message}`);
             return { success: false, error: error.message };
         }
     });

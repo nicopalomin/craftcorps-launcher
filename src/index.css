@@ -31,6 +31,31 @@
     background-color: rgba(71, 85, 105, 0.8);
   }
 
+  /* Custom scrollbar for select elements (Firefox) */
+  select {
+    scrollbar-width: thin;
+    scrollbar-color: rgba(51, 65, 85, 0.5) transparent;
+  }
+
+  /* Custom scrollbar for select elements (Webkit) */
+  select::-webkit-scrollbar {
+    width: 8px;
+  }
+
+  select::-webkit-scrollbar-track {
+    background: #0f172a; /* slate-900 to match bg */
+  }
+
+  select::-webkit-scrollbar-thumb {
+    background-color: #334155; /* slate-700 */
+    border-radius: 4px;
+    border: 2px solid #0f172a;
+  }
+
+  select::-webkit-scrollbar-thumb:hover {
+    background-color: #475569; /* slate-600 */
+  }
+
   @keyframes loading-bar {
     0% {
       transform: translateX(-100%);
