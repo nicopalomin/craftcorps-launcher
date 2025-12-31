@@ -72,6 +72,7 @@
     "react-dom": "^18.2.0",
     "react-i18next": "^16.5.0",
     "react-markdown": "^10.1.0",
+    "rehype-raw": "^7.0.0",
     "remark-gfm": "^4.0.1",
     "tapable": "^2.3.0",
     "tree-kill": "^1.2.2"

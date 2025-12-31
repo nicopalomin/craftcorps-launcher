@@ -4,6 +4,8 @@ import {
 } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import { useToast } from '../../contexts/ToastContext';
+import remarkGfm from 'remark-gfm';
+import rehypeRaw from 'rehype-raw';
 
 export const ModsDetailView = ({
     selectedProject,
@@ -169,10 +171,11 @@ export const ModsDetailView = ({
                                     {selectedProject.description}
                                 </p>
                                 {projectDetails?.body ? (
-                                    <div className="prose prose-invert prose-emerald max-w-none prose-img:rounded-xl prose-a:text-emerald-400 prose-headings:text-slate-200 break-words">
+                                    <div className="prose prose-invert prose-emerald max-w-none prose-img:rounded-xl prose-img:my-8 prose-p:my-4 prose-headings:text-slate-200 prose-headings:my-6 break-words">
                                         <ReactMarkdown
                                             children={projectDetails.body}
-                                            // remarkPlugins={[remarkGfm]} 
+                                            remarkPlugins={[remarkGfm]}
+                                            rehypePlugins={[rehypeRaw]}
                                             components={{
                                                 a: ({ node, ...props }) => <a {...props} target="_blank" rel="noopener noreferrer" className="text-emerald-400 hover:text-emerald-300 no-underline hover:underline" />
                                             }}
