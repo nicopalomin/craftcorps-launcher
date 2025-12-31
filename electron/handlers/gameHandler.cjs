@@ -246,6 +246,18 @@ function setupGameHandlers(getMainWindow) {
                             const data = JSON.parse(fs.readFileSync(jsonPath, 'utf8'));
                             // Ensure the path is correct (in case folder moved? unlikely but safer)
                             data.path = fullPath;
+
+                            // Load Icon if exists
+                            const iconPath = path.join(fullPath, 'icon.png');
+                            if (fs.existsSync(iconPath)) {
+                                try {
+                                    const b64 = fs.readFileSync(iconPath).toString('base64');
+                                    data.icon = `data:image/png;base64,${b64}`;
+                                } catch (e) {
+                                    // ignore corrupt icon
+                                }
+                            }
+
                             instances.push(data);
                         } catch (e) {
                             log.warn(`[Instance] Failed to parse instance.json in ${dir.name}: ${e.message}`);

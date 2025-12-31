@@ -73,3 +73,18 @@ export const COLORS = [
     { name: 'Rose', class: 'bg-rose-500', grad: 'from-rose-900/40 to-slate-900' },
     { name: 'Slate', class: 'bg-slate-500', grad: 'from-slate-800 to-slate-950' },
 ];
+
+export const INSTANCE_ICONS = [
+    'Sprout', 'Pickaxe', 'Axe', 'Sword', 'Shield', 'Box',
+    'Map', 'Compass', 'Flame', 'Snowflake', 'Droplet',
+    'Zap', 'Heart', 'Skull', 'Ghost', 'Trophy'
+];
+
+export const GLYPH_COLORS = [
+    { name: 'White', class: 'text-white', bgClass: 'bg-white' },
+    { name: 'Red', class: 'text-red-500', bgClass: 'bg-red-500' },
+    { name: 'Orange', class: 'text-orange-500', bgClass: 'bg-orange-500' },
+    { name: 'Yellow', class: 'text-yellow-400', bgClass: 'bg-yellow-400' },
+    { name: 'Green', class: 'text-emerald-400', bgClass: 'bg-emerald-400' },
+    { name: 'Blue', class: 'text-cyan-400', bgClass: 'bg-cyan-400' },
+];

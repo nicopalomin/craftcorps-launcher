@@ -367,6 +367,22 @@ function setupModrinthHandlers() {
                 }
             }
 
+            // Download Icon if available
+            if (project.icon_url && !task.cancelled) {
+                try {
+                    log.info(`[Modrinth] Downloading modpack icon...`);
+                    const iconUrl = project.icon_url;
+                    const iconPath = path.join(instanceDir, 'icon.png');
+                    const res = await fetch(iconUrl);
+                    if (res.ok) {
+                        const buffer = await res.arrayBuffer();
+                        fs.writeFileSync(iconPath, Buffer.from(buffer));
+                    }
+                } catch (e) {
+                    log.warn(`[Modrinth] Failed to download pack icon: ${e.message}`);
+                }
+            }
+
             // Persist Instance Metadata (instance.json)
             const instanceId = `inst_${Date.now()}`;
             // Pick rand color/gradient defaults for backend-created instance? 

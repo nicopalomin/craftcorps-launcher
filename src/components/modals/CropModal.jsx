@@ -1,8 +1,19 @@
 import React, { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
-import { X, Sprout, Save, Plus, FolderOpen } from 'lucide-react';
-import { LOADERS, COLORS, FALLBACK_VERSIONS } from '../../data/mockData';
+import {
+    X, Sprout, Save, Plus, FolderOpen,
+    Pickaxe, Axe, Sword, Shield, Box,
+    Map, Compass, Flame, Snowflake, Droplet,
+    Zap, Heart, Skull, Ghost, Trophy
+} from 'lucide-react';
+import { LOADERS, COLORS, FALLBACK_VERSIONS, INSTANCE_ICONS, GLYPH_COLORS } from '../../data/mockData';
 import { fetchMinecraftVersions } from '../../utils/minecraftApi';
+
+const ICON_MAP = {
+    Sprout, Pickaxe, Axe, Sword, Shield, Box,
+    Map, Compass, Flame, Snowflake, Droplet,
+    Zap, Heart, Skull, Ghost, Trophy
+};
 
 const CropModal = ({ isOpen, onClose, onSave, editingCrop }) => {
     const { t } = useTranslation();
@@ -10,6 +21,8 @@ const CropModal = ({ isOpen, onClose, onSave, editingCrop }) => {
     const [loader, setLoader] = useState(LOADERS[0]);
     const [version, setVersion] = useState('');
     const [selectedColor, setSelectedColor] = useState(COLORS[0]);
+    const [selectedIcon, setSelectedIcon] = useState('Sprout');
+    const [selectedGlyphColor, setSelectedGlyphColor] = useState(GLYPH_COLORS[0]);
     const [versions, setVersions] = useState(FALLBACK_VERSIONS);
     const [loadingVersions, setLoadingVersions] = useState(false);
     const [errors, setErrors] = useState({});
@@ -39,6 +52,9 @@ const CropModal = ({ isOpen, onClose, onSave, editingCrop }) => {
                 setServerAddress(editingCrop.serverAddress || '');
                 const color = COLORS.find(c => c.class === editingCrop.iconColor) || COLORS[0];
                 setSelectedColor(color);
+                setSelectedIcon(editingCrop.iconKey || 'Sprout');
+                const gColor = GLYPH_COLORS.find(c => c.class === editingCrop.glyphColor) || GLYPH_COLORS[0];
+                setSelectedGlyphColor(gColor);
             } else {
                 setName('');
                 setLoader(LOADERS[0]);
@@ -46,6 +62,8 @@ const CropModal = ({ isOpen, onClose, onSave, editingCrop }) => {
                 setAutoConnect(false);
                 setServerAddress('');
                 setSelectedColor(COLORS[0]);
+                setSelectedIcon('Sprout');
+                setSelectedGlyphColor(GLYPH_COLORS[0]);
             }
         }
     }, [isOpen, editingCrop, versions]);
@@ -95,6 +113,8 @@ const CropModal = ({ isOpen, onClose, onSave, editingCrop }) => {
             loader,
             version,
             iconColor: selectedColor.class,
+            iconKey: selectedIcon,
+            glyphColor: selectedGlyphColor.class,
             bgGradient: selectedColor.grad,
             status: editingCrop ? editingCrop.status : 'Ready',
             lastPlayed: editingCrop ? editingCrop.lastPlayed : null,
@@ -126,19 +146,67 @@ const CropModal = ({ isOpen, onClose, onSave, editingCrop }) => {
                     {/* Icon Selector */}
                     <div>
                         <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">{t('crop_section_icon')}</label>
-                        <div className="flex items-center gap-4">
-                            <div className={`w-16 h-16 rounded-xl ${selectedColor.class} flex items-center justify-center text-slate-900 shadow-lg`}>
-                                <Sprout size={32} />
+                        <div className="flex items-start gap-4">
+                            <div className={`w-16 h-16 shrink-0 rounded-xl ${editingCrop?.icon ? 'bg-transparent' : selectedColor.class} flex items-center justify-center ${selectedGlyphColor.class} shadow-lg overflow-hidden transition-colors`}>
+                                {editingCrop?.icon ? (
+                                    <img src={editingCrop.icon} alt={editingCrop.name} className="w-full h-full object-cover" />
+                                ) : (
+                                    React.createElement(ICON_MAP[selectedIcon] || Sprout, { size: 32 })
+                                )}
                             </div>
-                            <div className="flex-1 grid grid-cols-6 gap-2">
-                                {COLORS.map(color => (
-                                    <button
-                                        key={color.name}
-                                        type="button"
-                                        onClick={() => setSelectedColor(color)}
-                                        className={`w-full aspect-square rounded-lg ${color.class} ${selectedColor.name === color.name ? 'ring-2 ring-white ring-offset-2 ring-offset-slate-900' : 'opacity-70 hover:opacity-100'} transition-all`}
-                                    />
-                                ))}
+                            <div className="flex-1 space-y-4">
+                                {/* Background */}
+                                <div>
+                                    <div className="text-[10px] text-slate-500 font-bold mb-2 uppercase">Background</div>
+                                    <div className="flex flex-wrap gap-2">
+                                        {COLORS.map(color => (
+                                            <button
+                                                key={color.name}
+                                                type="button"
+                                                onClick={() => setSelectedColor(color)}
+                                                className={`w-10 h-10 rounded-lg ${color.class} ${selectedColor.name === color.name ? 'ring-2 ring-white ring-offset-2 ring-offset-slate-900 scale-105' : 'opacity-70 hover:opacity-100'} transition-all`}
+                                                title={color.name}
+                                            />
+                                        ))}
+                                    </div>
+                                </div>
+
+                                {/* Glyph Colors */}
+                                <div>
+                                    <div className="text-[10px] text-slate-500 font-bold mb-2 uppercase">Icon Paint</div>
+                                    <div className="flex flex-wrap gap-2">
+                                        {GLYPH_COLORS.map(gColor => (
+                                            <button
+                                                key={gColor.name}
+                                                type="button"
+                                                onClick={() => setSelectedGlyphColor(gColor)}
+                                                className={`w-10 h-10 rounded-lg ${gColor.bgClass} border-2 relative transition-all ${selectedGlyphColor.name === gColor.name ? 'border-white scale-110 ring-2 ring-slate-900 shadow-lg z-10' : 'border-transparent hover:border-white/50 hover:scale-105 ring-1 ring-inset ring-white/10 opacity-90 hover:opacity-100'}`}
+                                                title={gColor.name}
+                                            />
+                                        ))}
+                                    </div>
+                                </div>
+
+                                {/* Icons Grid */}
+                                <div>
+                                    <div className="text-[10px] text-slate-500 font-bold mb-2 uppercase">Icon Shape</div>
+                                    <div className="grid grid-cols-8 gap-2">
+                                        {INSTANCE_ICONS.map(iconKey => {
+                                            const Icon = ICON_MAP[iconKey];
+                                            return (
+                                                <button
+                                                    key={iconKey}
+                                                    type="button"
+                                                    onClick={() => setSelectedIcon(iconKey)}
+                                                    className={`w-full aspect-square rounded-lg flex items-center justify-center bg-slate-800 border ${selectedIcon === iconKey ? 'border-emerald-500 text-emerald-500 bg-emerald-500/10' : 'border-slate-700 text-slate-400 hover:text-slate-200 hover:bg-slate-700'} transition-all`}
+                                                    title={iconKey}
+                                                >
+                                                    <Icon size={16} />
+                                                </button>
+                                            );
+                                        })}
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -229,21 +297,7 @@ const CropModal = ({ isOpen, onClose, onSave, editingCrop }) => {
                         </div>
                     </div>
 
-                    {/* Color Picker */}
-                    <div>
-                        <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">{t('crop_label_color')}</label>
-                        <div className="flex gap-2">
-                            {COLORS.map(color => (
-                                <button
-                                    key={color.name}
-                                    type="button"
-                                    onClick={() => setSelectedColor(color)}
-                                    className={`w-10 h-10 rounded-lg ${color.class} transition-all ${selectedColor.name === color.name ? 'ring-2 ring-white scale-110' : 'opacity-60 hover:opacity-100'}`}
-                                    title={color.name}
-                                />
-                            ))}
-                        </div>
-                    </div>
+
 
                     {/* Server Auto-Connect */}
                     <div className="border-t border-slate-800 pt-4">

@@ -1,11 +1,21 @@
 import React, { useRef, useEffect, useState } from 'react';
-import { Sprout, Play, Loader2, X, ChevronRight, Plus, Edit3, Server, LogOut, PlusCircle, Check, Box, Layers, Cpu, CheckCircle, RefreshCw } from 'lucide-react';
+import {
+    Sprout, Play, Loader2, X, ChevronRight, Plus, Edit3, Server, LogOut, PlusCircle, Check,
+    Box, Layers, Cpu, CheckCircle, RefreshCw,
+    Pickaxe, Axe, Sword, Shield, Map, Compass, Flame, Snowflake, Droplet, Zap, Heart, Skull, Ghost, Trophy
+} from 'lucide-react';
 import QuickSelectCard from '../components/common/QuickSelectCard';
 import BackgroundBlobs from '../components/common/BackgroundBlobs';
 import PlayerAvatar from '../components/common/PlayerAvatar';
 import { useToast } from '../contexts/ToastContext';
 import { useTranslation } from 'react-i18next';
 import { formatLastPlayed } from '../utils/dateUtils';
+
+const ICON_MAP = {
+    Sprout, Pickaxe, Axe, Sword, Shield, Box,
+    Map, Compass, Flame, Snowflake, Droplet,
+    Zap, Heart, Skull, Ghost, Trophy
+};
 
 const HomeView = ({
     selectedInstance,
@@ -326,19 +336,23 @@ const HomeView = ({
                 <div className={`flex flex-col items-center text-center w-full px-8 pb-8 ${isModded ? 'pt-16 max-w-7xl mx-auto' : 'max-w-4xl'}`}>
 
                     {/* Horizontal Hero for Modded */}
-                    <div className={`${isModded ? 'flex items-start gap-12 w-full text-left bg-slate-900/40 p-10 rounded-3xl border border-white/5 backdrop-blur-sm shadow-xl' : 'contents'}`}>
+                    <div className={`${isModded ? 'flex items-start gap-8 w-full text-left bg-slate-900/40 p-8 rounded-3xl border border-white/5 backdrop-blur-sm shadow-xl' : 'contents'}`}>
 
                         {/* Instance Icon */}
                         <div
-                            className={`${isModded ? 'w-32 h-32 shrink-0' : 'w-32 h-32 mb-8'} rounded-3xl ${selectedInstance.iconColor} flex items-center justify-center text-slate-900 shadow-2xl shadow-black/50 transform hover:scale-105 transition-transform duration-300 ring-4 ring-white/10`}
+                            className={`${isModded ? 'w-24 h-24 shrink-0' : 'w-32 h-32 mb-8'} rounded-3xl ${selectedInstance.icon ? 'bg-transparent' : selectedInstance.iconColor} flex items-center justify-center ${selectedInstance.glyphColor || 'text-slate-900'} shadow-2xl shadow-black/50 transform hover:scale-105 transition-transform duration-300 ring-4 ring-white/10 overflow-hidden`}
                         >
-                            <Sprout size={64} />
+                            {selectedInstance.icon ? (
+                                <img src={selectedInstance.icon} alt={selectedInstance.name} className="w-full h-full object-cover" />
+                            ) : (
+                                React.createElement(ICON_MAP[selectedInstance.iconKey] || Sprout, { size: 64 })
+                            )}
                         </div>
 
                         {/* Info & Play */}
                         <div className={isModded ? 'flex-1 min-w-0' : 'contents'}>
                             {/* Title */}
-                            <h1 className={`${isModded ? 'text-4xl mb-4' : 'text-5xl mb-2'} font-bold text-white tracking-tight drop-shadow-lg truncate`}>
+                            <h1 className={`${isModded ? 'text-3xl mb-3' : 'text-5xl mb-2'} font-bold text-white tracking-tight drop-shadow-lg truncate`}>
                                 {selectedInstance.name}
                             </h1>
 
@@ -383,7 +397,7 @@ const HomeView = ({
                                     ) : (
                                         <button
                                             onClick={onPlay}
-                                            className={`group relative w-full max-w-sm bg-emerald-600 hover:bg-emerald-500 text-white rounded-2xl font-bold shadow-[0_0_40px_rgba(5,150,105,0.4)] hover:shadow-[0_0_60px_rgba(5,150,105,0.6)] transform hover:-translate-y-1 active:translate-y-0 active:scale-95 transition-[transform,box-shadow,background-color] duration-200 overflow-hidden flex items-center ring-offset-2 ring-offset-transparent group-hover:ring-2 group-hover:ring-emerald-400/30 ${isModded ? 'py-5 text-2xl justify-between text-left px-8' : 'py-6 text-2xl justify-center gap-3'}`}
+                                            className={`group relative w-full max-w-sm bg-emerald-600 hover:bg-emerald-500 text-white rounded-2xl font-bold shadow-[0_0_40px_rgba(5,150,105,0.4)] hover:shadow-[0_0_60px_rgba(5,150,105,0.6)] transform hover:-translate-y-1 active:translate-y-0 active:scale-95 transition-[transform,box-shadow,background-color] duration-200 overflow-hidden flex items-center ring-offset-2 ring-offset-transparent group-hover:ring-2 group-hover:ring-emerald-400/30 ${isModded ? 'py-4 text-xl justify-between text-left px-6' : 'py-6 text-2xl justify-center gap-3'}`}
                                         >
                                             {/* Shiny Edge Overlay */}
                                             <div className="absolute inset-0 rounded-2xl ring-1 ring-white/10 group-hover:ring-white/30 transition-all pointer-events-none" />

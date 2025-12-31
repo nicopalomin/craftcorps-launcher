@@ -1,6 +1,14 @@
 import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Sprout, Edit3, Trash2, Plus, GripVertical, Server, X } from 'lucide-react';
+import {
+    Sprout, Edit3, Trash2, Plus, GripVertical, Server, X,
+    Pickaxe, Axe, Sword, Shield, Box, Map, Compass, Flame, Snowflake, Droplet, Zap, Heart, Skull, Ghost, Trophy
+} from 'lucide-react';
+const ICON_MAP = {
+    Sprout, Pickaxe, Axe, Sword, Shield, Box,
+    Map, Compass, Flame, Snowflake, Droplet,
+    Zap, Heart, Skull, Ghost, Trophy
+};
 
 const InstancesView = ({ instances, onEditCrop, onDeleteCrop, onSelectInstance, onNewCrop, onReorder }) => {
     const [draggedIndex, setDraggedIndex] = useState(null);
@@ -131,8 +139,12 @@ const InstancesView = ({ instances, onEditCrop, onDeleteCrop, onSelectInstance, 
                         </div>
 
                         <div className="flex justify-between items-start mb-4 relative z-10">
-                            <div className={`w-12 h-12 rounded-lg ${inst.iconColor} flex items-center justify-center text-slate-900`}>
-                                <Sprout size={24} />
+                            <div className={`w-12 h-12 rounded-lg ${inst.icon ? 'bg-transparent' : inst.iconColor} flex items-center justify-center ${inst.glyphColor || 'text-slate-900'} overflow-hidden`}>
+                                {inst.icon ? (
+                                    <img src={inst.icon} alt={inst.name} className="w-full h-full object-cover" />
+                                ) : (
+                                    React.createElement(ICON_MAP[inst.iconKey] || Sprout, { size: 24 })
+                                )}
                             </div>
                             <div className="flex gap-1">
                                 <button
