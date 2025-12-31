@@ -14,7 +14,8 @@ const ModsView = ({ selectedInstance, instances = [], onInstanceCreated }) => {
 
     // -- State: Search --
     const [searchQuery, setSearchQuery] = useState('');
-    const [projectType, setProjectType] = useState('mod'); // 'mod' or 'modpack'
+    const [projectType, setProjectType] = useState('modpack'); // Default to 'modpack'
+
     const [filterVersion, setFilterVersion] = useState('');
     const [filterCategory, setFilterCategory] = useState('');
     const [results, setResults] = useState([]);
@@ -644,12 +645,17 @@ const ModsView = ({ selectedInstance, instances = [], onInstanceCreated }) => {
                 <div className="flex items-center justify-between">
                     <h2 className="text-3xl font-bold text-white">{t('mods_title') || 'Marketplace'}</h2>
                     <div className="flex bg-slate-900 border border-slate-800 rounded-lg p-1">
-                        <button
-                            onClick={() => { setProjectType('mod'); setSelectedProject(null); }}
-                            className={`px-4 py-1.5 rounded-md text-sm font-medium transition-colors flex items-center gap-2 ${projectType === 'mod' ? 'bg-emerald-600 text-white shadow-lg' : 'text-slate-400 hover:text-white'}`}
-                        >
-                            <Box size={16} /> Mods
-                        </button>
+                        <div className="relative group">
+                            <button
+                                disabled
+                                className="px-4 py-1.5 rounded-md text-sm font-medium transition-colors flex items-center gap-2 text-slate-600 cursor-not-allowed"
+                            >
+                                <Box size={16} /> Mods
+                            </button>
+                            <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2 py-1 bg-slate-900 border border-slate-700 text-xs text-slate-300 rounded shadow-xl whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50">
+                                Coming soon...
+                            </div>
+                        </div>
                         <button
                             onClick={() => { setProjectType('modpack'); setSelectedProject(null); }}
                             className={`px-4 py-1.5 rounded-md text-sm font-medium transition-colors flex items-center gap-2 ${projectType === 'modpack' ? 'bg-purple-600 text-white shadow-lg' : 'text-slate-400 hover:text-white'}`}
