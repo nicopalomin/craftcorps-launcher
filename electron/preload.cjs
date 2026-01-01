@@ -56,11 +56,34 @@ contextBridge.exposeInMainWorld('electronAPI', {
     modrinthInstallMod: (params) => ipcRenderer.invoke('modrinth-install-mod', params),
     getInstanceMods: (instancePath) => ipcRenderer.invoke('get-instance-mods', instancePath),
     deleteMod: (filePath) => ipcRenderer.invoke('delete-mod', filePath),
-    addInstanceMods: (instancePath, filePaths) => ipcRenderer.invoke('add-instance-mods', { instancePath, filePaths }),
+    addInstanceMods: async (instancePath, filePaths) => {
+        console.log('[Preload] Invoking add-instance-mods', { instancePath, count: filePaths?.length });
+        try {
+            const result = await ipcRenderer.invoke('add-instance-mods', { instancePath, filePaths });
+            console.log('[Preload] Result from add-instance-mods', result);
+            return result;
+        } catch (e) {
+            console.error('[Preload] Error invoking add-instance-mods', e);
+            throw e;
+        }
+    },
     selectModFiles: () => ipcRenderer.invoke('select-mod-files'),
     modrinthInstallModpack: (params) => ipcRenderer.invoke('modrinth-install-modpack', params),
     modrinthCancelInstall: (projectId) => ipcRenderer.invoke('modrinth-cancel-install', { projectId }),
     getInstanceResourcePacks: (instancePath) => ipcRenderer.invoke('get-instance-resource-packs', instancePath),
+    selectResourcePackFiles: () => ipcRenderer.invoke('select-resource-pack-files'),
+    addInstanceResourcePacks: async (instancePath, filePaths) => {
+        console.log('[Preload] Invoking add-instance-resource-packs', { instancePath, count: filePaths?.length });
+        try {
+            const result = await ipcRenderer.invoke('add-instance-resource-packs', { instancePath, filePaths });
+            console.log('[Preload] Result from add-instance-resource-packs', result);
+            return result;
+        } catch (e) {
+            console.error('[Preload] Error invoking add-instance-resource-packs', e);
+            throw e;
+        }
+    },
+    deleteResourcePack: (filePath) => ipcRenderer.invoke('delete-resource-pack', filePath),
 
     // Instances
     getInstances: () => ipcRenderer.invoke('get-instances'),

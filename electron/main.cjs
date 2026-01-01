@@ -120,8 +120,8 @@ app.whenReady().then(async () => {
     setupWindowHandlers(getMainWindow);
     setupAuthHandlers(getMainWindow);
     setupJavaHandlers(getMainWindow);
-    setupAppHandlers(getMainWindow);
     setupGameHandlers(getMainWindow);
+    console.log('[MAIN] Setting up Mod Handlers...');
     setupModHandlers(getMainWindow);
 
     app.on('activate', () => {

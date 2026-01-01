@@ -1,7 +1,7 @@
 import React, { useRef, useEffect, useState } from 'react';
 import {
     Sprout, Play, Loader2, X, ChevronRight, Plus, Edit3, Server, LogOut, PlusCircle, Check,
-    Box, Layers, Cpu, CheckCircle, RefreshCw,
+    Box, Layers, Cpu, CheckCircle, RefreshCw, Search,
     Pickaxe, Axe, Sword, Shield, Map, Compass, Flame, Snowflake, Droplet, Zap, Heart, Skull, Ghost, Trophy
 } from 'lucide-react';
 import QuickSelectCard from '../components/common/QuickSelectCard';
@@ -52,53 +52,67 @@ const HomeView = ({
         return () => document.removeEventListener("mousedown", handleClickOutside);
     }, [setShowProfileMenu]);
 
-    const { showToast } = useToast();
+    const { addToast: showToast } = useToast();
     const [installedMods, setInstalledMods] = useState([]);
     const [isLoadingMods, setIsLoadingMods] = useState(false);
     const [resourcePacks, setResourcePacks] = useState(null);
     const [isLoadingResourcePacks, setIsLoadingResourcePacks] = useState(false);
     const [isDragging, setIsDragging] = useState(false);
+    const [modSearchQuery, setModSearchQuery] = useState('');
+    const [resourcePackSearchQuery, setResourcePackSearchQuery] = useState('');
 
     const handleAddMods = async (filePaths = null) => {
-        if (!selectedInstance?.path || !window.electronAPI) return;
+        if (!selectedInstance?.path || !window.electronAPI) {
+            showToast(t('Error: Configuration missing'), 'error');
+            return;
+        }
 
         let files = filePaths;
         if (!files) {
-            files = await window.electronAPI.selectModFiles();
+            try {
+                files = await window.electronAPI.selectModFiles();
+            } catch (err) {
+                console.error(err);
+                return;
+            }
         }
 
-        if (files && files.length > 0) {
-            setIsLoadingMods(true);
+        if (files && Array.isArray(files) && files.length > 0) {
             showToast(t('Adding mods...'), 'info');
-            try {
-                // Timeout logic to prevent hanging
-                const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error('Operation timed out')), 15000));
 
-                const result = await Promise.race([
-                    window.electronAPI.addInstanceMods(selectedInstance.path, files),
-                    timeoutPromise
-                ]);
+            try {
+                // simple direct call
+                const result = await window.electronAPI.addInstanceMods(selectedInstance.path, files);
 
                 if (result.success) {
-                    showToast(t('Successfully added {{count}} mods', { count: result.added }), 'success');
-                    if (result.addedMods && result.addedMods.length > 0) {
+                    if (result.added > 0) {
+                        showToast(t('Successfully added {{count}} mods', { count: result.added }), 'success');
+                    }
+
+                    // Optimistic update
+                    if (result.addedMods && Array.isArray(result.addedMods)) {
                         setInstalledMods(prev => {
-                            const prevWithoutNew = prev.filter(existing => !result.addedMods.some(newMod => newMod.path === existing.path));
-                            return [...result.addedMods, ...prevWithoutNew];
+                            if (!Array.isArray(prev)) return result.addedMods;
+                            const prevPaths = new Set(prev.map(m => m.path));
+                            const newMods = result.addedMods.filter(m => !prevPaths.has(m.path));
+                            return [...newMods, ...prev];
                         });
                     }
                 } else {
                     showToast(result.error || t('Failed to add mods'), 'error');
                 }
 
+                // Show warnings for specific skipped files (up to 3)
                 if (result.errors && result.errors.length > 0) {
-                    showToast(result.errors[0], 'warning');
+                    result.errors.slice(0, 3).forEach(err => showToast(`Skipped: ${err}`, 'warning'));
+                    if (result.errors.length > 3) {
+                        showToast(`${result.errors.length} files skipped (check console)`, 'warning');
+                    }
                 }
+
             } catch (e) {
                 console.error(e);
                 showToast(e.message || t('Error adding mods'), 'error');
-            } finally {
-                setIsLoadingMods(false);
             }
         }
     };
@@ -167,6 +181,73 @@ const HomeView = ({
         }
     };
 
+    const handleAddResourcePacks = async (filePaths = null) => {
+        if (!selectedInstance?.path || !window.electronAPI) {
+            showToast(t('Error: Configuration missing'), 'error');
+            return;
+        }
+
+        let files = filePaths;
+        if (!files) {
+            try {
+                files = await window.electronAPI.selectResourcePackFiles();
+            } catch (err) {
+                console.error(err);
+                return;
+            }
+        }
+
+        if (files && Array.isArray(files) && files.length > 0) {
+            showToast('Adding resource packs...', 'info');
+
+            try {
+                const result = await window.electronAPI.addInstanceResourcePacks(selectedInstance.path, files);
+
+                if (result.success) {
+                    if (result.added > 0) {
+                        showToast(`Successfully added ${result.added} resource packs`, 'success');
+                    }
+
+                    // Optimistic update
+                    if (result.addedPacks && Array.isArray(result.addedPacks)) {
+                        setResourcePacks(prev => {
+                            if (!Array.isArray(prev)) return result.addedPacks;
+                            const prevPaths = new Set(prev.map(p => p.path));
+                            const newPacks = result.addedPacks.filter(p => !prevPaths.has(p.path));
+                            return [...newPacks, ...prev];
+                        });
+                    }
+                } else {
+                    showToast(result.error || 'Failed to add resource packs', 'error');
+                }
+
+                if (result.errors && result.errors.length > 0) {
+                    result.errors.slice(0, 3).forEach(err => showToast(err, 'warning'));
+                    if (result.errors.length > 3) {
+                        showToast(`${result.errors.length} file skipped (check console)`, 'warning');
+                    }
+                }
+
+            } catch (e) {
+                console.error(e);
+                showToast(e.message || 'Error adding resource packs', 'error');
+            }
+        }
+    };
+
+    const handleResourcePackDrop = (e) => {
+        e.preventDefault();
+        setIsDragging(false);
+        if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+            const files = Array.from(e.dataTransfer.files).map(f => f.path).filter(p => p.endsWith('.zip'));
+            if (files.length > 0) {
+                handleAddResourcePacks(files);
+            } else {
+                showToast('Please drop .zip files for resource packs', 'warning');
+            }
+        }
+    };
+
     const handleDeleteMod = async (mod) => {
         if (!mod.path || !window.electronAPI) return;
 
@@ -180,6 +261,23 @@ const HomeView = ({
             }
         } catch (e) {
             console.error(e);
+        }
+    };
+
+    const handleDeleteResourcePack = async (pack) => {
+        if (!pack.path || !window.electronAPI) return;
+
+        try {
+            const result = await window.electronAPI.deleteResourcePack(pack.path);
+            if (result.success) {
+                setResourcePacks(prev => (prev || []).filter(p => p.path !== pack.path));
+                showToast('Resource pack deleted', 'success');
+            } else {
+                showToast(result.error || 'Failed to delete resource pack', 'error');
+            }
+        } catch (e) {
+            console.error(e);
+            showToast('Error deleting resource pack', 'error');
         }
     };
 
@@ -449,32 +547,56 @@ const HomeView = ({
                             onDragLeave={handleDragLeave}
                             onDrop={handleDrop}
                         >
-                            <div className="flex items-center justify-between mb-6">
-                                <h3 className="text-xl font-bold text-white flex items-center gap-3">
-                                    <div className="p-2 rounded-lg bg-indigo-500/10 text-indigo-400">
-                                        <Box size={20} />
+                            <div className="flex flex-col gap-4 mb-4">
+                                <div className="flex items-center justify-between">
+                                    <h3 className="text-xl font-bold text-white flex items-center gap-3">
+                                        <div className="p-2 rounded-lg bg-indigo-500/10 text-indigo-400">
+                                            <Box size={20} />
+                                        </div>
+                                        Installed Mods
+                                        <span className="text-xs font-medium bg-slate-800 text-slate-400 px-2 py-1 rounded-full">
+                                            {isLoadingMods ? '...' : (installedMods.length > 0 ? installedMods.length : (selectedInstance.mods?.length || 0))}
+                                        </span>
+                                    </h3>
+                                    <div className="flex items-center gap-2">
+                                        <button
+                                            onClick={handleRefreshMods}
+                                            className={`p-2 bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white rounded-xl transition-colors ${isLoadingMods ? 'opacity-50 cursor-not-allowed' : ''}`}
+                                            title="Refresh Mods"
+                                            disabled={isLoadingMods}
+                                        >
+                                            <RefreshCw size={20} className={isLoadingMods ? 'animate-spin' : ''} />
+                                        </button>
+                                        <button
+                                            onClick={() => handleAddMods(null)}
+                                            className="p-2 bg-emerald-600 hover:bg-emerald-500 text-white shadow-lg shadow-emerald-900/20 hover:shadow-emerald-500/30 rounded-xl transition-all active:scale-95 flex items-center justify-center"
+                                            title="Add Mod"
+                                        >
+                                            <Plus size={20} />
+                                        </button>
                                     </div>
-                                    Installed Mods
-                                    <span className="text-xs font-medium bg-slate-800 text-slate-400 px-2 py-1 rounded-full">
-                                        {isLoadingMods ? '...' : (installedMods.length > 0 ? installedMods.length : (selectedInstance.mods?.length || 0))}
-                                    </span>
-                                </h3>
-                                <div className="flex items-center gap-2">
-                                    <button
-                                        onClick={handleRefreshMods}
-                                        className={`p-2 bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white rounded-xl transition-colors ${isLoadingMods ? 'opacity-50 cursor-not-allowed' : ''}`}
-                                        title="Refresh Mods"
-                                        disabled={isLoadingMods}
-                                    >
-                                        <RefreshCw size={20} className={isLoadingMods ? 'animate-spin' : ''} />
-                                    </button>
-                                    <button
-                                        onClick={() => handleAddMods(null)}
-                                        className="p-2 bg-emerald-600 hover:bg-emerald-500 text-white shadow-lg shadow-emerald-900/20 hover:shadow-emerald-500/30 rounded-xl transition-all active:scale-95 flex items-center justify-center"
-                                        title="Add Mod"
-                                    >
-                                        <Plus size={20} />
-                                    </button>
+                                </div>
+
+                                {/* Mod Search Bar */}
+                                <div className="relative group">
+                                    <div className="absolute inset-y-0 left-3 flex items-center pointer-events-none">
+                                        <Search size={16} className="text-slate-500 group-focus-within:text-indigo-400 transition-colors" />
+                                    </div>
+                                    <input
+                                        type="text"
+                                        value={modSearchQuery}
+                                        onChange={(e) => setModSearchQuery(e.target.value)}
+                                        placeholder="Search installed mods..."
+                                        className="w-full bg-slate-950/50 border border-white/5 rounded-xl py-2 pl-10 pr-4 text-sm text-slate-200 placeholder:text-slate-600 focus:outline-none focus:border-indigo-500/50 focus:bg-slate-900/80 transition-all font-medium"
+                                    />
+                                    {modSearchQuery && (
+                                        <button
+                                            onClick={() => setModSearchQuery('')}
+                                            className="absolute inset-y-0 right-3 flex items-center text-slate-600 hover:text-slate-300 transition-colors"
+                                        >
+                                            <X size={14} />
+                                        </button>
+                                    )}
                                 </div>
                             </div>
 
@@ -487,7 +609,13 @@ const HomeView = ({
                                 ) : (
                                     <>
                                         {(() => {
-                                            const mods = installedMods.length > 0 ? installedMods : (selectedInstance.mods || []);
+                                            const allMods = installedMods.length > 0 ? installedMods : (selectedInstance.mods || []);
+
+                                            // Search Filter Logic
+                                            const mods = modSearchQuery
+                                                ? allMods.filter(m => m.name.toLowerCase().includes(modSearchQuery.toLowerCase()))
+                                                : allMods;
+
                                             return mods.length > 0 ? (
                                                 mods.map((mod, idx) => (
                                                     <div key={idx} className="bg-slate-950/50 hover:bg-slate-900/80 border border-white/5 p-3 rounded-xl flex items-center justify-between transition-colors group">
@@ -519,8 +647,17 @@ const HomeView = ({
                                                 ))
                                             ) : (
                                                 <div className="text-center text-slate-500 py-12 flex flex-col items-center gap-2">
-                                                    <Box size={32} className="opacity-20" />
-                                                    <p>No mods detected</p>
+                                                    {modSearchQuery ? (
+                                                        <>
+                                                            <Search size={32} className="opacity-20" />
+                                                            <p>No mods matching "{modSearchQuery}"</p>
+                                                        </>
+                                                    ) : (
+                                                        <>
+                                                            <Box size={32} className="opacity-20" />
+                                                            <p>No mods detected</p>
+                                                        </>
+                                                    )}
                                                 </div>
                                             );
                                         })()}
@@ -539,27 +676,65 @@ const HomeView = ({
                         </div>
 
 
+
+
                         {/* Resource Packs Box */}
-                        <div className="bg-slate-900/40 border border-white/5 rounded-3xl p-6 backdrop-blur-sm flex flex-col h-[500px]">
-                            <div className="flex items-center justify-between mb-6">
-                                <h3 className="text-xl font-bold text-white flex items-center gap-3">
-                                    <div className="p-2 rounded-lg bg-pink-500/10 text-pink-400">
-                                        <Layers size={20} />
+                        <div
+                            className={`bg-slate-900/40 border transition-colors rounded-3xl p-6 backdrop-blur-sm flex flex-col h-[500px] relative ${isDragging ? 'border-pink-500 bg-pink-500/10' : 'border-white/5'}`}
+                            onDragOver={handleDragOver}
+                            onDragLeave={handleDragLeave}
+                            onDrop={handleResourcePackDrop}
+                        >
+                            <div className="flex flex-col gap-4 mb-4">
+                                <div className="flex items-center justify-between">
+                                    <h3 className="text-xl font-bold text-white flex items-center gap-3">
+                                        <div className="p-2 rounded-lg bg-pink-500/10 text-pink-400">
+                                            <Layers size={20} />
+                                        </div>
+                                        Resource Packs
+                                        <span className="text-xs font-medium bg-slate-800 text-slate-400 px-2 py-1 rounded-full">
+                                            {isLoadingResourcePacks ? '...' : (resourcePacks !== null ? resourcePacks.length : (selectedInstance.resourcePacks?.length || 0))}
+                                        </span>
+                                    </h3>
+                                    <div className="flex items-center gap-2">
+                                        <button
+                                            onClick={handleRefreshResourcePacks}
+                                            className={`p-2 bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white rounded-xl transition-colors ${isLoadingResourcePacks ? 'opacity-50 cursor-not-allowed' : ''}`}
+                                            title="Refresh Resource Packs"
+                                            disabled={isLoadingResourcePacks}
+                                        >
+                                            <RefreshCw size={20} className={isLoadingResourcePacks ? 'animate-spin' : ''} />
+                                        </button>
+                                        <button
+                                            onClick={() => handleAddResourcePacks(null)}
+                                            className="p-2 bg-pink-600 hover:bg-pink-500 text-white shadow-lg shadow-pink-900/20 hover:shadow-pink-500/30 rounded-xl transition-all active:scale-95 flex items-center justify-center"
+                                            title="Add Resource Pack"
+                                        >
+                                            <Plus size={20} />
+                                        </button>
                                     </div>
-                                    Resource Packs
-                                    <span className="text-xs font-medium bg-slate-800 text-slate-400 px-2 py-1 rounded-full">
-                                        {isLoadingResourcePacks ? '...' : (resourcePacks !== null ? resourcePacks.length : (selectedInstance.resourcePacks?.length || 0))}
-                                    </span>
-                                </h3>
-                                <div className="flex items-center gap-2">
-                                    <button
-                                        onClick={handleRefreshResourcePacks}
-                                        className={`p-2 bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white rounded-xl transition-colors ${isLoadingResourcePacks ? 'opacity-50 cursor-not-allowed' : ''}`}
-                                        title="Refresh Resource Packs"
-                                        disabled={isLoadingResourcePacks}
-                                    >
-                                        <RefreshCw size={20} className={isLoadingResourcePacks ? 'animate-spin' : ''} />
-                                    </button>
+                                </div>
+
+                                {/* Resource Pack Search Bar */}
+                                <div className="relative group">
+                                    <div className="absolute inset-y-0 left-3 flex items-center pointer-events-none">
+                                        <Search size={16} className="text-slate-500 group-focus-within:text-pink-400 transition-colors" />
+                                    </div>
+                                    <input
+                                        type="text"
+                                        value={resourcePackSearchQuery}
+                                        onChange={(e) => setResourcePackSearchQuery(e.target.value)}
+                                        placeholder="Search resource packs..."
+                                        className="w-full bg-slate-950/50 border border-white/5 rounded-xl py-2 pl-10 pr-4 text-sm text-slate-200 placeholder:text-slate-600 focus:outline-none focus:border-pink-500/50 focus:bg-slate-900/80 transition-all font-medium"
+                                    />
+                                    {resourcePackSearchQuery && (
+                                        <button
+                                            onClick={() => setResourcePackSearchQuery('')}
+                                            className="absolute inset-y-0 right-3 flex items-center text-slate-600 hover:text-slate-300 transition-colors"
+                                        >
+                                            <X size={14} />
+                                        </button>
+                                    )}
                                 </div>
                             </div>
 
@@ -572,7 +747,13 @@ const HomeView = ({
                                 ) : (
                                     <>
                                         {(() => {
-                                            const packs = resourcePacks !== null ? resourcePacks : (selectedInstance.resourcePacks || []);
+                                            const allPacks = resourcePacks !== null ? resourcePacks : (selectedInstance.resourcePacks || []);
+
+                                            // Search Filter Logic
+                                            const packs = resourcePackSearchQuery
+                                                ? allPacks.filter(p => p.name.toLowerCase().includes(resourcePackSearchQuery.toLowerCase()))
+                                                : allPacks;
+
                                             return packs.length > 0 ? (
                                                 packs.map((pack, idx) => (
                                                     <div key={idx} className="bg-slate-950/50 hover:bg-slate-900/80 border border-white/5 p-3 rounded-xl flex items-center justify-between transition-colors group">
@@ -589,19 +770,51 @@ const HomeView = ({
                                                                 <div className="text-xs text-slate-500 truncate">{pack.description || (pack.enabled ? 'Active' : 'Inactive')}</div>
                                                             </div>
                                                         </div>
-                                                        {pack.enabled && <CheckCircle size={16} className="text-emerald-500 shrink-0" />}
+                                                        <div className="flex items-center gap-2">
+                                                            {pack.enabled && <CheckCircle size={16} className="text-emerald-500 shrink-0" />}
+                                                            {pack.path && (
+                                                                <button
+                                                                    onClick={(e) => {
+                                                                        e.stopPropagation();
+                                                                        handleDeleteResourcePack(pack);
+                                                                    }}
+                                                                    className="p-1.5 text-slate-400 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-colors opacity-0 group-hover:opacity-100"
+                                                                    title="Delete Resource Pack"
+                                                                >
+                                                                    <X size={14} />
+                                                                </button>
+                                                            )}
+                                                        </div>
                                                     </div>
                                                 ))
                                             ) : (
                                                 <div className="text-center text-slate-500 py-12 flex flex-col items-center gap-2">
-                                                    <Layers size={32} className="opacity-20" />
-                                                    <p>No resource packs</p>
+                                                    {resourcePackSearchQuery ? (
+                                                        <>
+                                                            <Search size={32} className="opacity-20" />
+                                                            <p>No packs matching "{resourcePackSearchQuery}"</p>
+                                                        </>
+                                                    ) : (
+                                                        <>
+                                                            <Layers size={32} className="opacity-20" />
+                                                            <p>No resource packs</p>
+                                                        </>
+                                                    )}
                                                 </div>
                                             );
                                         })()}
                                     </>
                                 )}
                             </div>
+
+                            {isDragging && (
+                                <div className="absolute inset-0 z-50 flex items-center justify-center bg-slate-900/80 rounded-3xl backdrop-blur-sm pointer-events-none border-2 border-pink-500 border-dashed">
+                                    <div className="flex flex-col items-center gap-4 text-pink-400">
+                                        <PlusCircle size={48} />
+                                        <span className="text-xl font-bold">Drop ZIPs to Install</span>
+                                    </div>
+                                </div>
+                            )}
                         </div>
 
                     </div >

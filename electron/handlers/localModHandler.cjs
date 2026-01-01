@@ -1,3 +1,5 @@
+console.log('[DEBUG] Loading localModHandler.cjs');
+
 const { ipcMain, dialog } = require('electron');
 const log = require('electron-log');
 const path = require('path');
@@ -53,6 +55,8 @@ const getModMetadata = (fullPath) => {
 };
 
 function setupLocalModHandlers() {
+    console.log('[MAIN] Registered connection: setupLocalModHandlers');
+    log.info('[MAIN] Registered connection: setupLocalModHandlers');
     /**
      * Get Installed Mods
      */
@@ -105,46 +109,102 @@ function setupLocalModHandlers() {
     /**
      * Add Instance Mods
      */
+    /**
+     * Add Instance Mods
+     */
     ipcMain.handle('add-instance-mods', async (event, { instancePath, filePaths }) => {
-        if (!instancePath || !filePaths || filePaths.length === 0) return { success: false, error: 'Invalid arguments' };
+        console.log(`[MAIN] add-instance-mods invoked for ${instancePath}`);
+        log.info(`[Mods] Received add-instance-mods request for ${instancePath} with ${filePaths?.length} files`);
 
-        const modsDir = path.join(instancePath, 'mods');
-        if (!fs.existsSync(modsDir)) {
-            try { fs.mkdirSync(modsDir, { recursive: true }); } catch (e) { return { success: false, error: 'Could not create mods directory' }; }
-        }
-
-        let addedCount = 0;
-        const addedMods = [];
-        const errors = [];
-
-        for (const filePath of filePaths) {
-            try {
-                if (!fs.statSync(filePath).isFile()) continue;
-                if (!filePath.toLowerCase().endsWith('.jar')) {
-                    errors.push(`Skipped ${path.basename(filePath)}: Not a JAR file`);
-                    continue;
-                }
-                const destPath = path.join(modsDir, path.basename(filePath));
-                await fs.promises.copyFile(filePath, destPath);
-                addedMods.push(getModMetadata(destPath));
-                addedCount++;
-            } catch (e) {
-                errors.push(`Failed to copy ${path.basename(filePath)}: ${e.message}`);
+        try {
+            if (!instancePath || !filePaths || filePaths.length === 0) {
+                console.warn('[MAIN] Invalid arguments for add-instance-mods');
+                log.warn('[Mods] Invalid arguments for add-instance-mods');
+                return { success: false, error: 'Invalid arguments' };
             }
-        }
 
-        return { success: true, added: addedCount, errors, addedMods };
+            const modsDir = path.join(instancePath, 'mods');
+            if (!fs.existsSync(modsDir)) {
+                try {
+                    fs.mkdirSync(modsDir, { recursive: true });
+                    console.log(`[MAIN] Created mods directory: ${modsDir}`);
+                    log.info(`[Mods] Created mods directory: ${modsDir}`);
+                } catch (e) {
+                    console.error(`[MAIN] Failed to create mods dir: ${e.message}`);
+                    log.error(`[Mods] Failed to create mods directory: ${e.message}`);
+                    return { success: false, error: 'Could not create mods directory' };
+                }
+            }
+
+            let addedCount = 0;
+            const addedMods = [];
+            const errors = [];
+
+            for (const filePath of filePaths) {
+                try {
+                    console.log(`[MAIN] Processing file: ${filePath}`);
+                    log.info(`[Mods] Processing file: ${filePath}`);
+                    if (!fs.statSync(filePath).isFile()) {
+                        log.warn(`[Mods] Not a file: ${filePath}`);
+                        continue;
+                    }
+                    if (!filePath.toLowerCase().endsWith('.jar')) {
+                        errors.push(`Skipped ${path.basename(filePath)}: Not a JAR file`);
+                        log.warn(`[Mods] Skipped non-jar: ${filePath}`);
+                        continue;
+                    }
+                    const destPath = path.join(modsDir, path.basename(filePath));
+
+                    if (fs.existsSync(destPath)) {
+                        const msg = `Skipped ${path.basename(filePath)}: File already exists`;
+                        errors.push(msg);
+                        log.info(`[Mods] ${msg}`);
+                        continue; // Skip copy
+                    }
+
+                    console.log(`[MAIN] Copying to: ${destPath}`);
+                    log.info(`[Mods] Copying to: ${destPath}`);
+                    await fs.promises.copyFile(filePath, destPath);
+
+                    console.log(`[MAIN] Reading metadata for: ${destPath}`);
+                    log.info(`[Mods] Reading metadata for: ${destPath}`);
+                    const metadata = getModMetadata(destPath);
+                    addedMods.push(metadata);
+                    addedCount++;
+                    log.info(`[Mods] Successfully added: ${metadata.name}`);
+                } catch (e) {
+                    const msg = `Failed to copy ${path.basename(filePath)}: ${e.message}`;
+                    errors.push(msg);
+                    console.error(`[MAIN] Error processing file: ${e.message}`, e);
+                    log.error(`[Mods] ${msg}`);
+                }
+            }
+
+            console.log(`[MAIN] Finished adding mods. Added: ${addedCount}`);
+            log.info(`[Mods] Finished adding mods. Added: ${addedCount}, Errors: ${errors.length}`);
+            return { success: true, added: addedCount, errors, addedMods };
+
+        } catch (globalError) {
+            console.error('[MAIN] CRITICAL FILTER ERROR:', globalError);
+            log.error('[Mods] Critical error in add-instance-mods:', globalError);
+            return { success: false, error: `Internal Error: ${globalError.message}` };
+        }
     });
 
     /**
      * Select Open Dialog for Mods
      */
     ipcMain.handle('select-mod-files', async () => {
+        log.info('[Mods] Opening file dialog for mod selection...');
         const result = await dialog.showOpenDialog({
             properties: ['openFile', 'multiSelections'],
             filters: [{ name: 'Mods (Jar)', extensions: ['jar'] }]
         });
-        if (result.canceled) return [];
+        if (result.canceled) {
+            log.info('[Mods] File selection cancelled by user.');
+            return [];
+        }
+        log.info(`[Mods] User selected ${result.filePaths.length} files: ${JSON.stringify(result.filePaths)}`);
         return result.filePaths;
     });
 }
