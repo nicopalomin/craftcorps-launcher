@@ -5,6 +5,7 @@ const log = require('electron-log');
 const clientId = '1454519577508708462';
 let rpc;
 let rpcReady = false;
+let startTimestamp = Date.now();
 
 function initDiscordRPC() {
     // DiscordRPC.register(clientId); // Not strictly needed for IPC presence and can cause issues on some systems
@@ -19,6 +20,8 @@ function initDiscordRPC() {
             rpc.on('ready', () => {
                 rpcReady = true;
                 log.info('[Discord RPC] Ready');
+
+                // Set initial activity, using current time as baseline
                 setActivity({
                     details: 'In Launcher',
                     state: 'Idling',
@@ -50,6 +53,16 @@ function initDiscordRPC() {
 
 async function setActivity(activity) {
     if (!rpcReady || !rpc) return;
+
+    // Check if startTimestamp is provided in the update (e.g. Game Start/Stop)
+    // If so, update our local tracker.
+    if (activity.startTimestamp) {
+        startTimestamp = activity.startTimestamp;
+    } else {
+        // If not provided (e.g. navigating UI), use the tracked timestamp to prevent resetting time
+        activity.startTimestamp = startTimestamp;
+    }
+
     return rpc.setActivity(activity).catch(err => log.error(`[Discord RPC] Set activity failed: ${err}`));
 }
 
