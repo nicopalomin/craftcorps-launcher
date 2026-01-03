@@ -36,7 +36,8 @@ const HomeView = ({
     onLogout,
     showProfileMenu,
     setShowProfileMenu,
-    disableAnimations
+    disableAnimations,
+    theme
 }) => {
     const { t } = useTranslation();
     const profileMenuRef = useRef(null);
@@ -324,14 +325,16 @@ const HomeView = ({
     return (
         <div className={`flex-1 flex flex-col relative animate-in fade-in zoom-in-95 duration-500 select-none overflow-hidden ${isModded ? 'justify-start' : 'justify-center'}`}>
             {/* Dynamic Background */}
-            <div
-                className={`absolute inset-0 bg-gradient-to-br ${selectedInstance.bgGradient} transition-colors duration-1000`}
-            />
+            {theme !== 'midnight' && (
+                <div
+                    className={`absolute inset-0 bg-gradient-to-br ${selectedInstance.bgGradient} transition-colors duration-1000`}
+                />
+            )}
             <div className="absolute inset-0 bg-[url('/cubes.png')] opacity-5" />
             <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/80 to-transparent" />
 
             {/* Animated Blobs */}
-            <BackgroundBlobs disabled={disableAnimations || isModded} />
+            <BackgroundBlobs disabled={disableAnimations || isModded || theme === 'midnight'} />
 
             {/* Account Pill & System - Top Right */}
             <div className="absolute top-8 right-8 z-50 pointer-events-auto" ref={profileMenuRef}>
@@ -496,12 +499,15 @@ const HomeView = ({
                                         <div className="group relative w-full max-w-sm">
                                             <button
                                                 onClick={onPlay}
-                                                className={`relative w-full bg-emerald-600 group-hover:bg-emerald-500 text-white rounded-2xl font-bold shadow-[0_0_40px_rgba(5,150,105,0.4)] group-hover:shadow-[0_0_60px_rgba(5,150,105,0.6)] transform group-hover:-translate-y-1 active:translate-y-0 active:scale-95 transition-[transform,box-shadow,background-color] duration-200 overflow-hidden flex items-center ring-offset-2 ring-offset-transparent group-hover:ring-2 group-hover:ring-emerald-400/30 ${isModded ? 'py-4 text-xl justify-between text-left px-6' : 'py-6 text-2xl justify-center gap-3'}`}
+                                                className={`relative w-full bg-emerald-600 group-hover:bg-emerald-500 text-white rounded-2xl font-bold ${theme === 'midnight'
+                                                    ? 'shadow-lg shadow-black/40 group-hover:shadow-2xl group-hover:shadow-black/60'
+                                                    : 'shadow-[0_0_40px_rgba(5,150,105,0.4)] group-hover:shadow-[0_0_60px_rgba(5,150,105,0.6)]'
+                                                    } transform group-hover:-translate-y-1 active:translate-y-0 active:scale-95 transition-[transform,box-shadow,background-color] duration-200 overflow-hidden flex items-center ring-offset-2 ring-offset-transparent group-hover:ring-2 group-hover:ring-emerald-400/30 ${isModded ? 'py-4 text-xl justify-between text-left px-6' : 'py-6 text-2xl justify-center gap-3'}`}
                                             >
                                                 {/* Shiny Edge Overlay */}
-                                                <div className="absolute inset-0 rounded-2xl ring-1 ring-white/10 group-hover:ring-white/30 transition-all pointer-events-none" />
+                                                <div className={`absolute inset-0 rounded-2xl ring-1 ${theme === 'midnight' ? 'ring-white/5 group-hover:ring-white/10' : 'ring-white/10 group-hover:ring-white/30'} transition-all pointer-events-none`} />
 
-                                                <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-1000" />
+                                                <div className={`absolute inset-0 bg-gradient-to-r from-transparent ${theme === 'midnight' ? 'via-white/5' : 'via-white/20'} to-transparent translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-1000`} />
                                                 <span className="flex items-center gap-4">
                                                     <Play size={isModded ? 28 : 32} fill="currentColor" />
                                                     <span className="flex flex-col items-start leading-none gap-1">

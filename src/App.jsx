@@ -24,6 +24,7 @@ function App() {
         hideOnLaunch, setHideOnLaunch,
         disableAnimations, setDisableAnimations,
         enableDiscordRPC, setEnableDiscordRPC,
+        theme, setTheme,
         availableJavas,
         refreshJavas
     } = useAppSettings();
@@ -170,6 +171,7 @@ function App() {
                     accounts={accounts} onAccountSwitchWithToast={onAccountSwitchWithToast} showProfileMenu={showProfileMenu} setShowProfileMenu={setShowProfileMenu} onLogoutWithToast={onLogoutWithToast}
                     onDeleteCropWithToast={onDeleteCropWithToast} reorderInstances={reorderInstances}
                     ram={ram} setRam={setRam} javaPath={javaPath} setJavaPath={setJavaPath} hideOnLaunch={hideOnLaunch} setHideOnLaunch={setHideOnLaunch} setDisableAnimations={setDisableAnimations} availableJavas={availableJavas} enableDiscordRPC={enableDiscordRPC} setEnableDiscordRPC={setEnableDiscordRPC}
+                    theme={theme} setTheme={setTheme}
                     onSaveCropWithToast={onSaveCropWithToast}
                 />
             </main>

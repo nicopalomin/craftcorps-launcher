@@ -77,7 +77,7 @@ const Sidebar = ({ activeTab, onTabChange }) => {
             {/* Logo area */}
             <div className="flex items-center gap-3 px-2 mb-8 mt-2 select-none pointer-events-none overflow-hidden whitespace-nowrap">
                 <div className="w-8 h-8 bg-gradient-to-br from-emerald-400 to-green-600 rounded-lg flex-shrink-0 flex items-center justify-center shadow-lg shadow-emerald-900/50">
-                    <Sprout size={20} className="text-white" />
+                    <Sprout size={20} className="text-slate-200" />
                 </div>
                 <h1 className={`text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-emerald-400 to-green-200 transition-opacity duration-200 ${width < 180 ? 'opacity-0' : 'opacity-100'}`}>
                     CraftCorps

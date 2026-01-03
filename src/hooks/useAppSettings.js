@@ -10,6 +10,8 @@ export const useAppSettings = () => {
     const [javaPath, setJavaPath] = useState(() => localStorage.getItem('settings_javaPath') || "C:\\Program Files\\Java\\jdk-17.0.2\\bin\\javaw.exe");
     const [hideOnLaunch, setHideOnLaunch] = useState(() => localStorage.getItem('settings_hideOnLaunch') === 'true');
     const [disableAnimations, setDisableAnimations] = useState(() => localStorage.getItem('settings_disableAnimations') === 'true');
+    const [theme, setTheme] = useState(() => localStorage.getItem('settings_theme') || 'classic');
+
     const [enableDiscordRPC, setEnableDiscordRPC] = useState(() => {
         const stored = localStorage.getItem('settings_enableDiscordRPC');
         return stored !== null ? stored === 'true' : true;
@@ -54,7 +56,17 @@ export const useAppSettings = () => {
         localStorage.setItem('settings_hideOnLaunch', hideOnLaunch);
         localStorage.setItem('settings_disableAnimations', disableAnimations);
         localStorage.setItem('settings_enableDiscordRPC', enableDiscordRPC);
-    }, [ram, javaPath, hideOnLaunch, disableAnimations, enableDiscordRPC]);
+        localStorage.setItem('settings_theme', theme);
+    }, [ram, javaPath, hideOnLaunch, disableAnimations, enableDiscordRPC, theme]);
+
+    useEffect(() => {
+        // Apply theme to html tag using data-theme attribute
+        document.documentElement.setAttribute('data-theme', theme);
+        // Also keep body class for backward compatibility or specific selectors if needed, 
+        // but data-theme is usually enough. Let's start clean.
+        // document.body.className = ''; 
+        // document.body.classList.add(`theme-${theme}`);
+    }, [theme]);
 
     return {
         ram, setRam,
@@ -62,6 +74,7 @@ export const useAppSettings = () => {
         hideOnLaunch, setHideOnLaunch,
         disableAnimations, setDisableAnimations,
         enableDiscordRPC, setEnableDiscordRPC,
+        theme, setTheme,
         availableJavas,
         refreshJavas
     };

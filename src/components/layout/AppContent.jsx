@@ -16,6 +16,7 @@ const AppContent = ({
     accounts, onAccountSwitchWithToast, showProfileMenu, setShowProfileMenu, onLogoutWithToast,
     onDeleteCropWithToast, reorderInstances,
     ram, setRam, javaPath, setJavaPath, hideOnLaunch, setHideOnLaunch, setDisableAnimations, availableJavas, enableDiscordRPC, setEnableDiscordRPC,
+    theme, setTheme,
     onSaveCropWithToast
 }) => {
     const { addToast } = useToast();
@@ -58,6 +59,7 @@ const AppContent = ({
                         showProfileMenu={showProfileMenu}
                         setShowProfileMenu={setShowProfileMenu}
                         disableAnimations={disableAnimations}
+                        theme={theme}
                     />
                 )
             )}
@@ -80,6 +82,7 @@ const AppContent = ({
                     disableAnimations={disableAnimations} setDisableAnimations={setDisableAnimations}
                     availableJavas={availableJavas}
                     enableDiscordRPC={enableDiscordRPC} setEnableDiscordRPC={setEnableDiscordRPC}
+                    theme={theme} setTheme={setTheme}
                 />
             )}
             {activeTab === 'mods' && (

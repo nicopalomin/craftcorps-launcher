@@ -1,8 +1,8 @@
 import React from 'react';
-import { Cpu, Globe, Monitor, Terminal } from 'lucide-react';
+import { Cpu, Globe, Monitor, Terminal, Palette } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 
-const SettingsView = ({ ram, setRam, javaPath, setJavaPath, hideOnLaunch, setHideOnLaunch, disableAnimations, setDisableAnimations, availableJavas, enableDiscordRPC, setEnableDiscordRPC }) => {
+const SettingsView = ({ ram, setRam, javaPath, setJavaPath, hideOnLaunch, setHideOnLaunch, disableAnimations, setDisableAnimations, availableJavas, enableDiscordRPC, setEnableDiscordRPC, theme, setTheme }) => {
     const { t, i18n } = useTranslation();
     const languages = [
         { code: 'en', label: 'English' },
@@ -31,12 +31,12 @@ const SettingsView = ({ ram, setRam, javaPath, setJavaPath, hideOnLaunch, setHid
 
     return (
         <div className="flex-1 overflow-y-auto p-8 animate-in fade-in slide-in-from-bottom-4 duration-300 select-none custom-scrollbar">
-            <h2 className="text-3xl font-bold text-white mb-8">{t('settings_title')}</h2>
+            <h2 className="text-3xl font-bold text-slate-200 mb-8">{t('settings_title')}</h2>
 
             <div className="space-y-6">
                 {/* Language Settings */}
                 <div className="bg-slate-900 rounded-xl p-6 border border-slate-800">
-                    <h3 className="text-lg font-medium text-white mb-4 flex items-center gap-2">
+                    <h3 className="text-lg font-medium text-slate-200 mb-4 flex items-center gap-2">
                         <Globe size={18} className="text-emerald-500" /> {t('settings_language')}
                     </h3>
                     <div className="flex items-center justify-between">
@@ -47,7 +47,7 @@ const SettingsView = ({ ram, setRam, javaPath, setJavaPath, hideOnLaunch, setHid
                         <select
                             value={i18n.language}
                             onChange={(e) => i18n.changeLanguage(e.target.value)}
-                            className="bg-slate-950 border border-slate-700 rounded-lg px-3 py-1.5 text-sm text-white focus:outline-none focus:border-emerald-500"
+                            className="bg-slate-950 border border-slate-700 rounded-lg px-3 py-1.5 text-sm text-slate-200 focus:outline-none focus:border-emerald-500"
                         >
                             {languages.map(lang => (
                                 <option key={lang.code} value={lang.code}>
@@ -59,7 +59,35 @@ const SettingsView = ({ ram, setRam, javaPath, setJavaPath, hideOnLaunch, setHid
                 </div>
 
                 <div className="bg-slate-900 rounded-xl p-6 border border-slate-800">
-                    <h3 className="text-lg font-medium text-white mb-4 flex items-center gap-2">
+                    <h3 className="text-lg font-medium text-slate-200 mb-4 flex items-center gap-2">
+                        <Palette size={18} className="text-emerald-500" /> {t('settings_theme', 'Theme')}
+                    </h3>
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                        {[
+                            { id: 'classic', name: 'Corps Classic', color: '#0f172a' },
+                            { id: 'midnight', name: 'Midnight', color: '#2b2d31' },
+                            { id: 'white', name: 'Pro White', color: '#ffffff' }
+                        ].map((tOption) => (
+                            <button
+                                key={tOption.id}
+                                onClick={() => setTheme(tOption.id)}
+                                className={`relative p-3 rounded-xl border-2 transition-all duration-200 flex items-center gap-3 ${theme === tOption.id
+                                    ? `border-emerald-500 bg-slate-800`
+                                    : 'border-slate-800 bg-slate-950/50 hover:bg-slate-800 hover:border-slate-700'
+                                    }`}
+                            >
+                                <div className="w-6 h-6 rounded-full border border-slate-700 shadow-sm" style={{ backgroundColor: tOption.color }}></div>
+                                <span className="text-sm font-medium text-slate-200">{tOption.name}</span>
+                                {theme === tOption.id && (
+                                    <div className="absolute right-3 w-2 h-2 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]"></div>
+                                )}
+                            </button>
+                        ))}
+                    </div>
+                </div>
+
+                <div className="bg-slate-900 rounded-xl p-6 border border-slate-800">
+                    <h3 className="text-lg font-medium text-slate-200 mb-4 flex items-center gap-2">
                         <Cpu size={18} className="text-emerald-500" /> {t('settings_java_title')}
                     </h3>
 
@@ -139,7 +167,7 @@ const SettingsView = ({ ram, setRam, javaPath, setJavaPath, hideOnLaunch, setHid
                 </div>
 
                 <div className="bg-slate-900 rounded-xl p-6 border border-slate-800">
-                    <h3 className="text-lg font-medium text-white mb-4 flex items-center gap-2">
+                    <h3 className="text-lg font-medium text-slate-200 mb-4 flex items-center gap-2">
                         <Monitor size={18} className="text-emerald-500" /> {t('settings_launcher_behavior')}
                     </h3>
                     <div className="flex items-center justify-between">
@@ -160,15 +188,19 @@ const SettingsView = ({ ram, setRam, javaPath, setJavaPath, hideOnLaunch, setHid
 
                     <div className="flex items-center justify-between mt-6 pt-6 border-t border-slate-800/50">
                         <div>
-                            <p className="text-sm text-slate-200 font-medium">{t('settings_disable_animations')}</p>
+                            <p className="text-sm text-slate-200 font-medium">
+                                {t('settings_disable_animations')}
+                                {theme === 'midnight' && <span className="ml-2 text-xs text-orange-400 font-normal">(Always off in Midnight)</span>}
+                            </p>
                             <p className="text-xs text-slate-500">{t('settings_performance')}</p>
                         </div>
-                        <label className="relative inline-flex items-center cursor-pointer">
+                        <label className={`relative inline-flex items-center cursor-pointer ${theme === 'midnight' ? 'opacity-50 cursor-not-allowed' : ''}`}>
                             <input
                                 type="checkbox"
                                 className="sr-only peer"
-                                checked={disableAnimations}
+                                checked={disableAnimations || theme === 'midnight'}
                                 onChange={(e) => setDisableAnimations(e.target.checked)}
+                                disabled={theme === 'midnight'}
                             />
                             <div className="w-11 h-6 bg-slate-700 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-emerald-800 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-600"></div>
                         </label>
@@ -193,7 +225,7 @@ const SettingsView = ({ ram, setRam, javaPath, setJavaPath, hideOnLaunch, setHid
 
                 {/* Troubleshooting */}
                 <div className="bg-slate-900 rounded-xl p-6 border border-slate-800">
-                    <h3 className="text-lg font-medium text-white mb-4 flex items-center gap-2">
+                    <h3 className="text-lg font-medium text-slate-200 mb-4 flex items-center gap-2">
                         <Terminal size={18} className="text-emerald-500" /> {t('settings_troubleshooting', 'Troubleshooting')}
                     </h3>
                     <div className="flex items-center justify-between">

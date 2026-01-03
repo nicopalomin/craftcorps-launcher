@@ -5,11 +5,7 @@ export default {
         "./src/**/*.{js,ts,jsx,tsx}",
     ],
     theme: {
-        extend: {
-            animation: {
-                'bounce-slow': 'bounce 3s infinite',
-            }
-        },
+        extend: {},
     },
     plugins: [
         require('@tailwindcss/typography'),
