@@ -8,6 +8,7 @@ export const useInstances = () => {
     const [showCropModal, setShowCropModal] = useState(false);
     const [isLoading, setIsLoading] = useState(true);
 
+
     // Load instances from backend (disk) on mount
     useEffect(() => {
         const loadInstances = async () => {
@@ -17,9 +18,11 @@ export const useInstances = () => {
                     const loaded = await window.electronAPI.getInstances();
 
                     if (loaded && loaded.length > 0) {
-                        setInstances(loaded);
-                        // Auto-select first if none selected
-                        if (!selectedInstance) setSelectedInstance(loaded[0]);
+                        // Sort by lastPlayed descending (newest first)
+                        const sorted = loaded.sort((a, b) => (b.lastPlayed || 0) - (a.lastPlayed || 0));
+                        setInstances(sorted);
+                        // Auto-select first if none selected, or maybe the most recently played?
+                        if (!selectedInstance) setSelectedInstance(sorted[0]);
                     } else {
                         // Fallback to empty or initial
                         setInstances([]);
@@ -119,18 +122,22 @@ export const useInstances = () => {
         const targetId = id || (selectedInstance ? selectedInstance.id : null);
         if (!targetId) return;
 
-        // Optimistic update
-        const updatedInstances = instances.map(inst => {
-            if (inst.id === targetId) {
-                return { ...inst, lastPlayed: Date.now() };
-            }
-            return inst;
-        });
-        setInstances(updatedInstances);
+        // Find the instance
+        const instanceToUpdate = instances.find(i => i.id === targetId);
+
+        if (!instanceToUpdate) return;
+
+        // Update it
+        const updatedInstance = { ...instanceToUpdate, lastPlayed: Date.now() };
+
+        // Create new order: [updated, ...others]
+        const otherInstances = instances.filter(i => i.id !== targetId);
+        const newInstances = [updatedInstance, ...otherInstances];
+
+        setInstances(newInstances);
 
         // Persist update
-        const updatedInstance = updatedInstances.find(i => i.id === targetId);
-        if (updatedInstance && window.electronAPI?.saveInstance) {
+        if (window.electronAPI?.saveInstance) {
             window.electronAPI.saveInstance(updatedInstance);
         }
     };

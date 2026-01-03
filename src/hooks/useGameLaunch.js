@@ -61,6 +61,10 @@ export const useGameLaunch = (selectedInstance, ram, activeAccount, updateLastPl
         setShowConsole(false);
         setLogs([]);
 
+        if (updateLastPlayed) {
+            updateLastPlayed();
+        }
+
         if (window.electronAPI && window.electronAPI.log) {
             window.electronAPI.log('info', `[UI] User clicked Play for instance: ${selectedInstance?.name} (Version: ${selectedInstance?.version})`);
         } else {
@@ -106,10 +110,6 @@ export const useGameLaunch = (selectedInstance, ram, activeAccount, updateLastPl
                 } else if (log.message.includes('Game process started')) {
                     setLaunchStep("Game started!");
                     setLaunchProgress(100);
-
-                    if (updateLastPlayed) {
-                        updateLastPlayed();
-                    }
 
                     if (hideOnLaunch && window.electronAPI) {
                         window.electronAPI.hide();
