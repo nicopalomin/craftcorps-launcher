@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Box, RefreshCw, Plus, Search, Loader2, Cpu, X, PlusCircle } from 'lucide-react';
+import { Box, RefreshCw, Plus, Search, Loader2, Cpu, X, PlusCircle, Globe } from 'lucide-react';
 
 const ModsList = ({
     installedMods,
@@ -7,6 +7,7 @@ const ModsList = ({
     isLoading,
     onRefresh,
     onAdd,
+    onBrowse,
     onDelete,
     isDraggingGlobal,
     onDragOver,
@@ -45,9 +46,16 @@ const ModsList = ({
                             <RefreshCw size={20} className={isLoading ? 'animate-spin' : ''} />
                         </button>
                         <button
+                            onClick={onBrowse}
+                            className="p-2 bg-indigo-600 hover:bg-indigo-500 text-white shadow-lg shadow-indigo-900/20 hover:shadow-indigo-500/30 rounded-xl transition-all active:scale-95 flex items-center justify-center"
+                            title="Browse & Download Mods"
+                        >
+                            <Globe size={20} />
+                        </button>
+                        <button
                             onClick={() => onAdd(null)}
-                            className="p-2 bg-emerald-600 hover:bg-emerald-500 text-white shadow-lg shadow-emerald-900/20 hover:shadow-emerald-500/30 rounded-xl transition-all active:scale-95 flex items-center justify-center"
-                            title="Add Mod"
+                            className="p-2 bg-slate-800 hover:bg-slate-700 text-white hover:text-emerald-400 shadow-lg shadow-black/20 rounded-xl transition-all active:scale-95 flex items-center justify-center border border-white/5"
+                            title="Install Local Mod (JAR)"
                         >
                             <Plus size={20} />
                         </button>

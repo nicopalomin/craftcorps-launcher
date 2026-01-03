@@ -51,6 +51,7 @@ const AppContent = ({
                         setSelectedInstance={setSelectedInstance}
                         onNewCrop={handleNewCrop}
                         onEditCrop={handleEditCrop}
+                        onBrowseMods={() => setActiveTab('mods')}
                         // Account System Props
                         accounts={accounts}
                         onSwitchAccount={onAccountSwitchWithToast}

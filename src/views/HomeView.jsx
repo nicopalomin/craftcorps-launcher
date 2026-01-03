@@ -24,6 +24,7 @@ const HomeView = ({
     setSelectedInstance,
     onNewCrop,
     onEditCrop,
+    onBrowseMods, // New prop
     // Account System Props
     accounts,
     onSwitchAccount,
@@ -347,6 +348,7 @@ const HomeView = ({
                             isLoading={isLoadingMods}
                             onRefresh={handleRefreshMods}
                             onAdd={handleAddMods}
+                            onBrowse={onBrowseMods}
                             onDelete={handleDeleteMod}
                             isDraggingGlobal={isDragging}
                             onDragOver={handleDragOver}

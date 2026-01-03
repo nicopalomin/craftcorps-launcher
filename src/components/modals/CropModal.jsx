@@ -243,16 +243,19 @@ const CropModal = ({ isOpen, onClose, onSave, editingCrop }) => {
                                 onChange={(e) => setLoader(e.target.value)}
                                 className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-emerald-500/50 transition-colors appearance-none"
                             >
-                                {LOADERS.map(l => (
-                                    <option
-                                        key={l}
-                                        value={l}
-                                        disabled={l !== 'Vanilla'}
-                                        className={l !== 'Vanilla' ? 'text-slate-600' : ''}
-                                    >
-                                        {l === 'Vanilla' ? t('crop_loader_vanilla') : l}{l !== 'Vanilla' ? ` ${t('crop_coming_soon')}` : ''}
-                                    </option>
-                                ))}
+                                {LOADERS.map(l => {
+                                    const isDisabled = ['Quilt', 'NeoForge'].includes(l);
+                                    return (
+                                        <option
+                                            key={l}
+                                            value={l}
+                                            disabled={isDisabled}
+                                            className={isDisabled ? 'text-slate-600' : ''}
+                                        >
+                                            {l === 'Vanilla' ? t('crop_loader_vanilla') : l}{isDisabled ? ` ${t('crop_coming_soon')}` : ''}
+                                        </option>
+                                    );
+                                })}
                             </select>
                         </div>
                         <div>

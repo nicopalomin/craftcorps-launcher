@@ -18,7 +18,9 @@ export const ModsGridView = ({
     searchError,
     results,
     onProjectSelect,
-    setSelectedProject // Added prop
+    setSelectedProject, // Added prop
+    selectedInstance, // Added prop
+    onLoadMore // Added prop
 }) => {
     const { t } = useTranslation();
 
@@ -28,20 +30,18 @@ export const ModsGridView = ({
                 <div className="flex items-center justify-between">
                     <h2 className="text-3xl font-bold text-white">{t('mods_title') || 'Marketplace'}</h2>
                     <div className="flex bg-slate-900 border border-slate-800 rounded-lg p-1">
-                        <div className="relative group">
-                            <button
-                                disabled
-                                className="px-4 py-1.5 rounded-md text-sm font-medium transition-colors flex items-center gap-2 text-slate-600 cursor-not-allowed"
-                            >
-                                <Box size={16} /> Mods
-                            </button>
-                            <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2 py-1 bg-slate-900 border border-slate-700 text-xs text-slate-300 rounded shadow-xl whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50">
-                                Coming soon...
-                            </div>
-                        </div>
                         <button
-                            onClick={() => { setProjectType('modpack'); setSelectedProject(null); }}
-                            className={`px-4 py-1.5 rounded-md text-sm font-medium transition-colors flex items-center gap-2 ${projectType === 'modpack' ? 'bg-purple-600 text-white shadow-lg' : 'text-slate-400 hover:text-white'}`}
+                            onClick={() => { if (!selectedInstance) { setProjectType('mod'); setSelectedProject(null); } }}
+                            className={`px-4 py-1.5 rounded-md text-sm font-medium transition-colors flex items-center gap-2 ${projectType === 'mod' ? 'bg-emerald-600 text-white shadow-lg' : 'text-slate-400 hover:text-white'} ${selectedInstance ? 'cursor-not-allowed opacity-80' : ''}`}
+                            title={selectedInstance ? "Locked to Mods for current instance" : "Browse Mods"}
+                        >
+                            <Box size={16} /> Mods
+                        </button>
+                        <button
+                            onClick={() => { if (!selectedInstance) { setProjectType('modpack'); setSelectedProject(null); } }}
+                            className={`px-4 py-1.5 rounded-md text-sm font-medium transition-colors flex items-center gap-2 ${projectType === 'modpack' ? 'bg-purple-600 text-white shadow-lg' : 'text-slate-400 hover:text-white'} ${selectedInstance ? 'opacity-30 cursor-not-allowed' : ''}`}
+                            disabled={!!selectedInstance}
+                            title={selectedInstance ? "Cannot install modpacks into existing instance" : "Browse Modpacks"}
                         >
                             <Package size={16} /> Modpacks
                         </button>
@@ -65,8 +65,9 @@ export const ModsGridView = ({
                     <select
                         value={filterVersion}
                         onChange={(e) => setFilterVersion(e.target.value)}
-                        disabled={isLoadingFilters}
-                        className="bg-slate-900 border border-slate-700 text-slate-300 text-sm rounded-xl px-4 py-3 focus:ring-emerald-500 focus:border-emerald-500 block outline-none appearance-none disabled:opacity-50"
+                        disabled={isLoadingFilters || !!selectedInstance}
+                        className={`bg-slate-900 border border-slate-700 text-slate-300 text-sm rounded-xl px-4 py-3 focus:ring-emerald-500 focus:border-emerald-500 block outline-none appearance-none disabled:opacity-50 ${selectedInstance ? 'cursor-not-allowed border-emerald-500/30 bg-emerald-900/10 text-emerald-400' : ''}`}
+                        title={selectedInstance ? `Locked to ${selectedInstance.version}` : "Filter by Version"}
                     >
                         <option value="">All Versions</option>
                         {availableVersions.map(v => (
@@ -75,17 +76,20 @@ export const ModsGridView = ({
                     </select>
 
                     {/* Category Filter */}
-                    <select
-                        value={filterCategory}
-                        onChange={(e) => setFilterCategory(e.target.value)}
-                        disabled={isLoadingFilters}
-                        className="bg-slate-900 border border-slate-700 text-slate-300 text-sm rounded-xl px-4 py-3 focus:ring-emerald-500 focus:border-emerald-500 block outline-none appearance-none disabled:opacity-50"
-                    >
-                        <option value="">All Categories</option>
-                        {availableCategories.map(c => (
-                            <option key={c.value} value={c.value}>{c.label}</option>
-                        ))}
-                    </select>
+                    {/* Category Filter - Hidden for Mods mode if desired, but user asked to remove categories section from mods */}
+                    {projectType !== 'mod' && (
+                        <select
+                            value={filterCategory}
+                            onChange={(e) => setFilterCategory(e.target.value)}
+                            disabled={isLoadingFilters}
+                            className="bg-slate-900 border border-slate-700 text-slate-300 text-sm rounded-xl px-4 py-3 focus:ring-emerald-500 focus:border-emerald-500 block outline-none appearance-none disabled:opacity-50"
+                        >
+                            <option value="">All Categories</option>
+                            {availableCategories.map(c => (
+                                <option key={c.value} value={c.value}>{c.label}</option>
+                            ))}
+                        </select>
+                    )}
 
                     {isSearching && (
                         <div className="flex items-center justify-center w-12 text-emerald-500 animate-spin">
@@ -116,6 +120,20 @@ export const ModsGridView = ({
                                 onClick={() => onProjectSelect(project)}
                             />
                         ))}
+                    </div>
+                )}
+
+                {/* Load More Button */}
+                {results.length > 0 && (
+                    <div className="flex justify-center mt-8 pb-8">
+                        <button
+                            onClick={onLoadMore}
+                            disabled={isSearching}
+                            className="bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white px-6 py-3 rounded-xl font-medium transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                        >
+                            {isSearching ? <Loader2 size={16} className="animate-spin" /> : null}
+                            {isSearching ? 'Loading...' : 'Load More'}
+                        </button>
                     </div>
                 )}
             </div>

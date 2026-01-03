@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useToast } from '../contexts/ToastContext';
 import { ModsGridView } from './mods/ModsGridView';
@@ -12,9 +12,9 @@ const ModsView = ({ selectedInstance, instances = [], onInstanceCreated }) => {
 
     // -- State: Search --
     const [searchQuery, setSearchQuery] = useState('');
-    const [projectType, setProjectType] = useState('modpack'); // Default to 'modpack'
+    const [projectType, setProjectType] = useState(selectedInstance ? 'mod' : 'modpack'); // Auto-select mod if instance selected
 
-    const [filterVersion, setFilterVersion] = useState('');
+    const [filterVersion, setFilterVersion] = useState(selectedInstance ? selectedInstance.version : '');
     const [filterCategory, setFilterCategory] = useState('');
     const [results, setResults] = useState([]);
     const [isSearching, setIsSearching] = useState(false);
@@ -127,11 +127,22 @@ const ModsView = ({ selectedInstance, instances = [], onInstanceCreated }) => {
     }, [projectType]); // Reload categories if project type changes? Some categories are specific.
 
     // -- Effects: Search --
+    const prevQueryRef = useRef(searchQuery);
+
     useEffect(() => {
-        const timer = setTimeout(() => {
+        const isTextChange = prevQueryRef.current !== searchQuery;
+        prevQueryRef.current = searchQuery;
+
+        if (isTextChange) {
+            // Debounce text search
+            const timer = setTimeout(() => {
+                performSearch(searchQuery);
+            }, 300);
+            return () => clearTimeout(timer);
+        } else {
+            // Immediate update for filters or mount
             performSearch(searchQuery);
-        }, 500);
-        return () => clearTimeout(timer);
+        }
     }, [searchQuery, projectType, filterVersion, filterCategory]);
 
     // -- Effects: Load Details --
@@ -150,20 +161,35 @@ const ModsView = ({ selectedInstance, instances = [], onInstanceCreated }) => {
 
     // -- Actions --
 
-    const performSearch = async (query) => {
+    const [offset, setOffset] = useState(0);
+
+    // -- Actions --
+
+    const performSearch = async (query, isLoadMore = false) => {
         if (!window.electronAPI?.modrinthSearch) return;
         setIsSearching(true);
         setSearchError(null);
+
+        const currentOffset = isLoadMore ? offset : 0;
+        const limit = 24;
+
         try {
             const response = await window.electronAPI.modrinthSearch({
                 query: query,
                 type: projectType,
                 version: filterVersion || undefined,
                 category: filterCategory || undefined,
-                limit: 24
+                limit: limit,
+                offset: currentOffset
             });
             if (response.success) {
-                setResults(response.data.hits || []);
+                if (isLoadMore) {
+                    setResults(prev => [...prev, ...(response.data.hits || [])]);
+                    setOffset(prev => prev + limit);
+                } else {
+                    setResults(response.data.hits || []);
+                    setOffset(limit);
+                }
             } else {
                 setSearchError(response.error);
             }
@@ -308,7 +334,8 @@ const ModsView = ({ selectedInstance, instances = [], onInstanceCreated }) => {
                     project: project,
                     gameVersion: gameVersion,
                     loader: loader === 'vanilla' ? 'fabric' : loader,
-                    versionId: versionId
+                    versionId: versionId,
+                    instancePath: selectedInstance.path // Pass instance path
                 });
 
                 if (res.success) {
@@ -394,6 +421,8 @@ const ModsView = ({ selectedInstance, instances = [], onInstanceCreated }) => {
                     results={results}
                     onProjectSelect={setSelectedProject}
                     setSelectedProject={setSelectedProject}
+                    selectedInstance={selectedInstance}
+                    onLoadMore={() => performSearch(searchQuery, true)}
                 />
             )}
         </div>
