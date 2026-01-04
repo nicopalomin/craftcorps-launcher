@@ -160,7 +160,7 @@ const CropModal = ({ isOpen, onClose, onSave, editingCrop }) => {
 
                 {/* Header */}
                 <div className="flex justify-between items-center mb-6 relative z-10">
-                    <h3 className="text-xl font-bold text-white flex items-center gap-2">
+                    <h3 className="text-xl font-bold text-slate-200 flex items-center gap-2">
                         <Sprout size={20} className="text-emerald-500" />
                         {editingCrop ? t('crop_title_edit') : t('crop_title_new')}
                     </h3>
@@ -170,13 +170,13 @@ const CropModal = ({ isOpen, onClose, onSave, editingCrop }) => {
                                 type="button"
                                 onClick={handleImport}
                                 disabled={isImporting}
-                                className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 disabled:opacity-50 disabled:cursor-not-allowed text-slate-300 hover:text-white rounded-lg text-xs font-bold transition-all flex items-center gap-2"
+                                className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 disabled:opacity-50 disabled:cursor-not-allowed text-slate-300 hover:text-slate-200 rounded-lg text-xs font-bold transition-all flex items-center gap-2"
                                 title="Import from Folder"
                             >
                                 <Download size={14} /> Import
                             </button>
                         )}
-                        <button onClick={onClose} disabled={isImporting} className="text-slate-500 hover:text-white transition-colors disabled:opacity-50">
+                        <button onClick={onClose} disabled={isImporting} className="text-slate-500 hover:text-slate-200 transition-colors disabled:opacity-50">
                             <X size={20} />
                         </button>
                     </div>
@@ -266,7 +266,7 @@ const CropModal = ({ isOpen, onClose, onSave, editingCrop }) => {
                                 if (errors.name) setErrors(prev => ({ ...prev, name: false }));
                             }}
                             placeholder="My Awesome World"
-                            className={`w-full bg-slate-950 border rounded-xl px-4 py-3 text-white focus:outline-none transition-colors placeholder:text-slate-600 ${errors.name
+                            className={`w-full bg-slate-950 border rounded-xl px-4 py-3 text-slate-200 focus:outline-none transition-colors placeholder:text-slate-600 ${errors.name
                                 ? 'border-red-500 focus:border-red-500'
                                 : 'border-slate-800 focus:border-emerald-500/50'
                                 }`}
@@ -283,7 +283,7 @@ const CropModal = ({ isOpen, onClose, onSave, editingCrop }) => {
                             <select
                                 value={loader}
                                 onChange={(e) => setLoader(e.target.value)}
-                                className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-emerald-500/50 transition-colors appearance-none"
+                                className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-slate-200 focus:outline-none focus:border-emerald-500/50 transition-colors appearance-none"
                             >
                                 {LOADERS.map(l => {
                                     const isDisabled = ['Quilt', 'NeoForge'].includes(l);
@@ -323,7 +323,7 @@ const CropModal = ({ isOpen, onClose, onSave, editingCrop }) => {
                                     setVersion(e.target.value);
                                     if (errors.version) setErrors(prev => ({ ...prev, version: false }));
                                 }}
-                                className={`w-full bg-slate-950 border rounded-xl px-4 py-3 text-white focus:outline-none transition-colors appearance-none ${errors.version
+                                className={`w-full bg-slate-950 border rounded-xl px-4 py-3 text-slate-200 focus:outline-none transition-colors appearance-none ${errors.version
                                     ? 'border-red-500 focus:border-red-500'
                                     : 'border-slate-800 focus:border-emerald-500/50'
                                     }`}
@@ -354,7 +354,7 @@ const CropModal = ({ isOpen, onClose, onSave, editingCrop }) => {
                                 className="w-5 h-5 rounded bg-slate-950 border-slate-700 text-emerald-600 focus:ring-emerald-500 focus:ring-offset-0 cursor-pointer"
                             />
                             <div>
-                                <span className="text-sm font-bold text-slate-200 group-hover:text-white transition-colors">{t('crop_check_autoconnect')}</span>
+                                <span className="text-sm font-bold text-slate-200 group-hover:text-slate-100 transition-colors">{t('crop_check_autoconnect')}</span>
                                 <p className="text-xs text-slate-500">{t('crop_desc_autoconnect')}</p>
                             </div>
                         </label>
@@ -372,7 +372,7 @@ const CropModal = ({ isOpen, onClose, onSave, editingCrop }) => {
                                         if (errors.serverAddress) setErrors(prev => ({ ...prev, serverAddress: false }));
                                     }}
                                     placeholder="play.hypixel.net"
-                                    className={`w-full bg-slate-950 border rounded-xl px-4 py-3 text-white focus:outline-none transition-colors placeholder:text-slate-600 font-mono text-sm ${errors.serverAddress
+                                    className={`w-full bg-slate-950 border rounded-xl px-4 py-3 text-slate-200 focus:outline-none transition-colors placeholder:text-slate-600 font-mono text-sm ${errors.serverAddress
                                         ? 'border-red-500 focus:border-red-500'
                                         : 'border-slate-800 focus:border-emerald-500/50'
                                         }`}
@@ -387,7 +387,7 @@ const CropModal = ({ isOpen, onClose, onSave, editingCrop }) => {
                             <button
                                 type="button"
                                 onClick={() => window.electronAPI.openPath(editingCrop.path)}
-                                className="px-4 py-3 rounded-xl font-bold text-slate-400 hover:bg-slate-800 hover:text-white transition-colors flex items-center gap-2"
+                                className="px-4 py-3 rounded-xl font-bold text-slate-400 hover:bg-slate-800 hover:text-slate-200 transition-colors flex items-center gap-2"
                                 title={t('crop_btn_open_folder', { defaultValue: 'Open Folder' })}
                             >
                                 <FolderOpen size={20} />
@@ -414,7 +414,7 @@ const CropModal = ({ isOpen, onClose, onSave, editingCrop }) => {
                 {isImporting && (
                     <div className="absolute inset-0 bg-slate-900/90 backdrop-blur-sm z-50 flex flex-col items-center justify-center animate-in fade-in duration-300">
                         <Loader2 size={48} className="text-emerald-500 animate-spin mb-4" />
-                        <h4 className="text-lg font-bold text-white mb-1">Importing Modpack...</h4>
+                        <h4 className="text-lg font-bold text-slate-200 mb-1">Importing Modpack...</h4>
                         <p className="text-slate-400 text-sm">Copying files via Warp Drive</p>
                     </div>
                 )}

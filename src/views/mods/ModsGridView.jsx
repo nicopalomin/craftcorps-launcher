@@ -28,7 +28,7 @@ export const ModsGridView = ({
         <>
             <div className="flex flex-col gap-4 mb-6">
                 <div className="flex items-center justify-between">
-                    <h2 className="text-3xl font-bold text-white">{t('mods_title') || 'Marketplace'}</h2>
+                    <h2 className="text-3xl font-bold text-slate-200">{t('mods_title') || 'Marketplace'}</h2>
                     <div className="flex bg-slate-900 border border-slate-800 rounded-lg p-1">
                         <button
                             onClick={() => { setProjectType('mod'); setSelectedProject(null); }}
@@ -128,7 +128,7 @@ export const ModsGridView = ({
                         <button
                             onClick={onLoadMore}
                             disabled={isSearching}
-                            className="bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white px-6 py-3 rounded-xl font-medium transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                            className="bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-slate-200 px-6 py-3 rounded-xl font-medium transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
                         >
                             {isSearching ? <Loader2 size={16} className="animate-spin" /> : null}
                             {isSearching ? 'Loading...' : 'Load More'}
@@ -163,7 +163,7 @@ const ModsGridCard = ({ project, onClick }) => {
                     )}
                 </div>
                 <div className="flex-1 min-w-0">
-                    <h3 className="text-base font-bold text-white truncate group-hover:text-emerald-400 transition-colors">
+                    <h3 className="text-base font-bold text-slate-200 truncate group-hover:text-emerald-400 transition-colors">
                         {project.title}
                     </h3>
                     <p className="text-xs text-emerald-500/80 mb-1 font-medium">

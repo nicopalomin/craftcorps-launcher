@@ -27,7 +27,7 @@ const QuickSelectCard = ({ instance, isSelected, onClick }) => (
             )}
         </div>
         <div className="min-w-0">
-            <h4 className={`text-sm font-bold truncate ${isSelected ? 'text-white' : 'text-slate-400'}`}>{instance.name}</h4>
+            <h4 className={`text-sm font-bold truncate ${isSelected ? 'text-slate-200' : 'text-slate-400'}`}>{instance.name}</h4>
             <p className="text-xs text-slate-600 truncate">{instance.version} • {instance.loader}</p>
         </div>
     </button>

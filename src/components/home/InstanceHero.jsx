@@ -44,7 +44,7 @@ const InstanceHero = ({
                 {/* Info & Play */}
                 <div className={isModded ? 'flex-1 min-w-0' : 'contents'}>
                     {/* Title */}
-                    <h1 className={`${isModded ? 'text-3xl mb-3' : 'text-5xl mb-2'} font-bold text-white tracking-tight drop-shadow-lg truncate`}>
+                    <h1 className={`${isModded ? 'text-3xl mb-3' : 'text-5xl mb-2'} font-bold text-slate-200 tracking-tight drop-shadow-lg truncate`}>
                         {selectedInstance.name}
                     </h1>
 
@@ -113,7 +113,7 @@ const InstanceHero = ({
                         ) : (
                             <button
                                 onClick={onStop}
-                                className="w-full max-w-sm bg-slate-800 border-2 border-slate-700 text-slate-300 hover:text-white hover:border-red-500/50 hover:bg-red-500/10 py-5 rounded-2xl font-bold text-xl transition-all flex items-center justify-center gap-3"
+                                className="w-full max-w-sm bg-slate-800 border-2 border-slate-700 text-slate-300 hover:text-slate-200 hover:border-red-500/50 hover:bg-red-500/10 py-5 rounded-2xl font-bold text-xl transition-all flex items-center justify-center gap-3"
                             >
                                 {launchStatus === 'launching' ? (
                                     <Loader2 size={24} className="animate-spin" />
