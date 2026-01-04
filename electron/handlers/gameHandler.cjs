@@ -114,10 +114,10 @@ function setupGameHandlers(getMainWindow) {
                         const actualVersion = JavaManager.getVersionFromBinary(options.javaPath);
                         log.info(`[Launch] Detected Java Version: ${actualVersion} (Required: ${v})`);
 
-                        if (actualVersion >= v) {
+                        if (actualVersion === v || (v !== 8 && actualVersion >= v)) {
                             javaValid = true;
                         } else {
-                            log.warn(`[Launch] Java path ${options.javaPath} is version ${actualVersion}, but ${v} is required. Will attempt auto-detection.`);
+                            log.warn(`[Launch] Java path ${options.javaPath} is version ${actualVersion}, but ${v} is required (Strict check for Java 8).`);
                         }
                     }
                 }

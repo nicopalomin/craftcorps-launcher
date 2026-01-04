@@ -31,17 +31,16 @@ export const ModsGridView = ({
                     <h2 className="text-3xl font-bold text-white">{t('mods_title') || 'Marketplace'}</h2>
                     <div className="flex bg-slate-900 border border-slate-800 rounded-lg p-1">
                         <button
-                            onClick={() => { if (!selectedInstance) { setProjectType('mod'); setSelectedProject(null); } }}
-                            className={`px-4 py-1.5 rounded-md text-sm font-medium transition-colors flex items-center gap-2 ${projectType === 'mod' ? 'bg-emerald-600 text-white shadow-lg' : 'text-slate-400 hover:text-white'} ${selectedInstance ? 'cursor-not-allowed opacity-80' : ''}`}
-                            title={selectedInstance ? "Locked to Mods for current instance" : "Browse Mods"}
+                            onClick={() => { setProjectType('mod'); setSelectedProject(null); }}
+                            className={`px-4 py-1.5 rounded-md text-sm font-medium transition-colors flex items-center gap-2 ${projectType === 'mod' ? 'bg-emerald-600 text-white shadow-lg' : 'text-slate-400 hover:text-white'}`}
+                            title="Browse Mods"
                         >
                             <Box size={16} /> Mods
                         </button>
                         <button
-                            onClick={() => { if (!selectedInstance) { setProjectType('modpack'); setSelectedProject(null); } }}
-                            className={`px-4 py-1.5 rounded-md text-sm font-medium transition-colors flex items-center gap-2 ${projectType === 'modpack' ? 'bg-purple-600 text-white shadow-lg' : 'text-slate-400 hover:text-white'} ${selectedInstance ? 'opacity-30 cursor-not-allowed' : ''}`}
-                            disabled={!!selectedInstance}
-                            title={selectedInstance ? "Cannot install modpacks into existing instance" : "Browse Modpacks"}
+                            onClick={() => { setProjectType('modpack'); setSelectedProject(null); }}
+                            className={`px-4 py-1.5 rounded-md text-sm font-medium transition-colors flex items-center gap-2 ${projectType === 'modpack' ? 'bg-purple-600 text-white shadow-lg' : 'text-slate-400 hover:text-white'}`}
+                            title="Browse Modpacks"
                         >
                             <Package size={16} /> Modpacks
                         </button>
@@ -143,6 +142,11 @@ export const ModsGridView = ({
 
 // Extracted internal component for cleaner code
 const ModsGridCard = ({ project, onClick }) => {
+    const loaders = project.categories?.filter(c => ['fabric', 'forge', 'quilt', 'neoforge'].includes(c)) || [];
+    const gameVersions = project.versions || [];
+    const displayVersions = gameVersions.slice(0, 2);
+    const hasMoreVersions = gameVersions.length > 2;
+
     return (
         <div
             onClick={onClick}
@@ -162,11 +166,32 @@ const ModsGridCard = ({ project, onClick }) => {
                     <h3 className="text-base font-bold text-white truncate group-hover:text-emerald-400 transition-colors">
                         {project.title}
                     </h3>
-                    <p className="text-xs text-slate-400 line-clamp-2 mt-1">
+                    <p className="text-xs text-emerald-500/80 mb-1 font-medium">
+                        by {project.author}
+                    </p>
+                    <p className="text-xs text-slate-400 line-clamp-2">
                         {project.description}
                     </p>
                 </div>
             </div>
+
+            {/* Tags / Versions */}
+            <div className="flex flex-wrap gap-1.5 mt-1">
+                {loaders.map(l => (
+                    <span key={l} className="px-1.5 py-0.5 bg-slate-800 border border-slate-700 rounded text-[10px] text-slate-300 capitalize">
+                        {l}
+                    </span>
+                ))}
+                {displayVersions.map(v => (
+                    <span key={v} className="px-1.5 py-0.5 bg-slate-950 border border-slate-800 rounded text-[10px] text-slate-500">
+                        {v}
+                    </span>
+                ))}
+                {hasMoreVersions && (
+                    <span className="px-1.5 py-0.5 text-[10px] text-slate-600">+{gameVersions.length - 2}</span>
+                )}
+            </div>
+
             <div className="mt-auto pt-3 flex items-center justify-between border-t border-slate-800/50 text-[10px] text-slate-500 font-mono">
                 <span className="flex items-center gap-1"><Download size={12} /> {project.downloads.toLocaleString()}</span>
                 <span className="flex items-center gap-1"><Layers size={12} /> {project.project_type}</span>

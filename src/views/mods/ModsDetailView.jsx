@@ -64,7 +64,27 @@ export const ModsDetailView = ({
 
                 <div className="flex-1 min-w-0">
                     <h1 className="text-3xl font-bold text-white tracking-tight">{selectedProject.title}</h1>
-                    <p className="text-slate-400 text-sm flex items-center gap-4 mt-1">
+                    <p className="text-emerald-500 font-medium text-sm mb-2">by {selectedProject.author}</p>
+
+                    <div className="flex flex-wrap gap-2 mb-3">
+                        {/* Loaders */}
+                        {(selectedProject.categories?.filter(c => ['fabric', 'forge', 'quilt', 'neoforge'].includes(c)) || []).map(l => (
+                            <span key={l} className="px-2 py-0.5 bg-slate-800 border border-slate-700 rounded text-xs text-slate-300 capitalize">
+                                {l}
+                            </span>
+                        ))}
+                        {/* Versions */}
+                        {(selectedProject.versions || []).slice(0, 3).map(v => (
+                            <span key={v} className="px-2 py-0.5 bg-slate-950 border border-slate-800 rounded text-xs text-slate-500">
+                                {v}
+                            </span>
+                        ))}
+                        {(selectedProject.versions?.length || 0) > 3 && (
+                            <span className="px-2 py-0.5 text-xs text-slate-600">+{selectedProject.versions.length - 3} versions</span>
+                        )}
+                    </div>
+
+                    <p className="text-slate-400 text-sm flex items-center gap-4">
                         <span className="flex items-center gap-1.5"><Download size={14} /> {selectedProject.downloads.toLocaleString()} downloads</span>
                         <span className="flex items-center gap-1.5"><Calendar size={14} /> Updated {new Date(selectedProject.date_modified).toLocaleDateString()}</span>
                         <span className="px-2 py-0.5 rounded-full bg-slate-800 text-xs border border-slate-700">{selectedProject.project_type}</span>

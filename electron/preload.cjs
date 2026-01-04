@@ -88,4 +88,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
     // Instances
     getInstances: () => ipcRenderer.invoke('get-instances'),
     saveInstance: (data) => ipcRenderer.invoke('save-instance', data),
+
+    // Import
+    importInstanceDialog: () => ipcRenderer.invoke('import-instance-dialog'),
+    performImportInstance: (path) => ipcRenderer.invoke('perform-import-instance', path),
 });

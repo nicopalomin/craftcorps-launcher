@@ -56,16 +56,40 @@ class GameLauncher extends EventEmitter {
             },
             memory: {
                 max: options.maxMem ? options.maxMem + "M" : "4G",
-                min: options.minMem ? options.minMem + "M" : "1G"
+                min: options.maxMem ? options.maxMem + "M" : "4G" // Set Xms = Xmx for performance
             },
             javaPath: options.javaPath || 'java',
-            customArgs: process.platform === 'darwin' ? [
-                '-Xdock:name=CraftCorps',
-                '-Xdock:icon=' + path.join(__dirname, '..', 'public', 'icon.png')
-            ] : [],
+            customArgs: [
+                // Platform specific
+                ...(process.platform === 'darwin' ? [
+                    '-Xdock:name=CraftCorps',
+                    '-Xdock:icon=' + path.join(__dirname, '..', 'public', 'icon.png')
+                ] : []),
+                // Aikar's Optimization Flags (Client Tuned)
+                '-XX:+UseG1GC',
+                '-XX:+ParallelRefProcEnabled',
+                '-XX:MaxGCPauseMillis=200',
+                '-XX:+UnlockExperimentalVMOptions',
+                '-XX:+DisableExplicitGC',
+                '-XX:+AlwaysPreTouch',
+                '-XX:G1NewSizePercent=30',
+                '-XX:G1MaxNewSizePercent=40',
+                '-XX:G1HeapRegionSize=8M',
+                '-XX:G1ReservePercent=20',
+                '-XX:G1HeapWastePercent=5',
+                '-XX:G1MixedGCCountTarget=4',
+                '-XX:InitiatingHeapOccupancyPercent=15',
+                '-XX:G1MixedGCLiveThresholdPercent=90',
+                '-XX:G1RSetUpdatingPauseTimePercent=5',
+                '-XX:SurvivorRatio=32',
+                '-XX:+PerfDisableSharedMem',
+                '-XX:MaxTenuringThreshold=1',
+                '-Dsun.rmi.dgc.server.gcInterval=2147483646'
+            ].filter((v, i, a) => a.indexOf(v) === i), // Dedupe just in case
             overrides: {
                 detached: true,
-                gameDirectory: gameRoot
+                gameDirectory: gameRoot,
+                cwd: gameRoot // Force CWD to instance folder for relative path mods (ZenScript)
             }
         };
 

@@ -1,13 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
-    X, Sprout, Save, Plus, FolderOpen,
+    X, Sprout, Save, Plus, FolderOpen, Download,
     Pickaxe, Axe, Sword, Shield, Box,
     Map, Compass, Flame, Snowflake, Droplet,
-    Zap, Heart, Skull, Ghost, Trophy
+    Zap, Heart, Skull, Ghost, Trophy, Loader2
 } from 'lucide-react';
 import { LOADERS, COLORS, FALLBACK_VERSIONS, INSTANCE_ICONS, GLYPH_COLORS } from '../../data/mockData';
 import { fetchMinecraftVersions } from '../../utils/minecraftApi';
+import { useToast } from '../../contexts/ToastContext';
 
 const ICON_MAP = {
     Sprout, Pickaxe, Axe, Sword, Shield, Box,
@@ -17,6 +18,7 @@ const ICON_MAP = {
 
 const CropModal = ({ isOpen, onClose, onSave, editingCrop }) => {
     const { t } = useTranslation();
+    const { addToast: showToast } = useToast();
     const [name, setName] = useState('');
     const [loader, setLoader] = useState(LOADERS[0]);
     const [version, setVersion] = useState('');
@@ -28,6 +30,7 @@ const CropModal = ({ isOpen, onClose, onSave, editingCrop }) => {
     const [errors, setErrors] = useState({});
     const [autoConnect, setAutoConnect] = useState(false);
     const [serverAddress, setServerAddress] = useState('');
+    const [isImporting, setIsImporting] = useState(false);
 
     // Fetch Minecraft versions on mount
     useEffect(() => {
@@ -44,6 +47,7 @@ const CropModal = ({ isOpen, onClose, onSave, editingCrop }) => {
     useEffect(() => {
         if (isOpen) {
             setErrors({}); // Clear errors when opening modal
+            setIsImporting(false);
             if (editingCrop) {
                 setName(editingCrop.name);
                 setLoader(editingCrop.loader);
@@ -67,6 +71,33 @@ const CropModal = ({ isOpen, onClose, onSave, editingCrop }) => {
             }
         }
     }, [isOpen, editingCrop, versions]);
+
+    const handleImport = async () => {
+        try {
+            const dialogRes = await window.electronAPI.importInstanceDialog();
+            if (dialogRes.cancelled) return;
+            if (!dialogRes.success) {
+                showToast(dialogRes.error, 'error');
+                return;
+            }
+
+            setIsImporting(true);
+            await new Promise(r => setTimeout(r, 100)); // UI update delay
+
+            const res = await window.electronAPI.performImportInstance(dialogRes.path);
+
+            setIsImporting(false);
+            if (res.success) {
+                showToast(`Imported ${res.instance.name} successfully!`, 'success');
+                window.location.reload();
+            } else {
+                showToast(`Import failed: ${res.error}`, 'error');
+            }
+        } catch (e) {
+            setIsImporting(false);
+            showToast(e.message, 'error');
+        }
+    };
 
     if (!isOpen) return null;
 
@@ -101,8 +132,6 @@ const CropModal = ({ isOpen, onClose, onSave, editingCrop }) => {
                 path = await window.electronAPI.getNewInstancePath(name);
             } catch (err) {
                 console.error("Failed to generate instance path:", err);
-                // Fallback? Or just let it be null (defaults to root)
-                // But we want IT TO BE FIXED
             }
         }
 
@@ -135,13 +164,26 @@ const CropModal = ({ isOpen, onClose, onSave, editingCrop }) => {
                         <Sprout size={20} className="text-emerald-500" />
                         {editingCrop ? t('crop_title_edit') : t('crop_title_new')}
                     </h3>
-                    <button onClick={onClose} className="text-slate-500 hover:text-white transition-colors">
-                        <X size={20} />
-                    </button>
+                    <div className="flex items-center gap-2">
+                        {!editingCrop && (
+                            <button
+                                type="button"
+                                onClick={handleImport}
+                                disabled={isImporting}
+                                className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 disabled:opacity-50 disabled:cursor-not-allowed text-slate-300 hover:text-white rounded-lg text-xs font-bold transition-all flex items-center gap-2"
+                                title="Import from Folder"
+                            >
+                                <Download size={14} /> Import
+                            </button>
+                        )}
+                        <button onClick={onClose} disabled={isImporting} className="text-slate-500 hover:text-white transition-colors disabled:opacity-50">
+                            <X size={20} />
+                        </button>
+                    </div>
                 </div>
 
                 {/* Content */}
-                <form onSubmit={handleSubmit} className="relative z-10 space-y-6">
+                <form onSubmit={handleSubmit} className={`relative z-10 space-y-6 ${isImporting ? 'opacity-30 pointer-events-none' : ''}`}>
 
                     {/* Icon Selector */}
                     <div>
@@ -367,6 +409,15 @@ const CropModal = ({ isOpen, onClose, onSave, editingCrop }) => {
                         </button>
                     </div>
                 </form>
+
+                {/* Loading Widget / Overlay */}
+                {isImporting && (
+                    <div className="absolute inset-0 bg-slate-900/90 backdrop-blur-sm z-50 flex flex-col items-center justify-center animate-in fade-in duration-300">
+                        <Loader2 size={48} className="text-emerald-500 animate-spin mb-4" />
+                        <h4 className="text-lg font-bold text-white mb-1">Importing Modpack...</h4>
+                        <p className="text-slate-400 text-sm">Copying files via Warp Drive</p>
+                    </div>
+                )}
 
                 {/* Decorative BG */}
                 <div className="absolute top-0 right-0 w-64 h-64 bg-emerald-500/5 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2 pointer-events-none" />

@@ -147,19 +147,24 @@ class ForgeHandler {
         const libDir = path.join(launchOptions.root, 'libraries');
         launchOptions.customArgs.push(`-DlibraryDirectory=${libDir}`);
 
-        // Java 16+ JPMS Access for Forge
-        const javaAccessFlags = [
-            "--add-opens", "java.base/java.util.jar=ALL-UNNAMED",
-            "--add-opens", "java.base/java.lang.invoke=ALL-UNNAMED",
-            "--add-opens", "java.base/java.lang=ALL-UNNAMED",
-            "--add-opens", "java.base/java.util=ALL-UNNAMED",
-            "--add-opens", "java.base/java.net=ALL-UNNAMED",
-            "--add-opens", "java.base/java.nio=ALL-UNNAMED",
-            "--add-exports", "java.base/sun.security.action=ALL-UNNAMED",
-            "--add-opens", "java.base/sun.security.util=ALL-UNNAMED"
-        ];
-        launchOptions.customArgs.push(...javaAccessFlags);
-        emit('log', { type: 'INFO', message: 'Added Java Access Flags & Library Path for Forge.' });
+        // Java 16+ JPMS Access for Forge (Only for MC 1.17+)
+        const minorVer = parseInt(gameVersion.split('.')[1]);
+        if (minorVer >= 17) {
+            const javaAccessFlags = [
+                "--add-opens", "java.base/java.util.jar=ALL-UNNAMED",
+                "--add-opens", "java.base/java.lang.invoke=ALL-UNNAMED",
+                "--add-opens", "java.base/java.lang=ALL-UNNAMED",
+                "--add-opens", "java.base/java.util=ALL-UNNAMED",
+                "--add-opens", "java.base/java.net=ALL-UNNAMED",
+                "--add-opens", "java.base/java.nio=ALL-UNNAMED",
+                "--add-exports", "java.base/sun.security.action=ALL-UNNAMED",
+                "--add-opens", "java.base/sun.security.util=ALL-UNNAMED"
+            ];
+            launchOptions.customArgs.push(...javaAccessFlags);
+            emit('log', { type: 'INFO', message: 'Added Java Access Flags & Library Path for Forge (Modern Java).' });
+        } else {
+            emit('log', { type: 'INFO', message: 'Skipping Java Access Flags for legacy Forge (Java 8).' });
+        }
 
         if (!launchOptions.overrides) launchOptions.overrides = {};
         launchOptions.overrides.detached = false;
