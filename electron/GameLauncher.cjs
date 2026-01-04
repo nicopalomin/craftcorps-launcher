@@ -316,6 +316,9 @@ class GameLauncher extends EventEmitter {
                 if (process) process.kill();
                 return;
             }
+            if (process) {
+                process.unref(); // Ensure game survives launcher exit
+            }
             if (!process) {
                 const errorInfo = this.lastError || { summary: "Game process failed to start.", advice: "Check game logs regarding the crash." };
                 this.emit('launch-error', errorInfo);
