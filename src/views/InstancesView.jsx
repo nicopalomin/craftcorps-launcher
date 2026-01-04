@@ -78,7 +78,7 @@ const InstancesView = ({ instances, onEditCrop, onDeleteCrop, onSelectInstance, 
         <div className="flex-1 overflow-y-auto p-8 animate-in fade-in slide-in-from-bottom-4 duration-300 select-none custom-scrollbar">
             <div className="flex items-center justify-between mb-8">
                 <div>
-                    <h2 className="text-3xl font-bold text-white mb-1">{t('instances_title')}</h2>
+                    <h2 className="text-3xl font-bold text-slate-200 mb-1">{t('instances_title')}</h2>
                     <p className="text-slate-400 text-sm">{t('instances_subtitle')}</p>
                 </div>
                 <div className="flex gap-2">
@@ -161,7 +161,7 @@ const InstancesView = ({ instances, onEditCrop, onDeleteCrop, onSelectInstance, 
                                 </button>
                             </div>
                         </div>
-                        <h3 className="font-bold text-white truncate relative z-10">{inst.name}</h3>
+                        <h3 className="font-bold text-slate-200 truncate relative z-10">{inst.name}</h3>
                         <div className="flex items-center gap-2 mb-4">
                             <p className="text-xs text-slate-500 relative z-10">{inst.version} • {inst.loader}</p>
                             {inst.autoConnect && (

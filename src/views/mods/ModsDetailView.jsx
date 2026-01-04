@@ -47,7 +47,7 @@ export const ModsDetailView = ({
             <div className="flex items-center gap-4 mb-6">
                 <button
                     onClick={() => setSelectedProject(null)}
-                    className="p-2 hover:bg-slate-800 rounded-lg text-slate-400 hover:text-white transition-colors"
+                    className="p-2 hover:bg-slate-800 rounded-lg text-slate-400 hover:text-slate-200 transition-colors"
                 >
                     <ArrowLeft size={24} />
                 </button>
@@ -63,7 +63,7 @@ export const ModsDetailView = ({
                 </div>
 
                 <div className="flex-1 min-w-0">
-                    <h1 className="text-3xl font-bold text-white tracking-tight">{selectedProject.title}</h1>
+                    <h1 className="text-3xl font-bold text-slate-200 tracking-tight">{selectedProject.title}</h1>
                     <p className="text-emerald-500 font-medium text-sm mb-2">by {selectedProject.author}</p>
 
                     <div className="flex flex-wrap gap-2 mb-3">

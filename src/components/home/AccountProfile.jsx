@@ -40,7 +40,7 @@ const AccountProfile = ({
                 </div>
 
                 <div className="flex flex-col items-start gap-0.5">
-                    <span className="font-bold text-[15px] text-slate-100 group-hover:text-white transition-colors leading-none tracking-tight">
+                    <span className="font-bold text-[15px] text-slate-200 transition-colors leading-none tracking-tight">
                         {activeAccount?.name}
                     </span>
                     <span className="text-[10px] font-medium text-emerald-400 uppercase tracking-wider bg-emerald-500/10 px-1.5 py-0.5 rounded leading-none border border-emerald-500/10">

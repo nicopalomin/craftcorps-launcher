@@ -294,7 +294,8 @@ const HomeView = ({
     return (
         <div className={`flex-1 flex flex-col relative animate-in fade-in zoom-in-95 duration-500 select-none overflow-hidden ${isModded ? 'justify-start' : 'justify-center'}`}>
             {/* Dynamic Background */}
-            {theme !== 'midnight' && (
+            {/* Dynamic Background */}
+            {!['midnight', 'white'].includes(theme) && (
                 <div
                     className={`absolute inset-0 bg-gradient-to-br ${selectedInstance.bgGradient} transition-colors duration-1000`}
                 />
@@ -303,7 +304,7 @@ const HomeView = ({
             <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/80 to-transparent" />
 
             {/* Animated Blobs */}
-            <BackgroundBlobs disabled={disableAnimations || isModded || theme === 'midnight'} />
+            <BackgroundBlobs disabled={disableAnimations || isModded || ['midnight', 'white'].includes(theme)} />
 
             {/* Account Pill & System - Top Right */}
             <AccountProfile
