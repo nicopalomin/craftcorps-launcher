@@ -65,6 +65,7 @@ class GameLauncher extends EventEmitter {
                     '-Xdock:name=CraftCorps',
                     '-Xdock:icon=' + path.join(__dirname, '..', 'public', 'icon.png')
                 ] : []),
+                `-Duser.dir=${gameRoot}`, // Force working directory for old mods (ContentTweaker)
                 // Aikar's Optimization Flags (Client Tuned)
                 '-XX:+UseG1GC',
                 '-XX:+ParallelRefProcEnabled',
