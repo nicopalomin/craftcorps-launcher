@@ -11,6 +11,17 @@ const QuickSwitchPanel = ({
     onNewCrop
 }) => {
     const { t } = useTranslation();
+    const scrollContainerRef = React.useRef(null);
+
+    const handleWheel = (e) => {
+        if (scrollContainerRef.current) {
+            // Prevent default vertical scrolling if meaningful horizontal scroll happens
+            // e.preventDefault(); 
+            // - Note: preventDefault can't be called on a passive event listener which React 18+ implies.
+            // But we can just scroll.
+            scrollContainerRef.current.scrollLeft += e.deltaY;
+        }
+    };
 
     return (
         <div className="absolute bottom-6 left-1/2 -translate-x-1/2 w-[90%] max-w-5xl bg-slate-950/80 backdrop-blur-xl border border-white/10 p-4 rounded-3xl shadow-2xl z-40 animate-in slide-in-from-bottom-10 duration-500">
@@ -24,7 +35,11 @@ const QuickSwitchPanel = ({
                 </button>
             </div>
 
-            <div className="flex items-center gap-3 overflow-x-auto custom-scrollbar pb-2 snap-x">
+            <div
+                ref={scrollContainerRef}
+                onWheel={handleWheel}
+                className="flex items-center gap-3 overflow-x-auto custom-scrollbar pb-2 snap-x"
+            >
                 {instances.map((instance) => (
                     <QuickSelectCard
                         key={instance.id}
