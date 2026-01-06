@@ -12,7 +12,8 @@
     "lint": "eslint . --ext js,jsx --report-unused-disable-directives --max-warnings 0",
     "preview": "vite preview",
     "start": "concurrently -k \"cross-env BROWSER=none npm run dev\" \"wait-on tcp:5173 && cross-env NODE_ENV=development electron .\"",
-    "electron:build": "node electron/increment-version.js && vite build && electron-builder"
+    "electron:build": "node electron/increment-version.js && vite build && electron-builder",
+    "electron:build:linux": "node electron/increment-version.js && vite build && electron-builder --linux"
   },
   "build": {
     "appId": "com.craftcorps.launcher",
