@@ -40,3 +40,4 @@ crash-service/crash_server.py
 crashDumps
 *.dmp
 DEPLOY_TO_R2.md
+/.agent

@@ -80,7 +80,7 @@ class TelemetryService {
         }
     }
 
-    track(type, metadata = {}) {
+    track(type, metadata = {}, immediate = false) {
         if (!this.userId) return;
 
         this.eventBuffer.push({
@@ -89,7 +89,7 @@ class TelemetryService {
             timestamp: new Date().toISOString(),
         });
 
-        if (this.eventBuffer.length >= 10) {
+        if (immediate || this.eventBuffer.length >= 10) {
             this.flushEvents();
         }
     }

@@ -77,7 +77,7 @@ export const useGameLaunch = (selectedInstance, ram, activeAccount, updateLastPl
             loader: selectedInstance?.loader,
             ram: ram,
             javaVersion: requiredJavaVersion
-        });
+        }, true);
 
         if (window.electronAPI) {
             window.electronAPI.removeLogListeners();
