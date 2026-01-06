@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import { telemetry } from '../services/TelemetryService';
 
 export const useGameLaunch = (selectedInstance, ram, activeAccount, updateLastPlayed, hideOnLaunch, javaPath, setJavaPath) => {
     const [launchStatus, setLaunchStatus] = useState('idle'); // idle, launching, running
@@ -71,6 +72,13 @@ export const useGameLaunch = (selectedInstance, ram, activeAccount, updateLastPl
             console.log('[UI] User clicked Play');
         }
 
+        telemetry.track('GAME_LAUNCH', {
+            version: selectedInstance?.version,
+            loader: selectedInstance?.loader,
+            ram: ram,
+            javaVersion: requiredJavaVersion
+        });
+
         if (window.electronAPI) {
             window.electronAPI.removeLogListeners();
             window.electronAPI.log('info', '[UI] Registering game event listeners...');
@@ -94,13 +102,13 @@ export const useGameLaunch = (selectedInstance, ram, activeAccount, updateLastPl
                 const timeStr = new Date().toLocaleTimeString();
                 setLogs(prev => [...prev, { time: timeStr, type: "ERROR", message: err.summary }]);
                 if (err.advice) {
-                    setLogs(prev => [...prev, { time: timeStr, type: "WARN", message: `Advice: ${err.advice}` }]);
+                    setLogs(prev => [...prev, { time: timeStr, type: "WARN", message: `Advice: ${err.advice} ` }]);
                 }
             });
 
             window.electronAPI.onGameLog((log) => {
                 const now = new Date();
-                const timeStr = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}:${now.getSeconds().toString().padStart(2, '0')}`;
+                const timeStr = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}:${now.getSeconds().toString().padStart(2, '0')} `;
                 setLogs(prev => [...prev, { ...log, time: timeStr }]);
 
                 if (log.message.includes('Downloading assets')) {
@@ -133,7 +141,7 @@ export const useGameLaunch = (selectedInstance, ram, activeAccount, updateLastPl
             window.electronAPI.onGameExit((code) => {
                 setLaunchStatus('idle');
                 setLaunchStep("Game exited.");
-                const exitMsg = `Process exited with code ${code}`;
+                const exitMsg = `Process exited with code ${code} `;
                 setLogs(prev => [...prev, { time: "Now", type: "INFO", message: exitMsg }]);
 
                 if (window.electronAPI) {
@@ -173,12 +181,16 @@ export const useGameLaunch = (selectedInstance, ram, activeAccount, updateLastPl
             });
 
             if (window.electronAPI.log) {
-                window.electronAPI.log('info', `[UI] Launch command sent to backend. RAM: ${ram}GB, User: ${activeAccount?.name}, Java: ${javaPath}`);
+                window.electronAPI.log('info', `[UI] Launch command sent to backend.RAM: ${ram} GB, User: ${activeAccount?.name}, Java: ${javaPath} `);
             }
             // Check for crash
             window.electronAPI.onGameCrashDetected((data) => {
                 // data = { code, crashReport }
                 setCrashModal(data);
+                telemetry.track('GAME_CRASH', {
+                    code: data.code,
+                    hasReport: !!data.crashReport
+                });
             });
 
         } else {

@@ -1,0 +1,47 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model AnalyticsUser {
+  id        String   @id // UUID from client
+  createdAt DateTime @default(now())
+  lastSeen  DateTime @updatedAt
+  country   String?  // [NEW] ISO Country Code (e.g. "US")
+  hardware  Hardware?
+  events    Event[]
+  sessions  Session[]
+}
+
+model Session {
+  id        Int      @id @default(autoincrement())
+  userId    String
+  user      AnalyticsUser @relation(fields: [userId], references: [id])
+  startTime DateTime @default(now())
+  endTime   DateTime @default(now())
+  appVersion String? // [NEW] e.g. "0.1.10"
+}
+
+model Hardware {
+  id        Int    @id @default(autoincrement())
+  userId    String @unique
+  user      AnalyticsUser @relation(fields: [userId], references: [id])
+  os        String // "win32", "darwin"
+  osVersion String // "10.0.19045"
+  ram       String // "16 GB"
+  gpu       String // "NVIDIA GeForce RTX 3060"
+  cpu       String // "Intel(R) Core(TM) i7-..."
+}
+
+model Event {
+  id        Int      @id @default(autoincrement())
+  userId    String
+  user      AnalyticsUser @relation(fields: [userId], references: [id])
+  type      String   // e.g., "APP_OPEN", "GAME_CRASH", "GAME_LAUNCH"
+  metadata  String?  // JSON string
+  createdAt DateTime @default(now())
+}

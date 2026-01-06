@@ -125,7 +125,7 @@ app.whenReady().then(async () => {
 
     // --- Register Handlers ---
     setupWindowHandlers(getMainWindow);
-    setupAppHandlers(getMainWindow);
+    setupAppHandlers(getMainWindow, store);
     setupAuthHandlers(getMainWindow);
     setupJavaHandlers(getMainWindow);
     setupGameHandlers(getMainWindow);

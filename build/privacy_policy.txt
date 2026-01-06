@@ -1,0 +1,44 @@
+PRIVACY POLICY AND END USER LICENSE AGREEMENT (EULA) for CraftCorps Launcher
+
+Last Updated: January 6, 2026
+
+IMPORTANT: PLEASE READ THIS AGREEMENT CAREFULLY. BY INSTALLING, COPYING, OR USING THE SOFTWARE, YOU AGREE TO BE BOUND BY THE TERMS OF THIS AGREEMENT. IF YOU DO NOT AGREE, DO NOT INSTALL OR USE THE SOFTWARE.
+
+1. DATA COLLECTION AND PRIVACY
+   We respect your privacy and are committed to protecting your personal data in compliance with GDPR, KVKK, and other applicable laws.
+
+   1.1. ANONYMOUS TELEMETRY
+   This application collects anonymous usage statistics to help us improve the software.
+   - What we collect:
+     - Anonymous User ID (randomly generated UUID).
+     - Hardware Specifications: OS version, RAM amount, CPU/GPU model.
+     - Usage Events: App open, Game launch success/failure, Crash reports (Exit Codes).
+   - What we DO NOT collect:
+     - Personally Identifiable Information (Names, Emails, Addresses).
+     - IP Addresses (we do not log or store user IP addresses).
+     - Chat logs or in-game behavior.
+
+   1.2. CRASH REPORTING
+   In the event of a crash, the launcher may automatically send a crash report containing:
+   - Error logs and stack traces.
+   - System information relevant to the crash.
+   - No personal files or passwords are included.
+
+   1.3. MICROSOFT & MODRINTH ACCOUNTS
+   - Authentication is handled directly via Microsoft's servers. We receive an access token but never see your password.
+   - Mod downloads connect directly to Modrinth. Their privacy policy applies to those connections.
+
+2. SOFTWARE LICENSE
+   Subject to your compliance with these terms, we grant you a personal, non-exclusive, non-transferable license to use the Software.
+
+   - You may not decompile, reverse engineer, or disassemble the Software to create malicious tools.
+   - You may not use the Software to violate the Minecraft EULA or Terms of Service.
+
+3. "AS IS" WARRANTY
+   THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED. THE AUTHORS OR COPYRIGHT HOLDERS SHALL NOT BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY.
+
+4. USER RIGHTS (GDPR/KVKK)
+   - You have the right to request deletion of your anonymous telemetry data by contacting us with your User ID (found in Settings/Logs).
+   - You may opt-out of telemetry at any time via the Application Settings.
+
+By clicking "I Agree", you acknowledge that you have read and accepted these terms.

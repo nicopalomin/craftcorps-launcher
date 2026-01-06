@@ -16,6 +16,10 @@ contextBridge.exposeInMainWorld('electronAPI', {
     openLogsFolder: () => ipcRenderer.invoke('open-logs-folder'),
     openPath: (path) => ipcRenderer.invoke('open-path', path),
     log: (level, message) => ipcRenderer.send('renderer-log', { level, message }),
+    getSystemInfo: () => ipcRenderer.invoke('get-system-info'),
+    storeGet: (key) => ipcRenderer.invoke('store-get', key),
+    storeSet: (key, value) => ipcRenderer.invoke('store-set', key, value),
+    getAppVersion: () => ipcRenderer.invoke('get-app-version'), // [NEW]
     installJava: (version) => ipcRenderer.invoke('install-java', version),
     getAvailableJavas: () => ipcRenderer.invoke('get-available-javas'),
     cancelJavaInstall: () => ipcRenderer.invoke('cancel-java-install'),

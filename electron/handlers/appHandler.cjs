@@ -3,7 +3,50 @@ const log = require('electron-log');
 const fs = require('fs');
 const path = require('path');
 
-function setupAppHandlers(getMainWindow) {
+const os = require('os');
+const si = require('systeminformation');
+
+function setupAppHandlers(getMainWindow, store) {
+
+    // System Info for Telemetry
+    ipcMain.handle('get-system-info', async () => {
+        try {
+            const cpu = await si.cpu();
+            const mem = await si.mem();
+            const graphics = await si.graphics();
+            const osInfo = await si.osInfo();
+
+            return {
+                os: osInfo.platform, // 'win32', 'darwin'
+                osVersion: osInfo.release, // '10.0.19045'
+                ram: `${Math.round(mem.total / 1024 / 1024 / 1024)} GB`,
+                cpu: `${cpu.manufacturer} ${cpu.brand}`,
+                gpu: graphics.controllers.length > 0 ? graphics.controllers[0].model : 'Unknown'
+            };
+        } catch (e) {
+            log.error('Failed to get system info:', e);
+            return {
+                os: process.platform,
+                osVersion: process.getSystemVersion ? process.getSystemVersion() : 'Unknown',
+                ram: `${Math.round(os.totalmem() / 1024 / 1024 / 1024)} GB`,
+                cpu: 'Unknown',
+                gpu: 'Unknown'
+            };
+        }
+    });
+
+    // Electron Store Access
+    ipcMain.handle('store-get', (event, key) => {
+        return store ? store.get(key) : null;
+    });
+
+    ipcMain.handle('store-set', (event, key, value) => {
+        store.set(key, value);
+    });
+
+    ipcMain.handle('get-app-version', () => {
+        return app.getVersion();
+    });
 
     // File Selection
     ipcMain.handle('select-file', async () => {

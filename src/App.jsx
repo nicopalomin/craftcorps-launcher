@@ -11,11 +11,27 @@ import { useAccounts } from './hooks/useAccounts';
 import { useAppSettings } from './hooks/useAppSettings';
 import { useToast } from './contexts/ToastContext';
 import { useTranslation } from 'react-i18next';
+import { telemetry } from './services/TelemetryService';
 
 function App() {
     const { addToast } = useToast();
     const { t } = useTranslation();
     const [activeTab, setActiveTab] = useState('home');
+
+    // Initialize Telemetry
+    useEffect(() => {
+        if (window.electronAPI) {
+            const storeWrapper = {
+                get: (key) => window.electronAPI?.storeGet?.(key),
+                set: (key, val) => window.electronAPI?.storeSet?.(key, val)
+            };
+
+            telemetry.init(storeWrapper).then(() => {
+                telemetry.track('APP_OPEN');
+                telemetry.sendHardwareInfo();
+            });
+        }
+    }, []);
 
     // Hooks
     const {
