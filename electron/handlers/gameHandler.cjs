@@ -11,6 +11,13 @@ function setupGameHandlers(getMainWindow) {
 
     let lastCrashReport = null;
 
+    const safeSend = (channel, ...args) => {
+        const win = getMainWindow();
+        if (win && !win.isDestroyed()) {
+            win.webContents.send(channel, ...args);
+        }
+    };
+
     // --- Launcher Events ---
     launcher.on('log', (data) => {
         const { type, message } = data;
@@ -31,25 +38,25 @@ function setupGameHandlers(getMainWindow) {
         }
 
         // Forward to frontend
-        getMainWindow()?.webContents.send('game-log', data);
+        safeSend('game-log', data);
     });
 
     launcher.on('game-output', (text) => {
-        getMainWindow()?.webContents.send('game-log', { type: 'INFO', message: text });
+        safeSend('game-log', { type: 'INFO', message: text });
     });
 
     launcher.on('progress', (data) => {
-        getMainWindow()?.webContents.send('game-progress', data);
+        safeSend('game-progress', data);
     });
 
     launcher.on('launch-error', (error) => {
         log.error(`[Main] Launch Error: ${error.summary}`);
-        getMainWindow()?.webContents.send('launch-error', error);
+        safeSend('launch-error', error);
     });
 
     launcher.on('exit', (code) => {
         log.info(`[Main] Game exited with code ${code}`);
-        getMainWindow()?.webContents.send('game-exit', code);
+        safeSend('game-exit', code);
 
         setActivity({
             details: 'In Launcher',
@@ -62,7 +69,7 @@ function setupGameHandlers(getMainWindow) {
 
         if (code !== 0 && code !== -1 && code !== null) {
             log.error(`[Main] Game crashed with exit code ${code}`);
-            getMainWindow()?.webContents.send('game-crash-detected', { code, crashReport: lastCrashReport });
+            safeSend('game-crash-detected', { code, crashReport: lastCrashReport });
         }
 
         // Reset for next run
@@ -159,14 +166,14 @@ function setupGameHandlers(getMainWindow) {
             if (selectedJava) {
                 log.info(`[Launch] Auto-detected: ${selectedJava.path} (v${selectedJava.version})`);
                 options.javaPath = selectedJava.path;
-                getMainWindow()?.webContents.send('game-log', { type: 'INFO', message: `Auto-selected Java ${selectedJava.version}: ${selectedJava.path}` });
-                getMainWindow()?.webContents.send('java-path-updated', selectedJava.path);
+                safeSend('game-log', { type: 'INFO', message: `Auto-selected Java ${selectedJava.version}: ${selectedJava.path}` });
+                safeSend('java-path-updated', selectedJava.path);
             } else {
                 log.warn(`[Launch] No suitable Java ${v} found.`);
 
                 // Prompt user or try to install?
                 // Returning specific error code for frontend to prompt install
-                getMainWindow()?.webContents.send('launch-error', {
+                safeSend('launch-error', {
                     summary: `Java ${v} is missing.`,
                     advice: `Please install Java ${v} (JDK ${v}) to play this version.`
                 });

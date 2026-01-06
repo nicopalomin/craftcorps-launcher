@@ -11,7 +11,10 @@ function setupJavaHandlers(getMainWindow) {
 
             // If not, download
             await JavaManager.downloadAndInstall(version, (stats) => {
-                getMainWindow()?.webContents.send('java-progress', stats);
+                const win = getMainWindow();
+                if (win && !win.isDestroyed()) {
+                    win.webContents.send('java-progress', stats);
+                }
             });
 
             // Return valid path

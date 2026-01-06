@@ -14,30 +14,33 @@ function setupUpdateHandlers(getMainWindow) {
     // Let's go with autoDownload = false to give user control.
     autoUpdater.autoDownload = false;
 
+    const safeSend = (channel, ...args) => {
+        const win = getMainWindow();
+        if (win && !win.isDestroyed()) {
+            win.webContents.send(channel, ...args);
+        }
+    };
+
     // --- Events ---
 
     autoUpdater.on('checking-for-update', () => {
         log.info('Checking for update...');
-        const win = getMainWindow();
-        if (win) win.webContents.send('update-status', { status: 'checking' });
+        safeSend('update-status', { status: 'checking' });
     });
 
     autoUpdater.on('update-available', (info) => {
         log.info('Update available:', info);
-        const win = getMainWindow();
-        if (win) win.webContents.send('update-status', { status: 'available', info });
+        safeSend('update-status', { status: 'available', info });
     });
 
     autoUpdater.on('update-not-available', (info) => {
         log.info('Update not available:', info);
-        const win = getMainWindow();
-        if (win) win.webContents.send('update-status', { status: 'not-available', info });
+        safeSend('update-status', { status: 'not-available', info });
     });
 
     autoUpdater.on('error', (err) => {
         log.error('Error in auto-updater:', err);
-        const win = getMainWindow();
-        if (win) win.webContents.send('update-status', { status: 'error', error: err.message });
+        safeSend('update-status', { status: 'error', error: err.message });
     });
 
     autoUpdater.on('download-progress', (progressObj) => {
@@ -46,14 +49,12 @@ function setupUpdateHandlers(getMainWindow) {
         log_message = log_message + ' (' + progressObj.transferred + "/" + progressObj.total + ')';
         // log.info(log_message); // Too verbose for file log usually?
 
-        const win = getMainWindow();
-        if (win) win.webContents.send('update-status', { status: 'downloading', progress: progressObj });
+        safeSend('update-status', { status: 'downloading', progress: progressObj });
     });
 
     autoUpdater.on('update-downloaded', (info) => {
         log.info('Update downloaded');
-        const win = getMainWindow();
-        if (win) win.webContents.send('update-status', { status: 'downloaded', info });
+        safeSend('update-status', { status: 'downloaded', info });
     });
 
     // --- IPC Handlers ---
