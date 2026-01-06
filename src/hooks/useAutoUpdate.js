@@ -1,0 +1,62 @@
+import { useState, useEffect } from 'react';
+import { useToast } from '../contexts/ToastContext';
+
+export function useAutoUpdate() {
+    const [updateStatus, setUpdateStatus] = useState('idle'); // idle, checking, available, downloading, downloaded, error
+    const [updateInfo, setUpdateInfo] = useState(null);
+    const [downloadProgress, setDownloadProgress] = useState(null);
+    const { addToast } = useToast();
+
+    useEffect(() => {
+        if (!window.electronAPI?.onUpdateStatus) return;
+
+        const handleStatus = (data) => {
+            console.log('[AutoUpdate] Status:', data);
+            setUpdateStatus(data.status);
+
+            if (data.status === 'available') {
+                setUpdateInfo(data.info);
+                addToast(`Update available: ${data.info.version}`, 'info');
+            } else if (data.status === 'downloading') {
+                setDownloadProgress(data.progress);
+            } else if (data.status === 'downloaded') {
+                setUpdateInfo(data.info);
+                addToast(`Update ready to install!`, 'success');
+            } else if (data.status === 'error') {
+                console.error('Update error:', data.error);
+                // addToast(`Update error: ${data.error}`, 'error'); // Optional: hide error from user if frequent
+            }
+        };
+
+        window.electronAPI.onUpdateStatus(handleStatus);
+
+        // Check for updates on mount
+        window.electronAPI.checkForUpdates().catch(err => console.error("Failed to check for updates:", err));
+
+        return () => {
+            if (window.electronAPI?.removeUpdateListener) {
+                window.electronAPI.removeUpdateListener();
+            }
+        };
+    }, [addToast]);
+
+    const downloadUpdate = async () => {
+        if (window.electronAPI) {
+            await window.electronAPI.downloadUpdate();
+        }
+    };
+
+    const quitAndInstall = async () => {
+        if (window.electronAPI) {
+            await window.electronAPI.quitAndInstall();
+        }
+    };
+
+    return {
+        updateStatus,
+        updateInfo,
+        downloadProgress,
+        downloadUpdate,
+        quitAndInstall
+    };
+}

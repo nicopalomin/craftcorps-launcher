@@ -119,6 +119,7 @@ app.whenReady().then(async () => {
     const { setupGameHandlers } = require('./handlers/gameHandler.cjs');
     const { setupModHandlers } = require('./handlers/modHandler.cjs');
     const { setupImportHandlers } = require('./handlers/importHandler.cjs');
+    const { setupUpdateHandlers } = require('./handlers/updateHandler.cjs');
 
     // Start Discord RPC
     initDiscordRPC();
@@ -132,6 +133,7 @@ app.whenReady().then(async () => {
     console.log('[MAIN] Setting up Mod Handlers...');
     setupModHandlers(getMainWindow);
     setupImportHandlers();
+    setupUpdateHandlers(getMainWindow);
 
     app.on('activate', () => {
         if (BrowserWindow.getAllWindows().length === 0) {

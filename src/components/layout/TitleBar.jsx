@@ -6,7 +6,9 @@ function TitleBar({
     launchStatus,
     isRefreshing,
     authError,
-    onOpenConsole
+    onOpenConsole,
+    updateStatus,
+    onOpenUpdateModal
 }) {
     const { t } = useTranslation();
 
@@ -36,6 +38,18 @@ function TitleBar({
                             Auth failed due to internet connection missing, mojang auth servers are down or due to VPN use
                         </div>
                     </div>
+                )}
+                {/* Update Indicator */}
+                {(updateStatus === 'available' || updateStatus === 'downloaded' || updateStatus === 'downloading') && (
+                    <button
+                        onClick={onOpenUpdateModal}
+                        className="ml-3 flex items-center gap-1.5 text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-full border border-emerald-500/30 hover:bg-emerald-500/20 transition-colors no-drag"
+                    >
+                        <RefreshCw size={10} className={updateStatus === 'downloading' ? 'animate-spin' : ''} />
+                        <span className="font-medium">
+                            {updateStatus === 'downloaded' ? 'Update Ready' : 'Update Available'}
+                        </span>
+                    </button>
                 )}
             </div>
             <div className="flex items-center gap-4 no-drag">

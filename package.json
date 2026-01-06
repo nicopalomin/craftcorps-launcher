@@ -21,6 +21,13 @@
     "directories": {
       "output": "release"
     },
+    "publish": [
+      {
+        "provider": "github",
+        "owner": "orbit246",
+        "repo": "craftcorps"
+      }
+    ],
     "files": [
       "dist/**/*",
       "electron/**/*"
@@ -65,6 +72,7 @@
     "discord-rpc": "^4.0.1",
     "electron-log": "^5.4.3",
     "electron-store": "^11.0.2",
+    "electron-updater": "^6.6.2",
     "i18next": "^25.7.3",
     "i18next-browser-languagedetector": "^8.2.0",
     "lucide-react": "^0.562.0",

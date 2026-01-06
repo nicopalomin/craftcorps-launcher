@@ -12,6 +12,7 @@ import { useAppSettings } from './hooks/useAppSettings';
 import { useToast } from './contexts/ToastContext';
 import { useTranslation } from 'react-i18next';
 import { telemetry } from './services/TelemetryService';
+import { useAutoUpdate } from './hooks/useAutoUpdate';
 
 function App() {
     const { addToast } = useToast();
@@ -127,6 +128,19 @@ function App() {
         setCrashModal
     } = useGameLaunch(selectedInstance, ram, activeAccount, () => updateLastPlayed(selectedInstance?.id), hideOnLaunch, javaPath, setJavaPath);
 
+    // Auto Update
+    const { updateStatus, updateInfo, downloadProgress, downloadUpdate, quitAndInstall } = useAutoUpdate();
+    const [showUpdateModal, setShowUpdateModal] = useState(false);
+
+    useEffect(() => {
+        if (updateStatus === 'available') {
+            setShowUpdateModal(true);
+        }
+        if (updateStatus === 'downloaded') {
+            setShowUpdateModal(true);
+        }
+    }, [updateStatus]);
+
     // Update Discord RPC based on activeTab
     useEffect(() => {
         if (!window.electronAPI?.setDiscordActivity) return;
@@ -177,6 +191,8 @@ function App() {
                     isRefreshing={isRefreshing}
                     authError={authError}
                     onOpenConsole={() => setShowConsole(true)}
+                    updateStatus={updateStatus}
+                    onOpenUpdateModal={() => setShowUpdateModal(true)}
                 />
 
                 <AppContent
@@ -201,6 +217,14 @@ function App() {
                 showJavaModal={showJavaModal} setShowJavaModal={setShowJavaModal} handleJavaInstallComplete={handleJavaInstallComplete} refreshJavas={refreshJavas} requiredJavaVersion={requiredJavaVersion}
                 errorModal={errorModal} setErrorModal={setErrorModal}
                 crashModal={crashModal} setCrashModal={setCrashModal}
+                showUpdateModal={showUpdateModal} setShowUpdateModal={setShowUpdateModal}
+                updateStatus={updateStatus} updateInfo={updateInfo} downloadProgress={downloadProgress}
+                onDownloadUpdate={() => {
+                    downloadUpdate();
+                    // Modal stays open to show progress usually, or we can close it and let user re-open via titlebar (if we add button there)
+                    // For now, keep open so they see progress bar
+                }}
+                onInstallUpdate={quitAndInstall}
             />
         </div>
     );

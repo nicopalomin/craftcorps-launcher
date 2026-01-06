@@ -96,4 +96,11 @@ contextBridge.exposeInMainWorld('electronAPI', {
     // Import
     importInstanceDialog: () => ipcRenderer.invoke('import-instance-dialog'),
     performImportInstance: (path) => ipcRenderer.invoke('perform-import-instance', path),
+
+    // Auto Update
+    checkForUpdates: () => ipcRenderer.invoke('check-for-updates'),
+    downloadUpdate: () => ipcRenderer.invoke('download-update'),
+    quitAndInstall: () => ipcRenderer.invoke('quit-and-install'),
+    onUpdateStatus: (callback) => ipcRenderer.on('update-status', (_event, value) => callback(value)),
+    removeUpdateListener: () => ipcRenderer.removeAllListeners('update-status'),
 });
