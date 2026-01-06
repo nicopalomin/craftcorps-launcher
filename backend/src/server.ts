@@ -145,32 +145,56 @@ app.get('/api/public/stats', async (req, res) => {
 
     try {
         const now = new Date();
-        const days14 = new Date(now.setDate(now.getDate() - 14));
-        const days30 = new Date(now.setDate(now.getDate() - 16)); // (14 + 16 = 30 days ago)
-
-        // Reset now for 30 calculation or just use new Date math safely
         const d30 = new Date();
-        d30.setDate(d30.getDate() - 30);
+        d30.setDate(d30.getDate() - 30); // 30 Day Window
 
-        const d14 = new Date();
-        d14.setDate(d14.getDate() - 14);
+        // 1. Get raw data for past 30 days
+        // We select lastSeen to bucket users by day
+        const activeUsers = await prisma.analyticsUser.findMany({
+            where: { lastSeen: { gte: d30 } },
+            select: { lastSeen: true }
+        });
 
-        const [active30, active14, totalLaunches] = await Promise.all([
-            prisma.analyticsUser.count({
-                where: { lastSeen: { gte: d30 } }
-            }),
-            prisma.analyticsUser.count({
-                where: { lastSeen: { gte: d14 } }
-            }),
-            prisma.event.count({
-                where: { type: 'GAME_LAUNCH' }
-            })
-        ]);
+        const totalLaunches = await prisma.event.count({
+            where: { type: 'GAME_LAUNCH' }
+        });
+
+        // 2. Bucket by Day (in Memory - efficient enough for <100k users)
+        // Initialize last 30 days with 0
+        const dailyStats: Record<string, number> = {};
+        for (let i = 0; i < 30; i++) {
+            const date = new Date();
+            date.setDate(date.getDate() - i);
+            const key = date.toISOString().split('T')[0];
+            dailyStats[key] = 0;
+        }
+
+        activeUsers.forEach(u => {
+            const day = u.lastSeen.toISOString().split('T')[0];
+            if (dailyStats[day] !== undefined) {
+                dailyStats[day]++;
+            }
+        });
+
+        // 3. Aggregate totals
+        const active30 = activeUsers.length;
+        const active14 = activeUsers.filter(u => {
+            const date = new Date(u.lastSeen);
+            const d14 = new Date();
+            d14.setDate(d14.getDate() - 14);
+            return date >= d14;
+        }).length;
+
+        // 4. Format Daily Array (sorted by date)
+        const dailyArray = Object.entries(dailyStats)
+            .map(([date, count]) => ({ date, count }))
+            .sort((a, b) => a.date.localeCompare(b.date));
 
         res.json({
             active_users_30d: active30,
             active_users_14d: active14,
-            total_launches: totalLaunches
+            total_launches: totalLaunches,
+            daily_active_users: dailyArray
         });
     } catch (error) {
         logger.error('Stats error', error);
