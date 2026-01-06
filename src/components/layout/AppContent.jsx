@@ -95,6 +95,7 @@ const AppContent = ({
                         setSelectedInstance(newInstance);
                         setActiveTab('home');
                     }}
+                    onSwitchInstance={() => setActiveTab('instances')}
                 />
             )}
         </div>

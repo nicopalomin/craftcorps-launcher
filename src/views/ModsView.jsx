@@ -6,7 +6,7 @@ import { ModsDetailView } from './mods/ModsDetailView';
 
 // Since we moved components, lucide-react etc are imported there or handled via props.
 
-const ModsView = ({ selectedInstance, instances = [], onInstanceCreated }) => {
+const ModsView = ({ selectedInstance, instances = [], onInstanceCreated, onSwitchInstance }) => {
     const { t } = useTranslation();
     const { addToast } = useToast();
 
@@ -128,6 +128,28 @@ const ModsView = ({ selectedInstance, instances = [], onInstanceCreated }) => {
 
     // -- Effects: Search --
     const prevQueryRef = useRef(searchQuery);
+    const userHasManuallySetVersion = useRef(false);
+
+    const handleVersionChange = (val) => {
+        setFilterVersion(val);
+        userHasManuallySetVersion.current = true;
+    };
+
+    // Handle View Context Switching (Mods <-> Modpacks)
+    useEffect(() => {
+        if (projectType === 'modpack') {
+            // When switching to Modpacks, default to "All Versions" if the user hasn't explicitly chosen one.
+            // This prevents the filter from being stuck on the Instance's version.
+            if (!userHasManuallySetVersion.current) {
+                setFilterVersion('');
+            }
+        } else if (projectType === 'mod' && selectedInstance) {
+            // When switching to Mods, we must lock to the instance version.
+            // We consider this an "automatic" system set, so we reset the manual flag.
+            setFilterVersion(selectedInstance.version);
+            userHasManuallySetVersion.current = false;
+        }
+    }, [projectType, selectedInstance]);
 
     useEffect(() => {
         const isTextChange = prevQueryRef.current !== searchQuery;
@@ -141,7 +163,9 @@ const ModsView = ({ selectedInstance, instances = [], onInstanceCreated }) => {
             return () => clearTimeout(timer);
         } else {
             // Immediate update for filters or mount
-            performSearch(searchQuery);
+            if (!isSearching) {
+                performSearch(searchQuery);
+            }
         }
     }, [searchQuery, projectType, filterVersion, filterCategory]);
 
@@ -381,7 +405,7 @@ const ModsView = ({ selectedInstance, instances = [], onInstanceCreated }) => {
     };
 
     return (
-        <div className="flex-1 p-8 flex flex-col h-full overflow-hidden select-none relative">
+        <div className="flex-1 p-8 flex flex-col h-full overflow-y-auto custom-scrollbar select-none relative">
             {selectedProject ? (
                 <ModsDetailView
                     selectedProject={selectedProject}
@@ -410,7 +434,7 @@ const ModsView = ({ selectedInstance, instances = [], onInstanceCreated }) => {
                     searchQuery={searchQuery}
                     setSearchQuery={setSearchQuery}
                     filterVersion={filterVersion}
-                    setFilterVersion={setFilterVersion}
+                    setFilterVersion={handleVersionChange}
                     filterCategory={filterCategory}
                     setFilterCategory={setFilterCategory}
                     availableVersions={availableVersions}
@@ -423,6 +447,7 @@ const ModsView = ({ selectedInstance, instances = [], onInstanceCreated }) => {
                     setSelectedProject={setSelectedProject}
                     selectedInstance={selectedInstance}
                     onLoadMore={() => performSearch(searchQuery, true)}
+                    onSwitchInstance={onSwitchInstance}
                 />
             )}
         </div>
