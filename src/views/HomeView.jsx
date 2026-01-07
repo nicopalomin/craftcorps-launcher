@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Edit3 } from 'lucide-react';
+import { Edit3, Box, Layers } from 'lucide-react';
 import BackgroundBlobs from '../components/common/BackgroundBlobs';
 import { useToast } from '../contexts/ToastContext';
 import { useTranslation } from 'react-i18next';
@@ -43,6 +43,9 @@ const HomeView = ({
     const [resourcePacks, setResourcePacks] = useState(null);
     const [isLoadingResourcePacks, setIsLoadingResourcePacks] = useState(false);
     const [isDragging, setIsDragging] = useState(false);
+    const [activeTab, setActiveTab] = useState('mods');
+    const [showQuickSwitch, setShowQuickSwitch] = useState(true);
+    const lastScrollY = React.useRef(0);
 
     // Handlers
     const handleAddMods = async (filePaths = null) => {
@@ -259,6 +262,20 @@ const HomeView = ({
         }
     };
 
+    const handleScroll = (e) => {
+        const currentScrollY = e.target.scrollTop;
+
+        // Show if at the very top or scrolling up
+        if (currentScrollY < 50 || currentScrollY < lastScrollY.current) {
+            setShowQuickSwitch(true);
+        } else if (currentScrollY > lastScrollY.current && currentScrollY > 50) {
+            // Hide if scrolling down and past the top area
+            setShowQuickSwitch(false);
+        }
+
+        lastScrollY.current = currentScrollY;
+    };
+
     useEffect(() => {
         if (selectedInstance && selectedInstance.loader !== 'Vanilla') {
             if (window.electronAPI && selectedInstance.path) {
@@ -328,7 +345,10 @@ const HomeView = ({
             </button>
 
             {/* Main Content Scrollable Area */}
-            <div className={`relative z-10 flex-1 w-full overflow-y-auto custom-scrollbar ${isModded ? '' : 'flex flex-col items-center justify-center'}`}>
+            <div
+                className={`relative z-10 flex-1 w-full overflow-y-auto custom-scrollbar ${isModded ? '' : 'flex flex-col items-center justify-center'}`}
+                onScroll={handleScroll}
+            >
 
                 <InstanceHero
                     selectedInstance={selectedInstance}
@@ -340,35 +360,72 @@ const HomeView = ({
                 />
 
                 {/* Modded Details Section */}
+                {/* Modded Details Section */}
                 {isModded && (
-                    <div className="w-full max-w-7xl mx-auto px-8 pb-32 grid grid-cols-1 lg:grid-cols-2 gap-8 animate-in slide-in-from-bottom-10 fade-in duration-700 delay-100">
+                    <div className="w-full max-w-7xl mx-auto px-8 pb-8 animate-in slide-in-from-bottom-10 fade-in duration-700 delay-100">
+                        {/* Unified Glass Card */}
+                        <div className="bg-slate-900/40 border border-white/5 rounded-3xl backdrop-blur-sm flex flex-col h-[750px] overflow-hidden relative">
 
-                        <ModsList
-                            installedMods={installedMods}
-                            selectedInstance={selectedInstance}
-                            isLoading={isLoadingMods}
-                            onRefresh={handleRefreshMods}
-                            onAdd={handleAddMods}
-                            onBrowse={onBrowseMods}
-                            onDelete={handleDeleteMod}
-                            isDraggingGlobal={isDragging}
-                            onDragOver={handleDragOver}
-                            onDragLeave={handleDragLeave}
-                            onDrop={handleDrop}
-                        />
+                            {/* Internal Tab Switcher */}
+                            <div className="flex items-center justify-center pt-6 pb-4 border-b border-white/5 bg-white/[0.02]">
+                                <div className="flex p-1 bg-slate-950/50 rounded-xl border border-white/10 relative">
+                                    <button
+                                        onClick={() => setActiveTab('mods')}
+                                        className={`relative px-8 py-2 rounded-lg font-medium text-sm transition-all duration-300 flex items-center justify-center gap-2 min-w-[140px] z-10 ${activeTab === 'mods'
+                                                ? 'text-white bg-indigo-600 shadow-lg shadow-indigo-500/20'
+                                                : 'text-slate-400 hover:text-white hover:bg-white/5'
+                                            }`}
+                                    >
+                                        <Box size={16} />
+                                        <span>Mods</span>
+                                    </button>
+                                    <button
+                                        onClick={() => setActiveTab('resourcepacks')}
+                                        className={`relative px-8 py-2 rounded-lg font-medium text-sm transition-all duration-300 flex items-center justify-center gap-2 min-w-[140px] z-10 ${activeTab === 'resourcepacks'
+                                                ? 'text-white bg-pink-600 shadow-lg shadow-pink-500/20'
+                                                : 'text-slate-400 hover:text-white hover:bg-white/5'
+                                            }`}
+                                    >
+                                        <Layers size={16} />
+                                        <span>Resource Packs</span>
+                                    </button>
+                                </div>
+                            </div>
 
-                        <ResourcePacksList
-                            resourcePacks={resourcePacks}
-                            selectedInstance={selectedInstance}
-                            isLoading={isLoadingResourcePacks}
-                            onRefresh={handleRefreshResourcePacks}
-                            onAdd={handleAddResourcePacks}
-                            onDelete={handleDeleteResourcePack}
-                            isDraggingGlobal={isDragging}
-                            onDragOver={handleDragOver}
-                            onDragLeave={handleDragLeave}
-                            onDrop={handleResourcePackDrop}
-                        />
+                            {/* Content Area */}
+                            <div className="flex-1 overflow-hidden relative">
+                                {activeTab === 'mods' ? (
+                                    <ModsList
+                                        installedMods={installedMods}
+                                        selectedInstance={selectedInstance}
+                                        isLoading={isLoadingMods}
+                                        onRefresh={handleRefreshMods}
+                                        onAdd={handleAddMods}
+                                        onBrowse={onBrowseMods}
+                                        onDelete={handleDeleteMod}
+                                        isDraggingGlobal={isDragging}
+                                        onDragOver={handleDragOver}
+                                        onDragLeave={handleDragLeave}
+                                        onDrop={handleDrop}
+                                        className="!bg-transparent !border-none !rounded-none !shadow-none !h-full !p-6 animate-in fade-in duration-300"
+                                    />
+                                ) : (
+                                    <ResourcePacksList
+                                        resourcePacks={resourcePacks}
+                                        selectedInstance={selectedInstance}
+                                        isLoading={isLoadingResourcePacks}
+                                        onRefresh={handleRefreshResourcePacks}
+                                        onAdd={handleAddResourcePacks}
+                                        onDelete={handleDeleteResourcePack}
+                                        isDraggingGlobal={isDragging}
+                                        onDragOver={handleDragOver}
+                                        onDragLeave={handleDragLeave}
+                                        onDrop={handleResourcePackDrop}
+                                        className="!bg-transparent !border-none !rounded-none !shadow-none !h-full !p-6 animate-in fade-in duration-300"
+                                    />
+                                )}
+                            </div>
+                        </div>
                     </div>
                 )}
             </div>
@@ -379,6 +436,7 @@ const HomeView = ({
                 setSelectedInstance={setSelectedInstance}
                 onManageAll={onManageAll}
                 onNewCrop={onNewCrop}
+                className={`transform transition-all duration-500 ease-in-out ${showQuickSwitch ? 'translate-y-0 opacity-100' : 'translate-y-[200%] opacity-0'}`}
             />
         </div>
     );

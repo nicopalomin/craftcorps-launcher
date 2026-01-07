@@ -8,7 +8,8 @@ const QuickSwitchPanel = ({
     selectedInstance,
     setSelectedInstance,
     onManageAll,
-    onNewCrop
+    onNewCrop,
+    className = ""
 }) => {
     const { t } = useTranslation();
     const scrollContainerRef = React.useRef(null);
@@ -24,7 +25,7 @@ const QuickSwitchPanel = ({
     };
 
     return (
-        <div className="absolute bottom-6 left-1/2 -translate-x-1/2 w-[90%] max-w-5xl bg-slate-950/80 backdrop-blur-xl border border-white/10 p-4 rounded-3xl shadow-2xl z-40 animate-in slide-in-from-bottom-10 duration-500">
+        <div className={`absolute bottom-6 left-1/2 -translate-x-1/2 w-[90%] max-w-5xl bg-slate-950/80 backdrop-blur-xl border border-white/10 p-4 rounded-3xl shadow-2xl z-40 animate-in slide-in-from-bottom-10 duration-500 transition-all ${className}`}>
             <div className="flex items-center justify-between mb-3 px-2">
                 <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider">Quick Switch</h3>
                 <button

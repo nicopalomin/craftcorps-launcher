@@ -11,14 +11,15 @@ const ResourcePacksList = ({
     isDraggingGlobal,
     onDragOver,
     onDragLeave,
-    onDrop
+    onDrop,
+    className = "h-[500px]"
 }) => {
     const [searchQuery, setSearchQuery] = useState('');
     const isDragging = isDraggingGlobal;
 
     return (
         <div
-            className={`bg-slate-900/40 border transition-colors rounded-3xl p-6 backdrop-blur-sm flex flex-col h-[500px] relative ${isDragging ? 'border-pink-500 bg-pink-500/10' : 'border-white/5'}`}
+            className={`bg-slate-900/40 border transition-colors rounded-3xl p-6 backdrop-blur-sm flex flex-col relative ${className} ${isDragging ? 'border-pink-500 bg-pink-500/10' : 'border-white/5'}`}
             onDragOver={onDragOver}
             onDragLeave={onDragLeave}
             onDrop={onDrop}

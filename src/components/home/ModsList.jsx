@@ -12,7 +12,8 @@ const ModsList = ({
     isDraggingGlobal,
     onDragOver,
     onDragLeave,
-    onDrop
+    onDrop,
+    className = "h-[500px]"
 }) => {
     const [searchQuery, setSearchQuery] = useState('');
 
@@ -20,7 +21,7 @@ const ModsList = ({
 
     return (
         <div
-            className={`bg-slate-900/40 border transition-colors rounded-3xl p-6 backdrop-blur-sm flex flex-col h-[500px] relative ${isDragging ? 'border-indigo-500 bg-indigo-500/10' : 'border-white/5'}`}
+            className={`bg-slate-900/40 border transition-colors rounded-3xl p-6 backdrop-blur-sm flex flex-col relative ${className} ${isDragging ? 'border-indigo-500 bg-indigo-500/10' : 'border-white/5'}`}
             onDragOver={onDragOver}
             onDragLeave={onDragLeave}
             onDrop={onDrop}
