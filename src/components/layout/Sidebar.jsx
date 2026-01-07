@@ -1,6 +1,6 @@
 import React, { useRef, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Sprout, Play, Edit3, HardDrive, Settings, Shirt } from 'lucide-react';
+import { Sprout, Play, Edit3, HardDrive, Settings, Shirt, ShoppingBag } from 'lucide-react';
 import SidebarItem from './SidebarItem';
 import SneakyAd from '../common/SneakyAd';
 
@@ -103,6 +103,12 @@ const Sidebar = ({ activeTab, onTabChange }) => {
                     label={t('nav_mod_vault')}
                     active={activeTab === 'mods'}
                     onClick={() => onTabChange('mods')}
+                />
+                <SidebarItem
+                    icon={ShoppingBag}
+                    label={t('nav_market', { defaultValue: 'Market' })}
+                    active={activeTab === 'market'}
+                    onClick={() => onTabChange('market')}
                 />
                 <div className="pt-4 mt-4 border-t border-slate-800">
                     <SidebarItem

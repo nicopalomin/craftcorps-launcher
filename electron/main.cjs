@@ -120,6 +120,7 @@ app.whenReady().then(async () => {
     const { setupModHandlers } = require('./handlers/modHandler.cjs');
     const { setupImportHandlers } = require('./handlers/importHandler.cjs');
     const { setupUpdateHandlers } = require('./handlers/updateHandler.cjs');
+    const { subscribeToNewsletter } = require('./handlers/marketingHandler.cjs');
 
     // Start Discord RPC
     initDiscordRPC();
@@ -134,6 +135,7 @@ app.whenReady().then(async () => {
     setupModHandlers(getMainWindow);
     setupImportHandlers();
     setupUpdateHandlers(getMainWindow);
+    ipcMain.handle('subscribe-newsletter', subscribeToNewsletter);
 
     app.on('activate', () => {
         if (BrowserWindow.getAllWindows().length === 0) {

@@ -5,6 +5,7 @@ import InstancesView from '../../views/InstancesView';
 import WardrobeView from '../../views/WardrobeView';
 import SettingsView from '../../views/SettingsView';
 import ModsView from '../../views/ModsView';
+import MarketView from '../../views/MarketView';
 import { SKINS } from '../../data/mockData';
 import { useToast } from '../../contexts/ToastContext';
 
@@ -98,6 +99,7 @@ const AppContent = ({
                     onSwitchInstance={() => setActiveTab('instances')}
                 />
             )}
+            {activeTab === 'market' && <MarketView />}
         </div>
     );
 };

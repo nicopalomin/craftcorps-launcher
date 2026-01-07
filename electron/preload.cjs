@@ -103,4 +103,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
     quitAndInstall: () => ipcRenderer.invoke('quit-and-install'),
     onUpdateStatus: (callback) => ipcRenderer.on('update-status', (_event, value) => callback(value)),
     removeUpdateListener: () => ipcRenderer.removeAllListeners('update-status'),
+
+    // Marketing
+    subscribeToNewsletter: (email) => ipcRenderer.invoke('subscribe-newsletter', email),
 });
