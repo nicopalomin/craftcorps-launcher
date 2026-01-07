@@ -6,6 +6,7 @@ const EventEmitter = require('events');
 const VersionManager = require('./launcher/VersionManager.cjs');
 const ForgeHandler = require('./launcher/ForgeHandler.cjs');
 const FabricHandler = require('./launcher/FabricHandler.cjs');
+const NeoForgeHandler = require('./launcher/NeoForgeHandler.cjs');
 
 class GameLauncher extends EventEmitter {
     constructor() {
@@ -136,18 +137,12 @@ class GameLauncher extends EventEmitter {
         try {
             if (options.loader) {
                 const lowerLoader = options.loader.toLowerCase();
-                if (lowerLoader.includes('forge')) {
+                if (lowerLoader.includes('neoforge')) {
+                    await NeoForgeHandler.prepare(options, launchOptions, handlerEmit);
+                } else if (lowerLoader.includes('forge')) {
                     await ForgeHandler.prepare(options, launchOptions, handlerEmit);
                 } else if (lowerLoader.includes('fabric')) {
                     await FabricHandler.prepare(options, launchOptions, handlerEmit);
-                } else if (lowerLoader.includes('neoforge')) {
-                    this.emit('log', { type: 'WARN', message: `NeoForge support is simpler but requires specific metadata impl I haven't finished yet.` });
-                    this.emit('launch-error', {
-                        summary: "NeoForge Not Fully Implemented",
-                        advice: "I am working on it. Switch to Fabric for now."
-                    });
-                    this.emit('exit', 1);
-                    return;
                 }
             }
         } catch (e) {

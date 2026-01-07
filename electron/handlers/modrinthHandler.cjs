@@ -322,6 +322,16 @@ function setupModrinthHandlers() {
                     if (indexData.dependencies['fabric-loader']) {
                         loaderVersion = indexData.dependencies['fabric-loader'];
                         log.info(`[Modrinth] Detected Fabric Loader version from index: ${loaderVersion}`);
+                    } else if (indexData.dependencies['neoforge']) {
+                        loaderVersion = indexData.dependencies['neoforge'];
+                        // If we found neoforge, explicit that we want NeoForge
+                        // This helps if bestVersion.loaders lists both or is ambiguous
+                        if (bestVersion.loaders.includes('neoforge')) {
+                            // Re-sort or force detection later?
+                            // We can just rely on loaderVersion being set? 
+                            // No, we need to save 'NeoForge' as the loader string in instance.json
+                        }
+                        log.info(`[Modrinth] Detected NeoForge version from index: ${loaderVersion}`);
                     } else if (indexData.dependencies['forge']) {
                         // Handle forge
                         loaderVersion = indexData.dependencies['forge'];
@@ -392,11 +402,25 @@ function setupModrinthHandlers() {
             // Should match frontend defaults or stay neutral.
             // But frontend will likely overwrite this via save-instance soon. 
             // This is a safety measure.
+            // Determine explicit loader type (fix for ambiguity)
+            let detectedLoader = bestVersion.loaders[0];
+            const availableLoaders = bestVersion.loaders.map(l => l.toLowerCase());
+
+            if (availableLoaders.includes('neoforge')) detectedLoader = 'NeoForge';
+            else if (availableLoaders.includes('fabric')) detectedLoader = 'Fabric';
+            else if (availableLoaders.includes('forge')) detectedLoader = 'Forge';
+            else if (bestVersion.loaders.length > 0) detectedLoader = bestVersion.loaders[0];
+
+            // Capitalize properly
+            if (detectedLoader && detectedLoader.toLowerCase() === 'neoforge') detectedLoader = 'NeoForge';
+            if (detectedLoader && detectedLoader.toLowerCase() === 'fabric') detectedLoader = 'Fabric';
+            if (detectedLoader && detectedLoader.toLowerCase() === 'forge') detectedLoader = 'Forge';
+
             const instanceData = {
                 id: instanceId,
                 name: finalName,
                 version: gVersion, // Now using trust-source from index
-                loader: bestVersion.loaders[0] || 'Fabric', // Loader Type (Fabric/Forge)
+                loader: detectedLoader || 'Fabric', // Loader Type (Fabric/Forge)
                 loaderVersion: loaderVersion, // Explicit loader version if found
                 path: instanceDir,
                 status: 'Ready',

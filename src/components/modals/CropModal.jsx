@@ -289,7 +289,7 @@ const CropModal = ({ isOpen, onClose, onSave, editingCrop, onDelete }) => {
                                 className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-slate-200 focus:outline-none focus:border-emerald-500/50 transition-colors appearance-none"
                             >
                                 {LOADERS.map(l => {
-                                    const isDisabled = ['Quilt', 'NeoForge'].includes(l);
+                                    const isDisabled = ['Quilt'].includes(l);
                                     return (
                                         <option
                                             key={l}
