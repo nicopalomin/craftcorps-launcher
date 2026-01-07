@@ -6,6 +6,7 @@ const EventEmitter = require('events');
 const VersionManager = require('./launcher/VersionManager.cjs');
 const ForgeHandler = require('./launcher/ForgeHandler.cjs');
 const FabricHandler = require('./launcher/FabricHandler.cjs');
+const QuiltHandler = require('./launcher/QuiltHandler.cjs');
 const NeoForgeHandler = require('./launcher/NeoForgeHandler.cjs');
 
 class GameLauncher extends EventEmitter {
@@ -143,6 +144,8 @@ class GameLauncher extends EventEmitter {
                     await ForgeHandler.prepare(options, launchOptions, handlerEmit);
                 } else if (lowerLoader.includes('fabric')) {
                     await FabricHandler.prepare(options, launchOptions, handlerEmit);
+                } else if (lowerLoader.includes('quilt')) {
+                    await QuiltHandler.prepare(options, launchOptions, handlerEmit);
                 }
             }
         } catch (e) {

@@ -159,10 +159,13 @@ const CropModal = ({ isOpen, onClose, onSave, editingCrop, onDelete }) => {
 
     return (
         <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 animate-in fade-in duration-200">
-            <div className="bg-slate-900 w-full max-w-lg rounded-2xl border border-slate-700 shadow-2xl p-6 relative overflow-hidden">
+            <div className="bg-slate-900 w-full max-w-lg rounded-2xl border border-slate-700 shadow-2xl relative flex flex-col max-h-[85vh] overflow-hidden">
+
+                {/* Decorative BG */}
+                <div className="absolute top-0 right-0 w-64 h-64 bg-emerald-500/5 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2 pointer-events-none" />
 
                 {/* Header */}
-                <div className="flex justify-between items-center mb-6 relative z-10">
+                <div className="shrink-0 p-6 pb-4 flex justify-between items-center relative z-10">
                     <h3 className="text-xl font-bold text-slate-200 flex items-center gap-2">
                         <Sprout size={20} className="text-emerald-500" />
                         {editingCrop ? t('crop_title_edit') : t('crop_title_new')}
@@ -186,242 +189,248 @@ const CropModal = ({ isOpen, onClose, onSave, editingCrop, onDelete }) => {
                 </div>
 
                 {/* Content */}
-                <form onSubmit={handleSubmit} className={`relative z-10 space-y-6 ${isImporting ? 'opacity-30 pointer-events-none' : ''}`}>
+                <form onSubmit={handleSubmit} className={`flex flex-col flex-1 min-h-0 relative z-10 ${isImporting ? 'opacity-30 pointer-events-none' : ''}`}>
 
-                    {/* Icon Selector */}
-                    <div>
-                        <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">{t('crop_section_icon')}</label>
-                        <div className="flex items-start gap-4">
-                            <div className={`w-16 h-16 shrink-0 rounded-xl ${editingCrop?.icon ? 'bg-transparent' : selectedColor.class} flex items-center justify-center ${selectedGlyphColor.class} shadow-lg overflow-hidden transition-colors`}>
-                                {editingCrop?.icon ? (
-                                    <img src={editingCrop.icon} alt={editingCrop.name} className="w-full h-full object-cover" />
-                                ) : (
-                                    React.createElement(ICON_MAP[selectedIcon] || Sprout, { size: 32 })
-                                )}
-                            </div>
-                            <div className="flex-1 space-y-4">
-                                {/* Background */}
-                                <div>
-                                    <div className="text-[10px] text-slate-500 font-bold mb-2 uppercase">Background</div>
-                                    <div className="flex flex-wrap gap-2">
-                                        {COLORS.map(color => (
-                                            <button
-                                                key={color.name}
-                                                type="button"
-                                                onClick={() => setSelectedColor(color)}
-                                                className={`w-10 h-10 rounded-lg ${color.class} ${selectedColor.name === color.name ? 'ring-2 ring-white ring-offset-2 ring-offset-slate-900 scale-105' : 'opacity-70 hover:opacity-100'} transition-all`}
-                                                title={color.name}
-                                            />
-                                        ))}
-                                    </div>
+                    {/* Scrollable Area */}
+                    <div className="flex-1 overflow-y-auto p-6 pt-0 space-y-6 custom-scrollbar">
+
+                        {/* Icon Selector */}
+                        <div>
+                            <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">{t('crop_section_icon')}</label>
+                            <div className="flex items-start gap-4">
+                                <div className={`w-16 h-16 shrink-0 rounded-xl ${editingCrop?.icon ? 'bg-transparent' : selectedColor.class} flex items-center justify-center ${selectedGlyphColor.class} shadow-lg overflow-hidden transition-colors`}>
+                                    {editingCrop?.icon ? (
+                                        <img src={editingCrop.icon} alt={editingCrop.name} className="w-full h-full object-cover" />
+                                    ) : (
+                                        React.createElement(ICON_MAP[selectedIcon] || Sprout, { size: 32 })
+                                    )}
                                 </div>
-
-                                {/* Glyph Colors */}
-                                <div>
-                                    <div className="text-[10px] text-slate-500 font-bold mb-2 uppercase">Icon Paint</div>
-                                    <div className="flex flex-wrap gap-2">
-                                        {GLYPH_COLORS.map(gColor => (
-                                            <button
-                                                key={gColor.name}
-                                                type="button"
-                                                onClick={() => setSelectedGlyphColor(gColor)}
-                                                className={`w-10 h-10 rounded-lg ${gColor.bgClass} border-2 relative transition-all ${selectedGlyphColor.name === gColor.name ? 'border-white scale-110 ring-2 ring-slate-900 shadow-lg z-10' : 'border-transparent hover:border-white/50 hover:scale-105 ring-1 ring-inset ring-white/10 opacity-90 hover:opacity-100'}`}
-                                                title={gColor.name}
-                                            />
-                                        ))}
-                                    </div>
-                                </div>
-
-                                {/* Icons Grid */}
-                                <div>
-                                    <div className="text-[10px] text-slate-500 font-bold mb-2 uppercase">Icon Shape</div>
-                                    <div className="grid grid-cols-8 gap-2">
-                                        {INSTANCE_ICONS.map(iconKey => {
-                                            const Icon = ICON_MAP[iconKey];
-                                            return (
+                                <div className="flex-1 space-y-4">
+                                    {/* Background */}
+                                    <div>
+                                        <div className="text-[10px] text-slate-500 font-bold mb-2 uppercase">Background</div>
+                                        <div className="flex flex-wrap gap-2">
+                                            {COLORS.map(color => (
                                                 <button
-                                                    key={iconKey}
+                                                    key={color.name}
                                                     type="button"
-                                                    onClick={() => setSelectedIcon(iconKey)}
-                                                    className={`w-full aspect-square rounded-lg flex items-center justify-center bg-slate-800 border ${selectedIcon === iconKey ? 'border-emerald-500 text-emerald-500 bg-emerald-500/10' : 'border-slate-700 text-slate-400 hover:text-slate-200 hover:bg-slate-700'} transition-all`}
-                                                    title={iconKey}
-                                                >
-                                                    <Icon size={16} />
-                                                </button>
-                                            );
-                                        })}
+                                                    onClick={() => setSelectedColor(color)}
+                                                    className={`w-10 h-10 rounded-lg ${color.class} ${selectedColor.name === color.name ? 'ring-2 ring-white ring-offset-2 ring-offset-slate-900 scale-105' : 'opacity-70 hover:opacity-100'} transition-all`}
+                                                    title={color.name}
+                                                />
+                                            ))}
+                                        </div>
+                                    </div>
+
+                                    {/* Glyph Colors */}
+                                    <div>
+                                        <div className="text-[10px] text-slate-500 font-bold mb-2 uppercase">Icon Paint</div>
+                                        <div className="flex flex-wrap gap-2">
+                                            {GLYPH_COLORS.map(gColor => (
+                                                <button
+                                                    key={gColor.name}
+                                                    type="button"
+                                                    onClick={() => setSelectedGlyphColor(gColor)}
+                                                    className={`w-10 h-10 rounded-lg ${gColor.bgClass} border-2 relative transition-all ${selectedGlyphColor.name === gColor.name ? 'border-white scale-110 ring-2 ring-slate-900 shadow-lg z-10' : 'border-transparent hover:border-white/50 hover:scale-105 ring-1 ring-inset ring-white/10 opacity-90 hover:opacity-100'}`}
+                                                    title={gColor.name}
+                                                />
+                                            ))}
+                                        </div>
+                                    </div>
+
+                                    {/* Icons Grid */}
+                                    <div>
+                                        <div className="text-[10px] text-slate-500 font-bold mb-2 uppercase">Icon Shape</div>
+                                        <div className="grid grid-cols-8 gap-2">
+                                            {INSTANCE_ICONS.map(iconKey => {
+                                                const Icon = ICON_MAP[iconKey];
+                                                return (
+                                                    <button
+                                                        key={iconKey}
+                                                        type="button"
+                                                        onClick={() => setSelectedIcon(iconKey)}
+                                                        className={`w-full aspect-square rounded-lg flex items-center justify-center bg-slate-800 border ${selectedIcon === iconKey ? 'border-emerald-500 text-emerald-500 bg-emerald-500/10' : 'border-slate-700 text-slate-400 hover:text-slate-200 hover:bg-slate-700'} transition-all`}
+                                                        title={iconKey}
+                                                    >
+                                                        <Icon size={16} />
+                                                    </button>
+                                                );
+                                            })}
+                                        </div>
                                     </div>
                                 </div>
                             </div>
                         </div>
-                    </div>
 
-                    {/* Name Input */}
-                    <div>
-                        <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">
-                            {t('crop_label_name')} {errors.name && <span className="text-red-500">{t('crop_required')}</span>}
-                        </label>
-                        <input
-                            type="text"
-                            value={name}
-                            onChange={(e) => {
-                                setName(e.target.value);
-                                if (errors.name) setErrors(prev => ({ ...prev, name: false }));
-                            }}
-                            placeholder="My Awesome World"
-                            className={`w-full bg-slate-950 border rounded-xl px-4 py-3 text-slate-200 focus:outline-none transition-colors placeholder:text-slate-600 ${errors.name
-                                ? 'border-red-500 focus:border-red-500'
-                                : 'border-slate-800 focus:border-emerald-500/50'
-                                }`}
-                            autoFocus
-                        />
-                    </div>
-
-                    {/* Loader & Version Row */}
-                    <div className="grid grid-cols-2 gap-4">
+                        {/* Name Input */}
                         <div>
                             <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">
-                                {t('crop_label_loader')} <span className="text-xs font-normal text-slate-600">{t('crop_loader_others')}</span>
+                                {t('crop_label_name')} {errors.name && <span className="text-red-500">{t('crop_required')}</span>}
                             </label>
-                            <select
-                                value={loader}
-                                onChange={(e) => setLoader(e.target.value)}
-                                className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-slate-200 focus:outline-none focus:border-emerald-500/50 transition-colors appearance-none"
-                            >
-                                {LOADERS.map(l => {
-                                    const isDisabled = ['Quilt'].includes(l);
-                                    return (
-                                        <option
-                                            key={l}
-                                            value={l}
-                                            disabled={isDisabled}
-                                            className={isDisabled ? 'text-slate-600' : ''}
-                                        >
-                                            {l === 'Vanilla' ? t('crop_loader_vanilla') : l}{isDisabled ? ` ${t('crop_coming_soon')}` : ''}
-                                        </option>
-                                    );
-                                })}
-                            </select>
-                        </div>
-                        <div>
-                            <div className="flex items-center justify-between mb-2">
-                                <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider">
-                                    {t('crop_label_version')} {errors.version && <span className="text-red-500">{t('crop_required')}</span>}
-                                </label>
-                                <button
-                                    type="button"
-                                    onClick={() => {
-                                        setVersion(versions[0]);
-                                        if (errors.version) setErrors(prev => ({ ...prev, version: false }));
-                                    }}
-                                    disabled={loadingVersions || (editingCrop && editingCrop.modpackProjectId)}
-                                    className="text-xs font-bold text-emerald-500 hover:text-emerald-400 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                                >
-                                    {t('crop_btn_latest')}
-                                </button>
-                            </div>
-                            <select
-                                value={version}
+                            <input
+                                type="text"
+                                value={name}
                                 onChange={(e) => {
-                                    setVersion(e.target.value);
-                                    if (errors.version) setErrors(prev => ({ ...prev, version: false }));
+                                    setName(e.target.value);
+                                    if (errors.name) setErrors(prev => ({ ...prev, name: false }));
                                 }}
-                                className={`w-full bg-slate-950 border rounded-xl px-4 py-3 text-slate-200 focus:outline-none transition-colors appearance-none disabled:opacity-50 disabled:cursor-not-allowed ${errors.version
+                                placeholder="My Awesome World"
+                                className={`w-full bg-slate-950 border rounded-xl px-4 py-3 text-slate-200 focus:outline-none transition-colors placeholder:text-slate-600 ${errors.name
                                     ? 'border-red-500 focus:border-red-500'
                                     : 'border-slate-800 focus:border-emerald-500/50'
                                     }`}
-                                disabled={loadingVersions || (editingCrop && editingCrop.modpackProjectId)}
-                            >
-                                {loadingVersions ? (
-                                    <option>Loading versions...</option>
-                                ) : (
-                                    versions.map((v, index) => (
-                                        <option key={v} value={v}>
-                                            {index === 0 ? `${v} ${t('crop_version_latest')}` : v}
-                                        </option>
-                                    ))
-                                )}
-                            </select>
-                        </div>
-                    </div>
-
-
-
-                    {/* Server Auto-Connect */}
-                    <div className="border-t border-slate-800 pt-4">
-                        <label className="flex items-center gap-3 cursor-pointer group">
-                            <input
-                                type="checkbox"
-                                checked={autoConnect}
-                                onChange={(e) => setAutoConnect(e.target.checked)}
-                                className="w-5 h-5 rounded bg-slate-950 border-slate-700 text-emerald-600 focus:ring-emerald-500 focus:ring-offset-0 cursor-pointer"
+                                autoFocus
                             />
-                            <div>
-                                <span className="text-sm font-bold text-slate-200 group-hover:text-slate-100 transition-colors">{t('crop_check_autoconnect')}</span>
-                                <p className="text-xs text-slate-500">{t('crop_desc_autoconnect')}</p>
-                            </div>
-                        </label>
+                        </div>
 
-                        {autoConnect && (
-                            <div className="mt-3 animate-in fade-in slide-in-from-top-2 duration-200">
+                        {/* Loader & Version Row */}
+                        <div className="grid grid-cols-2 gap-4">
+                            <div>
                                 <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">
-                                    {t('crop_label_server')} {errors.serverAddress && <span className="text-red-500">{t('crop_required')}</span>}
+                                    {t('crop_label_loader')}
                                 </label>
-                                <input
-                                    type="text"
-                                    value={serverAddress}
+                                <select
+                                    value={loader}
+                                    onChange={(e) => setLoader(e.target.value)}
+                                    className={`w-full bg-slate-950 border rounded-xl px-4 py-3 text-slate-200 focus:outline-none transition-colors appearance-none disabled:opacity-50 disabled:cursor-not-allowed ${(editingCrop && editingCrop.modpackProjectId) ? 'border-slate-800' : 'border-slate-800 focus:border-emerald-500/50'
+                                        }`}
+                                    disabled={editingCrop && editingCrop.modpackProjectId}
+                                >
+                                    {LOADERS.map(l => {
+                                        const isDisabled = [].includes(l);
+                                        return (
+                                            <option
+                                                key={l}
+                                                value={l}
+                                                disabled={isDisabled}
+                                                className={isDisabled ? 'text-slate-600' : ''}
+                                            >
+                                                {l === 'Vanilla' ? t('crop_loader_vanilla') : l}{isDisabled ? ` ${t('crop_coming_soon')}` : ''}
+                                            </option>
+                                        );
+                                    })}
+                                </select>
+                            </div>
+                            <div>
+                                <div className="flex items-center justify-between mb-2">
+                                    <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider">
+                                        {t('crop_label_version')} {errors.version && <span className="text-red-500">{t('crop_required')}</span>}
+                                    </label>
+                                    <button
+                                        type="button"
+                                        onClick={() => {
+                                            setVersion(versions[0]);
+                                            if (errors.version) setErrors(prev => ({ ...prev, version: false }));
+                                        }}
+                                        disabled={loadingVersions || (editingCrop && editingCrop.modpackProjectId)}
+                                        className="text-xs font-bold text-emerald-500 hover:text-emerald-400 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                                    >
+                                        {t('crop_btn_latest')}
+                                    </button>
+                                </div>
+                                <select
+                                    value={version}
                                     onChange={(e) => {
-                                        setServerAddress(e.target.value);
-                                        if (errors.serverAddress) setErrors(prev => ({ ...prev, serverAddress: false }));
+                                        setVersion(e.target.value);
+                                        if (errors.version) setErrors(prev => ({ ...prev, version: false }));
                                     }}
-                                    placeholder="play.hypixel.net"
-                                    className={`w-full bg-slate-950 border rounded-xl px-4 py-3 text-slate-200 focus:outline-none transition-colors placeholder:text-slate-600 font-mono text-sm ${errors.serverAddress
+                                    className={`w-full bg-slate-950 border rounded-xl px-4 py-3 text-slate-200 focus:outline-none transition-colors appearance-none disabled:opacity-50 disabled:cursor-not-allowed ${errors.version
                                         ? 'border-red-500 focus:border-red-500'
                                         : 'border-slate-800 focus:border-emerald-500/50'
                                         }`}
-                                />
+                                    disabled={loadingVersions || (editingCrop && editingCrop.modpackProjectId)}
+                                >
+                                    {loadingVersions ? (
+                                        <option>Loading versions...</option>
+                                    ) : (
+                                        versions.map((v, index) => (
+                                            <option key={v} value={v}>
+                                                {index === 0 ? `${v} ${t('crop_version_latest')}` : v}
+                                            </option>
+                                        ))
+                                    )}
+                                </select>
                             </div>
-                        )}
+                        </div>
+
+                        {/* Server Auto-Connect */}
+                        <div className="border-t border-slate-800 pt-4">
+                            <label className="flex items-center gap-3 cursor-pointer group">
+                                <input
+                                    type="checkbox"
+                                    checked={autoConnect}
+                                    onChange={(e) => setAutoConnect(e.target.checked)}
+                                    className="w-5 h-5 rounded bg-slate-950 border-slate-700 text-emerald-600 focus:ring-emerald-500 focus:ring-offset-0 cursor-pointer"
+                                />
+                                <div>
+                                    <span className="text-sm font-bold text-slate-200 group-hover:text-slate-100 transition-colors">{t('crop_check_autoconnect')}</span>
+                                    <p className="text-xs text-slate-500">{t('crop_desc_autoconnect')}</p>
+                                </div>
+                            </label>
+
+                            {autoConnect && (
+                                <div className="mt-3 animate-in fade-in slide-in-from-top-2 duration-200">
+                                    <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">
+                                        {t('crop_label_server')} {errors.serverAddress && <span className="text-red-500">{t('crop_required')}</span>}
+                                    </label>
+                                    <input
+                                        type="text"
+                                        value={serverAddress}
+                                        onChange={(e) => {
+                                            setServerAddress(e.target.value);
+                                            if (errors.serverAddress) setErrors(prev => ({ ...prev, serverAddress: false }));
+                                        }}
+                                        placeholder="play.hypixel.net"
+                                        className={`w-full bg-slate-950 border rounded-xl px-4 py-3 text-slate-200 focus:outline-none transition-colors placeholder:text-slate-600 font-mono text-sm ${errors.serverAddress
+                                            ? 'border-red-500 focus:border-red-500'
+                                            : 'border-slate-800 focus:border-emerald-500/50'
+                                            }`}
+                                    />
+                                </div>
+                            )}
+                        </div>
                     </div>
 
-                    {/* Buttons */}
-                    <div className="flex gap-3 pt-2">
-                        {editingCrop && (
-                            <>
-                                <button
-                                    type="button"
-                                    onClick={() => setIsDeleteConfirmOpen(true)}
-                                    className="px-4 py-3 rounded-xl font-bold text-red-500 hover:bg-red-500/10 transition-colors flex items-center gap-2"
-                                    title="Delete Crop"
-                                >
-                                    <Trash2 size={20} />
-                                </button>
-                                {editingCrop.path && (
+                    {/* Footer / Buttons */}
+                    <div className="shrink-0 p-6 pt-4 border-t border-slate-800 bg-slate-900/50 backdrop-blur-md">
+                        <div className="flex gap-3">
+                            {editingCrop && (
+                                <>
                                     <button
                                         type="button"
-                                        onClick={() => window.electronAPI.openPath(editingCrop.path)}
-                                        className="px-4 py-3 rounded-xl font-bold text-slate-400 hover:bg-slate-800 hover:text-slate-200 transition-colors flex items-center gap-2"
-                                        title={t('crop_btn_open_folder', { defaultValue: 'Open Folder' })}
+                                        onClick={() => setIsDeleteConfirmOpen(true)}
+                                        className="px-4 py-3 rounded-xl font-bold text-red-500 hover:bg-red-500/10 transition-colors flex items-center gap-2"
+                                        title="Delete Crop"
                                     >
-                                        <FolderOpen size={20} />
+                                        <Trash2 size={20} />
                                     </button>
-                                )}
-                            </>
-                        )}
-                        <button
-                            type="button"
-                            onClick={onClose}
-                            className="flex-1 px-4 py-3 rounded-xl font-bold text-slate-400 hover:bg-slate-800 transition-colors"
-                        >
-                            {t('btn_cancel')}
-                        </button>
-                        <button
-                            type="submit"
-                            className="flex-[2] bg-emerald-600 hover:bg-emerald-500 text-white px-4 py-3 rounded-xl font-bold shadow-lg shadow-emerald-900/20 transition-all active:scale-95 flex items-center justify-center gap-2"
-                        >
-                            {editingCrop ? <Save size={18} /> : <Plus size={18} />}
-                            {editingCrop ? t('crop_btn_save_edit') : t('crop_btn_save_new')}
-                        </button>
+                                    {editingCrop.path && (
+                                        <button
+                                            type="button"
+                                            onClick={() => window.electronAPI.openPath(editingCrop.path)}
+                                            className="px-4 py-3 rounded-xl font-bold text-slate-400 hover:bg-slate-800 hover:text-slate-200 transition-colors flex items-center gap-2"
+                                            title={t('crop_btn_open_folder', { defaultValue: 'Open Folder' })}
+                                        >
+                                            <FolderOpen size={20} />
+                                        </button>
+                                    )}
+                                </>
+                            )}
+                            <button
+                                type="button"
+                                onClick={onClose}
+                                className="flex-1 px-4 py-3 rounded-xl font-bold text-slate-400 hover:bg-slate-800 transition-colors"
+                            >
+                                {t('btn_cancel')}
+                            </button>
+                            <button
+                                type="submit"
+                                className="flex-[2] bg-emerald-600 hover:bg-emerald-500 text-white px-4 py-3 rounded-xl font-bold shadow-lg shadow-emerald-900/20 transition-all active:scale-95 flex items-center justify-center gap-2"
+                            >
+                                {editingCrop ? <Save size={18} /> : <Plus size={18} />}
+                                {editingCrop ? t('crop_btn_save_edit') : t('crop_btn_save_new')}
+                            </button>
+                        </div>
                     </div>
                 </form>
 
@@ -469,9 +478,6 @@ const CropModal = ({ isOpen, onClose, onSave, editingCrop, onDelete }) => {
                         <p className="text-slate-400 text-sm">Copying files via Warp Drive</p>
                     </div>
                 )}
-
-                {/* Decorative BG */}
-                <div className="absolute top-0 right-0 w-64 h-64 bg-emerald-500/5 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2 pointer-events-none" />
             </div>
         </div>
     );
