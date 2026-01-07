@@ -213,7 +213,7 @@ function App() {
                 logs={logs} showConsole={showConsole} setShowConsole={setShowConsole}
                 launchStatus={launchStatus} launchStep={launchStep} launchProgress={launchProgress} selectedInstance={selectedInstance} handleStop={handleStop}
                 showLoginModal={showLoginModal} setShowLoginModal={setShowLoginModal} onAddAccountWithToast={onAddAccountWithToast} isRefreshing={isRefreshing}
-                showCropModal={showCropModal} setShowCropModal={setShowCropModal} onSaveCropWithToast={onSaveCropWithToast} editingCrop={editingCrop}
+                showCropModal={showCropModal} setShowCropModal={setShowCropModal} onSaveCropWithToast={onSaveCropWithToast} editingCrop={editingCrop} onDeleteCropWithToast={onDeleteCropWithToast}
                 showJavaModal={showJavaModal} setShowJavaModal={setShowJavaModal} handleJavaInstallComplete={handleJavaInstallComplete} refreshJavas={refreshJavas} requiredJavaVersion={requiredJavaVersion}
                 errorModal={errorModal} setErrorModal={setErrorModal}
                 crashModal={crashModal} setCrashModal={setCrashModal}

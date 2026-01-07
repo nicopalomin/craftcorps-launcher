@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
-    X, Sprout, Save, Plus, FolderOpen, Download,
+    X, Sprout, Save, Plus, FolderOpen, Download, Trash2,
     Pickaxe, Axe, Sword, Shield, Box,
     Map, Compass, Flame, Snowflake, Droplet,
     Zap, Heart, Skull, Ghost, Trophy, Loader2
@@ -16,7 +16,7 @@ const ICON_MAP = {
     Zap, Heart, Skull, Ghost, Trophy
 };
 
-const CropModal = ({ isOpen, onClose, onSave, editingCrop }) => {
+const CropModal = ({ isOpen, onClose, onSave, editingCrop, onDelete }) => {
     const { t } = useTranslation();
     const { addToast: showToast } = useToast();
     const [name, setName] = useState('');
@@ -31,6 +31,7 @@ const CropModal = ({ isOpen, onClose, onSave, editingCrop }) => {
     const [autoConnect, setAutoConnect] = useState(false);
     const [serverAddress, setServerAddress] = useState('');
     const [isImporting, setIsImporting] = useState(false);
+    const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
 
     // Fetch Minecraft versions on mount
     useEffect(() => {
@@ -48,9 +49,11 @@ const CropModal = ({ isOpen, onClose, onSave, editingCrop }) => {
         if (isOpen) {
             setErrors({}); // Clear errors when opening modal
             setIsImporting(false);
+            setIsDeleteConfirmOpen(false);
             if (editingCrop) {
                 setName(editingCrop.name);
-                setLoader(editingCrop.loader);
+                const matchedLoader = LOADERS.find(l => l.toLowerCase() === (editingCrop.loader || '').toLowerCase());
+                setLoader(matchedLoader || editingCrop.loader);
                 setVersion(editingCrop.version);
                 setAutoConnect(editingCrop.autoConnect || false);
                 setServerAddress(editingCrop.serverAddress || '');
@@ -311,7 +314,7 @@ const CropModal = ({ isOpen, onClose, onSave, editingCrop }) => {
                                         setVersion(versions[0]);
                                         if (errors.version) setErrors(prev => ({ ...prev, version: false }));
                                     }}
-                                    disabled={loadingVersions}
+                                    disabled={loadingVersions || (editingCrop && editingCrop.modpackProjectId)}
                                     className="text-xs font-bold text-emerald-500 hover:text-emerald-400 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                                 >
                                     {t('crop_btn_latest')}
@@ -323,11 +326,11 @@ const CropModal = ({ isOpen, onClose, onSave, editingCrop }) => {
                                     setVersion(e.target.value);
                                     if (errors.version) setErrors(prev => ({ ...prev, version: false }));
                                 }}
-                                className={`w-full bg-slate-950 border rounded-xl px-4 py-3 text-slate-200 focus:outline-none transition-colors appearance-none ${errors.version
+                                className={`w-full bg-slate-950 border rounded-xl px-4 py-3 text-slate-200 focus:outline-none transition-colors appearance-none disabled:opacity-50 disabled:cursor-not-allowed ${errors.version
                                     ? 'border-red-500 focus:border-red-500'
                                     : 'border-slate-800 focus:border-emerald-500/50'
                                     }`}
-                                disabled={loadingVersions}
+                                disabled={loadingVersions || (editingCrop && editingCrop.modpackProjectId)}
                             >
                                 {loadingVersions ? (
                                     <option>Loading versions...</option>
@@ -383,15 +386,27 @@ const CropModal = ({ isOpen, onClose, onSave, editingCrop }) => {
 
                     {/* Buttons */}
                     <div className="flex gap-3 pt-2">
-                        {editingCrop && editingCrop.path && (
-                            <button
-                                type="button"
-                                onClick={() => window.electronAPI.openPath(editingCrop.path)}
-                                className="px-4 py-3 rounded-xl font-bold text-slate-400 hover:bg-slate-800 hover:text-slate-200 transition-colors flex items-center gap-2"
-                                title={t('crop_btn_open_folder', { defaultValue: 'Open Folder' })}
-                            >
-                                <FolderOpen size={20} />
-                            </button>
+                        {editingCrop && (
+                            <>
+                                <button
+                                    type="button"
+                                    onClick={() => setIsDeleteConfirmOpen(true)}
+                                    className="px-4 py-3 rounded-xl font-bold text-red-500 hover:bg-red-500/10 transition-colors flex items-center gap-2"
+                                    title="Delete Crop"
+                                >
+                                    <Trash2 size={20} />
+                                </button>
+                                {editingCrop.path && (
+                                    <button
+                                        type="button"
+                                        onClick={() => window.electronAPI.openPath(editingCrop.path)}
+                                        className="px-4 py-3 rounded-xl font-bold text-slate-400 hover:bg-slate-800 hover:text-slate-200 transition-colors flex items-center gap-2"
+                                        title={t('crop_btn_open_folder', { defaultValue: 'Open Folder' })}
+                                    >
+                                        <FolderOpen size={20} />
+                                    </button>
+                                )}
+                            </>
                         )}
                         <button
                             type="button"
@@ -409,6 +424,42 @@ const CropModal = ({ isOpen, onClose, onSave, editingCrop }) => {
                         </button>
                     </div>
                 </form>
+
+                {/* Delete Confirmation Overlay */}
+                {isDeleteConfirmOpen && (
+                    <div className="absolute inset-0 bg-slate-950/95 backdrop-blur-sm z-40 flex flex-col items-center justify-center p-6 text-center animate-in fade-in duration-200">
+                        {/* Red Glow */}
+                        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-64 h-64 bg-red-500/10 rounded-full blur-3xl pointer-events-none" />
+
+                        <div className="relative z-10 w-16 h-16 bg-red-500/10 rounded-full flex items-center justify-center mb-4 text-red-500 animate-in zoom-in duration-300 ring-1 ring-red-500/20">
+                            <Trash2 size={32} />
+                        </div>
+                        <h4 className="relative z-10 text-xl font-bold text-slate-200 mb-2">Delete Instance?</h4>
+                        <p className="relative z-10 text-slate-400 mb-8 max-w-xs text-sm">
+                            Are you sure you want to delete <span className="font-bold text-slate-200">{editingCrop?.name}</span>?
+                            <br /><span className="text-red-400/80">This action cannot be undone.</span>
+                        </p>
+                        <div className="relative z-10 flex gap-3 w-full">
+                            <button
+                                type="button"
+                                onClick={() => setIsDeleteConfirmOpen(false)}
+                                className="flex-1 px-4 py-3 rounded-xl font-bold text-slate-400 hover:bg-slate-800 transition-colors"
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => {
+                                    onDelete(editingCrop.id);
+                                    onClose();
+                                }}
+                                className="flex-1 bg-red-600 hover:bg-red-500 text-white px-4 py-3 rounded-xl font-bold shadow-lg shadow-red-900/20 transition-all active:scale-95"
+                            >
+                                Delete
+                            </button>
+                        </div>
+                    </div>
+                )}
 
                 {/* Loading Widget / Overlay */}
                 {isImporting && (

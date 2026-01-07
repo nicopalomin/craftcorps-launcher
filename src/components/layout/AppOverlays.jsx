@@ -16,7 +16,7 @@ const AppOverlays = ({
     // Login
     showLoginModal, setShowLoginModal, onAddAccountWithToast, isRefreshing,
     // Crop
-    showCropModal, setShowCropModal, onSaveCropWithToast, editingCrop,
+    showCropModal, setShowCropModal, onSaveCropWithToast, editingCrop, onDeleteCropWithToast,
     // Java
     showJavaModal, setShowJavaModal, handleJavaInstallComplete, refreshJavas, requiredJavaVersion,
     // Error
@@ -55,6 +55,7 @@ const AppOverlays = ({
                 onClose={() => setShowCropModal(false)}
                 onSave={onSaveCropWithToast}
                 editingCrop={editingCrop}
+                onDelete={onDeleteCropWithToast}
             />
 
             <JavaInstallModal

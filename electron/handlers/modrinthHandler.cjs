@@ -35,7 +35,7 @@ function setupModrinthHandlers() {
     /**
      * Search Modrinth
      */
-    ipcMain.handle('modrinth-search', async (event, { query, type, version, category, offset = 0, limit = 20 }) => {
+    ipcMain.handle('modrinth-search', async (event, { query, type, version, category, loader, offset = 0, limit = 20 }) => {
         try {
             const facets = [];
             if (type) {
@@ -46,6 +46,9 @@ function setupModrinthHandlers() {
             }
             if (category) {
                 facets.push([`categories:${category}`]);
+            }
+            if (loader) {
+                facets.push([`categories:${loader}`]);
             }
 
             const results = await client.searchProjects({

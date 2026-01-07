@@ -191,9 +191,10 @@ const InstancesView = ({ instances, onEditCrop, onDeleteCrop, onSelectInstance, 
                         </div>
                         <button
                             onClick={() => onSelectInstance(inst)}
-                            className="w-[calc(100%+3rem)] -mx-6 -mb-6 py-3 bg-slate-800 hover:bg-emerald-600 hover:text-white text-emerald-500 font-bold uppercase tracking-wider rounded-b-xl rounded-t-none text-xs transition-all duration-200 relative z-10 hover:shadow-lg active:scale-[0.98] active:bg-emerald-700 border-t border-slate-800/50 flex items-center justify-center gap-2"
+                            className="group/playbtn w-[calc(100%+3rem)] -mx-6 -mb-6 py-3 bg-slate-800 hover:bg-emerald-600 hover:text-white text-emerald-500 font-bold uppercase tracking-wider rounded-b-xl rounded-t-none text-xs transition-all duration-200 relative z-10 hover:shadow-lg active:scale-[0.98] active:bg-emerald-700 border-t border-slate-800/50 flex items-center justify-center gap-2"
                         >
-                            <Play size={12} className="fill-current" /> {t('instances_btn_play')}
+                            <Play size={14} className="fill-current transition-transform duration-700 group-hover/playbtn:scale-125" />
+                            <span className="inline-block transition-transform duration-700 group-hover/playbtn:scale-110">{t('instances_btn_play')}</span>
                         </button>
                         {/* Subtle Gradient BG */}
                         <div className={`absolute inset-0 bg-gradient-to-br ${inst.bgGradient} opacity-10`} />

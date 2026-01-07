@@ -198,11 +198,18 @@ const ModsView = ({ selectedInstance, instances = [], onInstanceCreated, onSwitc
         const limit = 24;
 
         try {
+            // Determine loader filter
+            let loaderFilter = undefined;
+            if (projectType === 'mod' && selectedInstance && selectedInstance.loader && selectedInstance.loader !== 'Vanilla') {
+                loaderFilter = selectedInstance.loader.toLowerCase();
+            }
+
             const response = await window.electronAPI.modrinthSearch({
                 query: query,
                 type: projectType,
                 version: filterVersion || undefined,
                 category: filterCategory || undefined,
+                loader: loaderFilter,
                 limit: limit,
                 offset: currentOffset
             });
@@ -232,10 +239,22 @@ const ModsView = ({ selectedInstance, instances = [], onInstanceCreated, onSwitc
             if (detailsRes.success) setProjectDetails(detailsRes.data);
 
             // 2. Get Versions
+            let targetLoaders = [];
+            let targetGameVersions = [];
+
+            if (projectType === 'mod' && selectedInstance) {
+                if (selectedInstance.loader && selectedInstance.loader !== 'Vanilla') {
+                    targetLoaders.push(selectedInstance.loader.toLowerCase());
+                }
+                if (selectedInstance.version) {
+                    targetGameVersions.push(selectedInstance.version);
+                }
+            }
+
             const versionsRes = await window.electronAPI.modrinthGetVersions({
                 projectId: project.project_id,
-                loaders: [],
-                gameVersions: []
+                loaders: targetLoaders,
+                gameVersions: targetGameVersions
             });
 
             let fetchedVersions = [];
