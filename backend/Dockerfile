@@ -8,6 +8,7 @@ COPY prisma ./prisma/
 COPY scripts ./scripts/
 
 # Install dependencies
+RUN apk add --no-cache openssl
 RUN npm install
 
 # Copy source code
