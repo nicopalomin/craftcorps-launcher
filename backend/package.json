@@ -6,8 +6,8 @@
     "scripts": {
         "start": "node dist/server.js",
         "dev": "ts-node-dev --respawn --transpile-only src/server.ts",
-        "build": "node scripts/switch-provider.js && tsc",
-        "postinstall": "node scripts/switch-provider.js && prisma generate",
+        "build": "tsc",
+        "postinstall": "prisma generate",
         "lint": "eslint . --ext .ts"
     },
     "keywords": [],
