@@ -29,6 +29,23 @@ class TelemetryService {
             this.appVersion = await window.electronAPI.getAppVersion();
         }
 
+        // Check for pending offline events
+        try {
+            const pending = localStorage.getItem('pending_telemetry_events');
+            if (pending) {
+                const events = JSON.parse(pending);
+                if (Array.isArray(events) && events.length > 0) {
+                    console.log('[Telemetry] Found pending offline events:', events.length);
+                    this.eventBuffer.push(...events);
+                    // Clear storage now, if flush fails they will be re-saved
+                    localStorage.removeItem('pending_telemetry_events');
+                    this.flushEvents();
+                }
+            }
+        } catch (e) {
+            console.error('[Telemetry] Failed to load pending events', e);
+        }
+
         // Start flush timer (every 30s)
         this.flushInterval = setInterval(() => this.flushEvents(), 30000);
 
@@ -51,7 +68,7 @@ class TelemetryService {
                 body: JSON.stringify({
                     userId: this.userId,
                     sessionId: this.sessionId,
-                    appVersion: this.appVersion // [NEW]
+                    appVersion: this.appVersion
                 }),
             });
             const data = await res.json();
@@ -108,7 +125,28 @@ class TelemetryService {
             });
         } catch (e) {
             console.error('[Telemetry] Failed to flush events', e);
-            // Optional: push back to buffer if needed, but be careful of loops
+
+            // Save back to localStorage for next run
+            try {
+                // Merge with existing if any (edge case where we failed twice in a row, rare but possible)
+                const existing = localStorage.getItem('pending_telemetry_events');
+                let allEvents = events;
+                if (existing) {
+                    const parsed = JSON.parse(existing);
+                    if (Array.isArray(parsed)) {
+                        allEvents = [...parsed, ...events];
+                    }
+                }
+
+                // Cap the size to avoid quota errors (e.g. 500 events)
+                if (allEvents.length > 500) {
+                    allEvents = allEvents.slice(allEvents.length - 500);
+                }
+
+                localStorage.setItem('pending_telemetry_events', JSON.stringify(allEvents));
+            } catch (storageErr) {
+                console.error('[Telemetry] Failed to save offline events', storageErr);
+            }
         }
     }
 }

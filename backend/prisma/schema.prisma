@@ -15,6 +15,7 @@ model AnalyticsUser {
   hardware  Hardware?
   events    Event[]
   sessions  Session[]
+  crashes   CrashReport[]
 }
 
 model Session {
@@ -44,4 +45,27 @@ model Event {
   type      String   // e.g., "APP_OPEN", "GAME_CRASH", "GAME_LAUNCH"
   metadata  String?  // JSON string
   createdAt DateTime @default(now())
+}
+
+model CrashReport {
+  id          Int      @id @default(autoincrement())
+  reportId    String   @unique // guid from Electron
+  submissionId String? // Optional internal ID
+  date        DateTime @default(now())
+  
+  // Metadata from Electron
+  platform    String?
+  processType String?
+  appVersion  String?
+  
+  // User info
+  userId      String?
+  user        AnalyticsUser? @relation(fields: [userId], references: [id])
+  
+  // File info
+  dumpPath    String // Path to stored minidump
+  
+  // Raw request info
+  ip          String?
+  country     String?
 }

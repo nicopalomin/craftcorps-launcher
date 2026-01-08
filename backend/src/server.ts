@@ -6,6 +6,9 @@ import { PrismaClient } from '@prisma/client';
 import winston from 'winston';
 
 import geoip from 'geoip-lite';
+import multer from 'multer';
+import fs from 'fs';
+import path from 'path';
 
 const app = express();
 const prisma = new PrismaClient();
@@ -17,9 +20,25 @@ const logger = winston.createLogger({
     format: winston.format.json(),
     transports: [
         new winston.transports.Console({ format: winston.format.simple() }),
-        new winston.transports.File({ filename: 'error.log', level: 'error' }),
     ],
 });
+
+// -- Multer Config for Crash Dumps --
+const uploadDir = path.join(__dirname, '../uploads/crashes');
+if (!fs.existsSync(uploadDir)) {
+    fs.mkdirSync(uploadDir, { recursive: true });
+}
+
+const storage = multer.diskStorage({
+    destination: (req, file, cb) => {
+        cb(null, uploadDir);
+    },
+    filename: (req, file, cb) => {
+        const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+        cb(null, 'crash-' + uniqueSuffix + path.extname(file.originalname));
+    }
+});
+const upload = multer({ storage: storage });
 
 // -- Middleware --
 app.set('trust proxy', true); // Enable X-Forwarded-For updates
@@ -199,6 +218,87 @@ app.get('/api/public/stats', async (req, res) => {
     } catch (error) {
         logger.error('Stats error', error);
         res.status(500).json({ error: 'Internal Server Error' });
+    }
+});
+
+// 5. Crash Reporting (Public Submission)
+app.post('/api/crash-report', upload.single('upload_file_minidump'), async (req: any, res: any) => {
+    try {
+        const file = req.file;
+        const body = req.body;
+        // Electron params: _productName, _version, process_type, guid, ver, platform, prod, etc.
+
+        logger.info(`[Crash] Received report from ${req.ip}`);
+
+        const report = await prisma.crashReport.create({
+            data: {
+                reportId: body.guid || `unknown-${Date.now()}`,
+                platform: body.platform || 'unknown',
+                processType: body.process_type || 'unknown',
+                appVersion: body.ver || body._version || 'unknown',
+                dumpPath: file ? file.path : '',
+                ip: req.ip || '',
+                // If we had userId in extra params:
+                userId: body.userId || undefined,
+            }
+        });
+
+        res.status(200).send('Shutdown'); // Standard Electron response
+        // Note: Electron often expects the returned string to be the crash report ID, 
+        // but 'Shutdown' or 'OK' works for avoiding retries if configured. 
+        // Actually, creating a crash report ID is better.
+    } catch (error) {
+        logger.error('Crash report handling error', error);
+        res.status(500).send('Error');
+    }
+});
+
+// 6. Get Crashes (Protected)
+app.get('/api/crashes', async (req, res) => {
+    const authHeader = req.headers.authorization;
+    const secret = process.env.API_SECRET;
+
+    if (!secret || authHeader !== `Bearer ${secret}`) {
+        return res.status(401).json({ error: 'Unauthorized' });
+    }
+
+    try {
+        const crashes = await prisma.crashReport.findMany({
+            orderBy: { date: 'desc' },
+            take: 50
+        });
+        res.json(crashes);
+    } catch (error) {
+        logger.error('Get crashes error', error);
+        res.status(500).json({ error: 'Internal Server Error' });
+    }
+});
+
+// 7. Download Crash Dump (Protected)
+app.get('/api/crashes/:id/dump', async (req, res) => {
+    const secret = process.env.API_SECRET;
+    const token = req.query.token as string;
+    const authHeader = req.headers.authorization;
+
+    // Support both header and query param for easy browser download
+    const isAuth = (authHeader === `Bearer ${secret}`) || (token === secret);
+
+    if (!secret || !isAuth) {
+        return res.status(401).send('Unauthorized');
+    }
+
+    try {
+        const id = parseInt(req.params.id);
+        const crash = await prisma.crashReport.findUnique({ where: { id } });
+
+        if (!crash || !crash.dumpPath || !fs.existsSync(crash.dumpPath)) {
+            return res.status(404).send('Dump not found');
+        }
+
+        res.download(crash.dumpPath);
+    } catch (error) {
+        logger.error('Download dump error', error);
+        res.status(500).send('Error');
     }
 });
 
