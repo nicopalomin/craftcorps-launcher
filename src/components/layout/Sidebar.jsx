@@ -4,7 +4,7 @@ import { Sprout, Play, Edit3, HardDrive, Settings, Shirt, ShoppingBag } from 'lu
 import SidebarItem from './SidebarItem';
 import SneakyAd from '../common/SneakyAd';
 
-const Sidebar = ({ activeTab, onTabChange }) => {
+const Sidebar = ({ activeTab, onTabChange, theme }) => {
     const { t } = useTranslation();
     // Initialize from local storage or default to 256
     const [width, setWidth] = React.useState(() => {
@@ -62,10 +62,16 @@ const Sidebar = ({ activeTab, onTabChange }) => {
         };
     }, [isResizing, resize, stopResizing]);
 
+    const getSidebarStyles = () => {
+        if (theme === 'midnight') return 'bg-[#050505] border-white/5'; // Match App background
+        if (theme === 'white') return 'bg-white border-slate-200';
+        return 'bg-slate-900 border-slate-800'; // Default Classic
+    };
+
     return (
         <aside
             ref={sidebarRef}
-            className="bg-slate-900 border-r border-slate-800 flex flex-col p-4 z-20 select-none relative group/sidebar"
+            className={`${getSidebarStyles()} border-r flex flex-col p-4 z-20 select-none relative group/sidebar transition-colors duration-300`}
             style={{ width: width }}
         >
             {/* Resize Handle */}

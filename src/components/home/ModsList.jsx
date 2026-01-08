@@ -13,7 +13,8 @@ const ModsList = ({
     onDragOver,
     onDragLeave,
     onDrop,
-    className = "h-[500px]"
+    className = "h-[500px]",
+    theme
 }) => {
     const [searchQuery, setSearchQuery] = useState('');
 
@@ -28,19 +29,19 @@ const ModsList = ({
         >
             <div className="flex flex-col gap-4 mb-4">
                 <div className="flex items-center justify-between">
-                    <h3 className="text-xl font-bold text-white flex items-center gap-3">
+                    <h3 className={`text-xl font-bold flex items-center gap-3 ${theme === 'white' ? '!text-black' : 'text-white'}`}>
                         <div className="p-2 rounded-lg bg-indigo-500/10 text-indigo-400">
                             <Box size={20} />
                         </div>
                         Installed Mods
-                        <span className="text-xs font-medium bg-slate-800 text-slate-400 px-2 py-1 rounded-full">
+                        <span className={`text-xs font-medium px-2 py-1 rounded-full ${theme === 'white' ? 'bg-slate-200 text-slate-600' : 'bg-slate-800 text-slate-400'}`}>
                             {isLoading ? '...' : (installedMods.length > 0 ? installedMods.length : (selectedInstance.mods?.length || 0))}
                         </span>
                     </h3>
                     <div className="flex items-center gap-2">
                         <button
                             onClick={onRefresh}
-                            className={`p-2 bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white rounded-xl transition-colors ${isLoading ? 'opacity-50 cursor-not-allowed' : ''}`}
+                            className={`p-2 rounded-xl transition-colors ${isLoading ? 'opacity-50 cursor-not-allowed' : ''} ${theme === 'white' ? 'bg-slate-100 hover:bg-slate-200 text-slate-500 hover:text-slate-800' : 'bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white'}`}
                             title="Refresh Mods"
                             disabled={isLoading}
                         >
@@ -55,7 +56,7 @@ const ModsList = ({
                         </button>
                         <button
                             onClick={() => onAdd(null)}
-                            className="p-2 bg-slate-800 hover:bg-slate-700 text-white hover:text-emerald-400 shadow-lg shadow-black/20 rounded-xl transition-all active:scale-95 flex items-center justify-center border border-white/5"
+                            className={`p-2 rounded-xl transition-all active:scale-95 flex items-center justify-center border ${theme === 'white' ? 'bg-slate-100 hover:bg-slate-200 text-slate-600 hover:text-emerald-500 border-slate-200' : 'bg-slate-800 hover:bg-slate-700 text-white hover:text-emerald-400 shadow-lg shadow-black/20 border-white/5'}`}
                             title="Install Local Mod (JAR)"
                         >
                             <Plus size={20} />
@@ -66,19 +67,22 @@ const ModsList = ({
                 {/* Mod Search Bar */}
                 <div className="relative group">
                     <div className="absolute inset-y-0 left-3 flex items-center pointer-events-none">
-                        <Search size={16} className="text-slate-500 group-focus-within:text-indigo-400 transition-colors" />
+                        <Search size={16} className={`transition-colors ${theme === 'white' ? 'text-slate-400 group-focus-within:text-indigo-500' : 'text-slate-500 group-focus-within:text-indigo-400'}`} />
                     </div>
                     <input
                         type="text"
                         value={searchQuery}
                         onChange={(e) => setSearchQuery(e.target.value)}
                         placeholder="Search installed mods..."
-                        className="w-full bg-slate-950/50 border border-white/5 rounded-xl py-2 pl-10 pr-4 text-sm text-slate-200 placeholder:text-slate-600 focus:outline-none focus:border-indigo-500/50 focus:bg-slate-900/80 transition-all font-medium"
+                        className={`w-full rounded-xl py-2 pl-10 pr-4 text-sm focus:outline-none transition-all font-medium ${theme === 'white'
+                            ? 'bg-white border border-slate-200 text-slate-800 placeholder:text-slate-400 focus:border-indigo-500/50 focus:bg-slate-50'
+                            : 'bg-slate-950/50 border border-white/5 text-slate-200 placeholder:text-slate-600 focus:border-indigo-500/50 focus:bg-slate-900/80'
+                            }`}
                     />
                     {searchQuery && (
                         <button
                             onClick={() => setSearchQuery('')}
-                            className="absolute inset-y-0 right-3 flex items-center text-slate-600 hover:text-slate-300 transition-colors"
+                            className={`absolute inset-y-0 right-3 flex items-center transition-colors ${theme === 'white' ? 'text-slate-400 hover:text-slate-600' : 'text-slate-600 hover:text-slate-300'}`}
                         >
                             <X size={14} />
                         </button>
@@ -104,13 +108,16 @@ const ModsList = ({
 
                             return mods.length > 0 ? (
                                 mods.map((mod, idx) => (
-                                    <div key={idx} className="bg-slate-950/50 hover:bg-slate-900/80 border border-white/5 p-3 rounded-xl flex items-center justify-between transition-colors group">
+                                    <div key={idx} className={`p-3 rounded-xl flex items-center justify-between transition-colors group border ${theme === 'white'
+                                        ? 'bg-white hover:bg-slate-50 border-slate-200'
+                                        : 'bg-slate-950/50 hover:bg-slate-900/80 border-white/5'
+                                        }`}>
                                         <div className="flex items-center gap-3 overflow-hidden">
-                                            <div className={`w-8 h-8 shrink-0 rounded-lg flex items-center justify-center ${mod.enabled ? 'bg-indigo-500/20 text-indigo-400' : 'bg-slate-800 text-slate-600'}`}>
+                                            <div className={`w-8 h-8 shrink-0 rounded-lg flex items-center justify-center ${mod.enabled ? 'bg-indigo-500/20 text-indigo-400' : (theme === 'white' ? 'bg-slate-100 text-slate-400' : 'bg-slate-800 text-slate-600')}`}>
                                                 <Cpu size={16} />
                                             </div>
                                             <div className="min-w-0">
-                                                <div className={`font-medium text-sm truncate ${mod.enabled ? 'text-slate-200' : 'text-slate-500 decoration-slate-600 line-through'}`}>{mod.name}</div>
+                                                <div className={`font-medium text-sm truncate ${mod.enabled ? (theme === 'white' ? 'text-slate-700' : 'text-slate-200') : 'text-slate-500 decoration-slate-600 line-through'}`}>{mod.name}</div>
                                                 {mod.version && <div className="text-xs text-slate-500 font-mono truncate mr-2">{mod.version}</div>}
                                             </div>
                                         </div>
@@ -152,7 +159,7 @@ const ModsList = ({
             </div>
 
             {isDragging && (
-                <div className="absolute inset-0 z-50 flex items-center justify-center bg-slate-900/80 rounded-3xl backdrop-blur-sm pointer-events-none border-2 border-indigo-500 border-dashed">
+                <div className={`absolute inset-0 z-50 flex items-center justify-center rounded-3xl backdrop-blur-sm pointer-events-none border-2 border-indigo-500 border-dashed ${theme === 'white' ? 'bg-white/80' : 'bg-slate-900/80'}`}>
                     <div className="flex flex-col items-center gap-4 text-indigo-400">
                         <PlusCircle size={48} />
                         <span className="text-xl font-bold">Drop JARs to Install</span>

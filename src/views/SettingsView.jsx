@@ -66,7 +66,7 @@ const SettingsView = ({ ram, setRam, javaPath, setJavaPath, hideOnLaunch, setHid
                         {[
                             { id: 'classic', name: 'Corps Classic', color: '#0f172a' },
                             { id: 'midnight', name: 'Midnight', color: '#2b2d31' },
-                            { id: 'white', name: 'Pro White', color: '#ffffff' }
+                            { id: 'white', name: 'Pro White (Beta)', color: '#ffffff' }
                         ].map((tOption) => (
                             <button
                                 key={tOption.id}

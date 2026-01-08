@@ -75,7 +75,7 @@ const AppContent = ({
                     onReorder={reorderInstances}
                 />
             )}
-            {activeTab === 'wardrobe' && <WardrobeView skins={SKINS} />}
+            {activeTab === 'wardrobe' && <WardrobeView skins={SKINS} theme={theme} />}
             {activeTab === 'settings' && (
                 <SettingsView
                     ram={ram} setRam={setRam}

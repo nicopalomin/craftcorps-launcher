@@ -12,7 +12,8 @@ const ResourcePacksList = ({
     onDragOver,
     onDragLeave,
     onDrop,
-    className = "h-[500px]"
+    className = "h-[500px]",
+    theme
 }) => {
     const [searchQuery, setSearchQuery] = useState('');
     const isDragging = isDraggingGlobal;
@@ -26,19 +27,19 @@ const ResourcePacksList = ({
         >
             <div className="flex flex-col gap-4 mb-4">
                 <div className="flex items-center justify-between">
-                    <h3 className="text-xl font-bold text-white flex items-center gap-3">
+                    <h3 className={`text-xl font-bold flex items-center gap-3 ${theme === 'white' ? '!text-black' : 'text-white'}`}>
                         <div className="p-2 rounded-lg bg-pink-500/10 text-pink-400">
                             <Layers size={20} />
                         </div>
                         Resource Packs
-                        <span className="text-xs font-medium bg-slate-800 text-slate-400 px-2 py-1 rounded-full">
+                        <span className={`text-xs font-medium px-2 py-1 rounded-full ${theme === 'white' ? 'bg-slate-200 text-slate-600' : 'bg-slate-800 text-slate-400'}`}>
                             {isLoading ? '...' : (resourcePacks !== null ? resourcePacks.length : (selectedInstance.resourcePacks?.length || 0))}
                         </span>
                     </h3>
                     <div className="flex items-center gap-2">
                         <button
                             onClick={onRefresh}
-                            className={`p-2 bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white rounded-xl transition-colors ${isLoading ? 'opacity-50 cursor-not-allowed' : ''}`}
+                            className={`p-2 rounded-xl transition-colors ${isLoading ? 'opacity-50 cursor-not-allowed' : ''} ${theme === 'white' ? 'bg-slate-100 hover:bg-slate-200 text-slate-500 hover:text-slate-800' : 'bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white'}`}
                             title="Refresh Resource Packs"
                             disabled={isLoading}
                         >
@@ -57,19 +58,22 @@ const ResourcePacksList = ({
                 {/* Resource Pack Search Bar */}
                 <div className="relative group">
                     <div className="absolute inset-y-0 left-3 flex items-center pointer-events-none">
-                        <Search size={16} className="text-slate-500 group-focus-within:text-pink-400 transition-colors" />
+                        <Search size={16} className={`transition-colors ${theme === 'white' ? 'text-slate-400 group-focus-within:text-pink-500' : 'text-slate-500 group-focus-within:text-pink-400'}`} />
                     </div>
                     <input
                         type="text"
                         value={searchQuery}
                         onChange={(e) => setSearchQuery(e.target.value)}
                         placeholder="Search resource packs..."
-                        className="w-full bg-slate-950/50 border border-white/5 rounded-xl py-2 pl-10 pr-4 text-sm text-slate-200 placeholder:text-slate-600 focus:outline-none focus:border-pink-500/50 focus:bg-slate-900/80 transition-all font-medium"
+                        className={`w-full rounded-xl py-2 pl-10 pr-4 text-sm focus:outline-none transition-all font-medium ${theme === 'white'
+                            ? 'bg-white border border-slate-200 text-slate-800 placeholder:text-slate-400 focus:border-pink-500/50 focus:bg-slate-50'
+                            : 'bg-slate-950/50 border border-white/5 text-slate-200 placeholder:text-slate-600 focus:border-pink-500/50 focus:bg-slate-900/80'
+                            }`}
                     />
                     {searchQuery && (
                         <button
                             onClick={() => setSearchQuery('')}
-                            className="absolute inset-y-0 right-3 flex items-center text-slate-600 hover:text-slate-300 transition-colors"
+                            className={`absolute inset-y-0 right-3 flex items-center transition-colors ${theme === 'white' ? 'text-slate-400 hover:text-slate-600' : 'text-slate-600 hover:text-slate-300'}`}
                         >
                             <X size={14} />
                         </button>
@@ -95,17 +99,20 @@ const ResourcePacksList = ({
 
                             return packs.length > 0 ? (
                                 packs.map((pack, idx) => (
-                                    <div key={idx} className="bg-slate-950/50 hover:bg-slate-900/80 border border-white/5 p-3 rounded-xl flex items-center justify-between transition-colors group">
+                                    <div key={idx} className={`p-3 rounded-xl flex items-center justify-between transition-colors group border ${theme === 'white'
+                                        ? 'bg-white hover:bg-slate-50 border-slate-200'
+                                        : 'bg-slate-950/50 hover:bg-slate-900/80 border-white/5'
+                                        }`}>
                                         <div className="flex items-center gap-3 overflow-hidden">
-                                            <div className="w-12 h-12 shrink-0 rounded-lg bg-slate-800 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] bg-cover flex items-center justify-center opacity-80 border border-white/5 overflow-hidden">
+                                            <div className={`w-12 h-12 shrink-0 rounded-lg flex items-center justify-center opacity-80 overflow-hidden ${theme === 'white' ? 'bg-slate-100 border border-slate-200' : 'bg-slate-800 bg-[url("https://www.transparenttextures.com/patterns/cubes.png")] bg-cover border border-white/5'}`}>
                                                 {pack.icon ? (
                                                     <img src={pack.icon} alt={pack.name} className="w-full h-full object-cover" />
                                                 ) : (
-                                                    <Layers size={20} className="text-slate-600" />
+                                                    <Layers size={20} className={theme === 'white' ? 'text-slate-400' : 'text-slate-600'} />
                                                 )}
                                             </div>
                                             <div className="min-w-0">
-                                                <div className={`font-medium text-sm truncate ${pack.enabled ? 'text-slate-200' : 'text-slate-400'}`}>{pack.name}</div>
+                                                <div className={`font-medium text-sm truncate ${pack.enabled ? (theme === 'white' ? 'text-slate-700' : 'text-slate-200') : 'text-slate-400'}`}>{pack.name}</div>
                                                 <div className="text-xs text-slate-500 truncate">{pack.description || (pack.enabled ? 'Active' : 'Inactive')}</div>
                                             </div>
                                         </div>

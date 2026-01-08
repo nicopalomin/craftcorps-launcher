@@ -28,7 +28,7 @@ const InstanceHero = ({
         <div className={`flex flex-col items-center text-center w-full px-8 pb-8 ${isModded ? 'pt-16 max-w-7xl mx-auto' : 'max-w-4xl'}`}>
 
             {/* Horizontal Hero for Modded */}
-            <div className={`${isModded ? 'flex items-start gap-8 w-full text-left bg-slate-900/40 p-8 rounded-3xl border border-white/5 backdrop-blur-sm shadow-xl' : 'contents'}`}>
+            <div className={`${isModded ? `flex items-start gap-8 w-full text-left p-8 rounded-3xl backdrop-blur-sm shadow-xl ${theme === 'white' ? 'bg-white/60 border border-slate-200' : 'bg-slate-900/40 border border-white/5'}` : 'contents'}`}>
 
                 {/* Instance Icon */}
                 <div
@@ -44,31 +44,31 @@ const InstanceHero = ({
                 {/* Info & Play */}
                 <div className={isModded ? 'flex-1 min-w-0' : 'contents'}>
                     {/* Title */}
-                    <h1 className={`${isModded ? 'text-3xl mb-3' : 'text-5xl mb-2'} font-bold text-slate-200 tracking-tight drop-shadow-lg truncate`}>
+                    <h1 className={`${isModded ? 'text-3xl mb-3' : 'text-5xl mb-2'} font-bold tracking-tight truncate ${theme === 'white' ? '!text-black drop-shadow-none' : 'text-slate-200 drop-shadow-lg'}`}>
                         {selectedInstance.name}
                     </h1>
 
                     {/* Tags */}
-                    <div className={`flex items-center gap-3 text-slate-300 mb-8 ${isModded ? '' : 'justify-center bg-black/20 px-4 py-2 rounded-full backdrop-blur-sm border border-white/5'}`}>
-                        <div className="flex items-center gap-2 bg-black/20 px-3 py-1.5 rounded-lg border border-white/5">
-                            <span className="font-mono text-emerald-300">{selectedInstance.version}</span>
+                    <div className={`flex items-center gap-3 mb-8 ${theme === 'white' ? 'text-slate-600' : 'text-slate-300'} ${isModded ? '' : 'justify-center bg-black/20 px-4 py-2 rounded-full backdrop-blur-sm border border-white/5'}`}>
+                        <div className={`flex items-center gap-2 px-3 py-1.5 rounded-lg border ${theme === 'white' ? 'bg-slate-200/50 border-slate-300/50' : 'bg-black/20 border-white/5'}`}>
+                            <span className={`font-mono ${theme === 'white' ? 'text-emerald-600' : 'text-emerald-300'}`}>{selectedInstance.version}</span>
                         </div>
 
                         <span className={`w-1 h-1 rounded-full bg-slate-500 ${isModded ? 'hidden' : ''}`} />
 
-                        <div className="flex items-center gap-2 bg-black/20 px-3 py-1.5 rounded-lg border border-white/5">
+                        <div className={`flex items-center gap-2 px-3 py-1.5 rounded-lg border ${theme === 'white' ? 'bg-slate-200/50 border-slate-300/50' : 'bg-black/20 border-white/5'}`}>
                             <div className={`w-2 h-2 rounded-full ${isModded ? 'bg-amber-400' : 'bg-slate-400'}`}></div>
                             <span>{selectedInstance.loader}</span>
                         </div>
 
                         <span className={`w-1 h-1 rounded-full bg-slate-500 ${isModded ? 'hidden' : ''}`} />
 
-                        <div className="flex items-center gap-2 bg-black/20 px-3 py-1.5 rounded-lg border border-white/5">
-                            <span className="text-emerald-400 font-medium">{selectedInstance.status === 'Ready' ? t('home_status_ready') : selectedInstance.status}</span>
+                        <div className={`flex items-center gap-2 px-3 py-1.5 rounded-lg border ${theme === 'white' ? 'bg-slate-200/50 border-slate-300/50' : 'bg-black/20 border-white/5'}`}>
+                            <span className={`${theme === 'white' ? 'text-emerald-600' : 'text-emerald-400'} font-medium`}>{selectedInstance.status === 'Ready' ? t('home_status_ready') : selectedInstance.status}</span>
                         </div>
 
                         {selectedInstance.autoConnect && (
-                            <div className="flex items-center gap-2 bg-black/20 px-3 py-1.5 rounded-lg border border-white/5 text-emerald-400">
+                            <div className={`flex items-center gap-2 px-3 py-1.5 rounded-lg border text-emerald-400 ${theme === 'white' ? 'bg-slate-200/50 border-slate-300/50' : 'bg-black/20 border-white/5'}`}>
                                 <Server size={14} />
                                 <span className="text-xs font-medium">{selectedInstance.serverAddress}</span>
                             </div>
@@ -90,7 +90,7 @@ const InstanceHero = ({
                                 <div className="group relative w-full max-w-sm">
                                     <button
                                         onClick={onPlay}
-                                        className={`relative w-full bg-emerald-600 group-hover:bg-emerald-500 text-white rounded-2xl font-bold ${theme === 'midnight'
+                                        className={`relative w-full bg-emerald-600 group-hover:bg-emerald-500 text-white rounded-2xl font-bold ${['midnight', 'white'].includes(theme)
                                             ? 'shadow-lg shadow-black/40 group-hover:shadow-2xl group-hover:shadow-black/60'
                                             : 'shadow-[0_0_40px_rgba(5,150,105,0.4)] group-hover:shadow-[0_0_60px_rgba(5,150,105,0.6)]'
                                             } transform group-hover:-translate-y-1 active:translate-y-0 active:scale-95 transition-[transform,box-shadow,background-color] duration-200 overflow-hidden flex items-center ring-offset-2 ring-offset-transparent group-hover:ring-2 group-hover:ring-emerald-400/30 ${isModded ? 'py-4 text-xl justify-between text-left px-6' : 'py-6 text-2xl justify-center gap-3'}`}

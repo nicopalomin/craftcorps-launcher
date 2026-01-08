@@ -318,7 +318,7 @@ const HomeView = ({
                 />
             )}
             <div className="absolute inset-0 bg-[url('/cubes.png')] opacity-5" />
-            <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/80 to-transparent" />
+            <div className={`absolute inset-0 bg-gradient-to-t ${theme === 'midnight' ? 'from-[#050505] via-[#050505]/80' : (theme === 'white' ? 'from-slate-50/90 via-slate-50/50' : 'from-slate-900 via-slate-900/80')} to-transparent`} />
 
             {/* Animated Blobs */}
             <BackgroundBlobs disabled={disableAnimations || isModded || ['midnight', 'white'].includes(theme)} />
@@ -364,16 +364,16 @@ const HomeView = ({
                 {isModded && (
                     <div className="w-full max-w-7xl mx-auto px-8 pb-8 animate-in slide-in-from-bottom-10 fade-in duration-700 delay-100">
                         {/* Unified Glass Card */}
-                        <div className="bg-slate-900/40 border border-white/5 rounded-3xl backdrop-blur-sm flex flex-col h-[750px] overflow-hidden relative">
+                        <div className={`backdrop-blur-md flex flex-col h-[750px] overflow-hidden relative border rounded-3xl transition-colors duration-300 ${theme === 'white' ? 'bg-white/90 border-white/50 shadow-xl' : 'bg-slate-900/40 border-white/5'}`}>
 
                             {/* Internal Tab Switcher */}
-                            <div className="flex items-center justify-center pt-6 pb-4 border-b border-white/5 bg-white/[0.02]">
-                                <div className="flex p-1 bg-slate-950/50 rounded-xl border border-white/10 relative">
+                            <div className={`flex items-center justify-center pt-6 pb-4 border-b ${theme === 'white' ? 'border-slate-200 bg-slate-50/50' : 'border-white/5 bg-white/[0.02]'}`}>
+                                <div className={`flex p-1 rounded-xl border relative ${theme === 'white' ? 'bg-slate-200/50 border-slate-300/50' : 'bg-slate-950/50 border-white/10'}`}>
                                     <button
                                         onClick={() => setActiveTab('mods')}
                                         className={`relative px-8 py-2 rounded-lg font-medium text-sm transition-all duration-300 flex items-center justify-center gap-2 min-w-[140px] z-10 ${activeTab === 'mods'
-                                                ? 'text-white bg-indigo-600 shadow-lg shadow-indigo-500/20'
-                                                : 'text-slate-400 hover:text-white hover:bg-white/5'
+                                            ? 'text-white bg-indigo-600 shadow-lg shadow-indigo-500/20'
+                                            : (theme === 'white' ? 'text-slate-600 hover:text-slate-900 hover:bg-white/60' : 'text-slate-400 hover:text-white hover:bg-white/5')
                                             }`}
                                     >
                                         <Box size={16} />
@@ -382,8 +382,8 @@ const HomeView = ({
                                     <button
                                         onClick={() => setActiveTab('resourcepacks')}
                                         className={`relative px-8 py-2 rounded-lg font-medium text-sm transition-all duration-300 flex items-center justify-center gap-2 min-w-[140px] z-10 ${activeTab === 'resourcepacks'
-                                                ? 'text-white bg-pink-600 shadow-lg shadow-pink-500/20'
-                                                : 'text-slate-400 hover:text-white hover:bg-white/5'
+                                            ? 'text-white bg-pink-600 shadow-lg shadow-pink-500/20'
+                                            : (theme === 'white' ? 'text-slate-600 hover:text-slate-900 hover:bg-white/60' : 'text-slate-400 hover:text-white hover:bg-white/5')
                                             }`}
                                     >
                                         <Layers size={16} />
@@ -407,6 +407,7 @@ const HomeView = ({
                                         onDragOver={handleDragOver}
                                         onDragLeave={handleDragLeave}
                                         onDrop={handleDrop}
+                                        theme={theme}
                                         className="!bg-transparent !border-none !rounded-none !shadow-none !h-full !p-6 animate-in fade-in duration-300"
                                     />
                                 ) : (
@@ -421,6 +422,7 @@ const HomeView = ({
                                         onDragOver={handleDragOver}
                                         onDragLeave={handleDragLeave}
                                         onDrop={handleResourcePackDrop}
+                                        theme={theme}
                                         className="!bg-transparent !border-none !rounded-none !shadow-none !h-full !p-6 animate-in fade-in duration-300"
                                     />
                                 )}

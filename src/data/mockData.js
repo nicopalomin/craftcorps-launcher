@@ -7,7 +7,7 @@ export const INITIAL_INSTANCES = [
         status: 'Ready',
         lastPlayed: null,
         iconColor: 'bg-emerald-500',
-        bgGradient: 'from-emerald-900/40 to-slate-900'
+        bgGradient: 'from-emerald-600/30 to-slate-900'
     },
     {
         id: 'inst_2',
@@ -17,7 +17,7 @@ export const INITIAL_INSTANCES = [
         status: 'Ready',
         lastPlayed: null,
         iconColor: 'bg-indigo-500',
-        bgGradient: 'from-indigo-900/40 to-slate-900',
+        bgGradient: 'from-indigo-600/30 to-slate-900',
         mods: [
             { name: 'Sodium', version: '0.5.3', enabled: true },
             { name: 'Lithium', version: '0.11.2', enabled: true },
@@ -66,12 +66,12 @@ export const FALLBACK_VERSIONS = [
 
 export const LOADERS = ['Vanilla', 'Fabric', 'Forge', 'Quilt', 'NeoForge'];
 export const COLORS = [
-    { name: 'Emerald', class: 'bg-emerald-500', grad: 'from-emerald-900/40 to-slate-900' },
-    { name: 'Blue', class: 'bg-blue-500', grad: 'from-blue-900/40 to-slate-900' },
-    { name: 'Amber', class: 'bg-amber-500', grad: 'from-amber-900/40 to-slate-900' },
-    { name: 'Purple', class: 'bg-purple-500', grad: 'from-purple-900/40 to-slate-900' },
-    { name: 'Rose', class: 'bg-rose-500', grad: 'from-rose-900/40 to-slate-900' },
-    { name: 'Slate', class: 'bg-slate-500', grad: 'from-slate-800 to-slate-950' },
+    { name: 'Emerald', class: 'bg-emerald-500', grad: 'from-emerald-600/30 to-slate-900' },
+    { name: 'Blue', class: 'bg-blue-500', grad: 'from-blue-600/30 to-slate-900' },
+    { name: 'Amber', class: 'bg-amber-500', grad: 'from-amber-600/30 to-slate-900' },
+    { name: 'Purple', class: 'bg-purple-500', grad: 'from-purple-600/30 to-slate-900' },
+    { name: 'Rose', class: 'bg-rose-500', grad: 'from-rose-600/30 to-slate-900' },
+    { name: 'Slate', class: 'bg-slate-500', grad: 'from-slate-700/30 to-slate-900' },
 ];
 
 export const INSTANCE_ICONS = [

@@ -176,16 +176,25 @@ function App() {
 
     }, [activeTab, launchStatus, enableDiscordRPC]);
 
+    const getThemeBackground = () => {
+        switch (theme) {
+            case 'white': return 'bg-slate-50 text-slate-900';
+            case 'midnight': return 'bg-[#050505] text-slate-200';
+            default: return 'bg-slate-900 text-slate-200'; // Classic: Slate 900 (was 950)
+        }
+    };
+
     return (
-        <div className="flex h-screen bg-slate-950 text-slate-200 font-sans selection:bg-emerald-500/30">
+        <div className={`flex h-screen font-sans selection:bg-emerald-500/30 ${getThemeBackground()}`}>
             {/* Sidebar */}
             <Sidebar
                 activeTab={activeTab}
                 onTabChange={setActiveTab}
+                theme={theme}
             />
 
             {/* Main Content Area */}
-            <main className="flex-1 flex flex-col min-w-0 bg-slate-950 relative overflow-hidden">
+            <main className={`flex-1 flex flex-col min-w-0 relative overflow-hidden ${theme === 'white' ? 'bg-slate-50' : (theme === 'midnight' ? 'bg-[#050505]' : 'bg-slate-900')}`}>
                 <TitleBar
                     launchStatus={launchStatus}
                     isRefreshing={isRefreshing}
