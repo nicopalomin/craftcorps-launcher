@@ -2,13 +2,13 @@
 import { v4 as uuidv4 } from 'uuid';
 
 const STORE_KEY = 'telemetry_user_id';
-const API_BASE = 'http://localhost:3000/api'; // TODO: Change to prod URL
+const API_BASE = 'http://telemetry.craftcorps.app/api';
 
 class TelemetryService {
     constructor() {
         this.userId = null;
         this.sessionId = null;
-        this.appVersion = null; // [NEW]
+        this.appVersion = null;
         this.eventBuffer = [];
         this.flushInterval = null;
     }
