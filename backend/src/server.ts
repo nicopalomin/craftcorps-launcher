@@ -17,7 +17,7 @@ const PORT = process.env.PORT || 3000;
 // -- Logger Setup --
 const logClients: any[] = [];
 
-class SseTransport extends (winston.transport as any) {
+class SseTransport extends (winston as any).Transport {
     log(info: any, callback: () => void) {
         setImmediate(() => {
             this.emit('logged', info);
