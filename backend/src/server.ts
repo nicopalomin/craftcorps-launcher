@@ -4,6 +4,7 @@ import cors from 'cors';
 import helmet from 'helmet';
 import { PrismaClient } from '@prisma/client';
 import winston from 'winston';
+import { createClient } from '@supabase/supabase-js';
 
 import geoip from 'geoip-lite';
 import multer from 'multer';
@@ -13,6 +14,36 @@ import path from 'path';
 const app = express();
 const prisma = new PrismaClient();
 const PORT = process.env.PORT || 3000;
+
+// -- Supabase Auth --
+const supabaseUrl = process.env.SUPABASE_URL || '';
+const supabaseKey = process.env.SUPABASE_ANON_KEY || ''; // Use Anon Key for getUser verification
+const supabase = createClient(supabaseUrl, supabaseKey);
+
+const requireAuth = async (req: express.Request, res: express.Response, next: express.NextFunction) => {
+    const authHeader = req.headers.authorization;
+    const queryToken = req.query.token as string;
+    let token = '';
+
+    if (authHeader && authHeader.startsWith('Bearer ')) {
+        token = authHeader.substring(7);
+    } else if (queryToken) {
+        token = queryToken;
+    }
+
+    if (!token) {
+        return res.status(401).json({ error: 'Missing authentication token' });
+    }
+
+    const { data: { user }, error } = await supabase.auth.getUser(token);
+
+    if (error || !user) {
+        return res.status(401).json({ error: 'Invalid or expired token' });
+    }
+
+    (req as any).user = user;
+    next();
+};
 
 // -- Logger Setup --
 const logClients: any[] = [];
@@ -72,13 +103,8 @@ app.use(express.json());
 // -- Endpoints --
 
 // 0. Log Stream (SSE)
-app.get('/api/logs/stream', (req, res) => {
-    const { token } = req.query;
-    const secret = process.env.API_SECRET;
-
-    if (!secret || token !== secret) {
-        return res.status(401).json({ error: 'Unauthorized' });
-    }
+app.get('/api/logs/stream', requireAuth, (req, res) => {
+    // Auth handled by middleware
 
     res.writeHead(200, {
         'Content-Type': 'text/event-stream',
@@ -213,13 +239,8 @@ app.post('/api/telemetry', async (req, res) => {
 });
 
 // 4. Public Stats (Protected)
-app.get('/api/public/stats', async (req, res) => {
-    const authHeader = req.headers.authorization;
-    const secret = process.env.API_SECRET;
-
-    if (!secret || authHeader !== `Bearer ${secret}`) {
-        return res.status(401).json({ error: 'Unauthorized' });
-    }
+app.get('/api/public/stats', requireAuth, async (req, res) => {
+    // Auth handled by middleware
 
     try {
         const now = new Date();
@@ -313,13 +334,8 @@ app.post('/api/crash-report', upload.single('upload_file_minidump'), async (req:
 });
 
 // 6. Get Crashes (Protected)
-app.get('/api/crashes', async (req, res) => {
-    const authHeader = req.headers.authorization;
-    const secret = process.env.API_SECRET;
-
-    if (!secret || authHeader !== `Bearer ${secret}`) {
-        return res.status(401).json({ error: 'Unauthorized' });
-    }
+app.get('/api/crashes', requireAuth, async (req, res) => {
+    // Auth handled by middleware
 
     try {
         const crashes = await prisma.crashReport.findMany({
@@ -334,17 +350,8 @@ app.get('/api/crashes', async (req, res) => {
 });
 
 // 7. Download Crash Dump (Protected)
-app.get('/api/crashes/:id/dump', async (req, res) => {
-    const secret = process.env.API_SECRET;
-    const token = req.query.token as string;
-    const authHeader = req.headers.authorization;
-
-    // Support both header and query param for easy browser download
-    const isAuth = (authHeader === `Bearer ${secret}`) || (token === secret);
-
-    if (!secret || !isAuth) {
-        return res.status(401).send('Unauthorized');
-    }
+app.get('/api/crashes/:id/dump', requireAuth, async (req, res) => {
+    // Auth handled by middleware
 
     try {
         const id = parseInt(req.params.id);
