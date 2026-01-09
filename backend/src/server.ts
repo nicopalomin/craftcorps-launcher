@@ -15,11 +15,34 @@ const prisma = new PrismaClient();
 const PORT = process.env.PORT || 3000;
 
 // -- Logger Setup --
+const logClients: any[] = [];
+
+class SseTransport extends (winston.transport as any) {
+    log(info: any, callback: () => void) {
+        setImmediate(() => {
+            this.emit('logged', info);
+        });
+
+        const payload = JSON.stringify({
+            level: info.level,
+            message: info.message,
+            timestamp: new Date().toISOString()
+        });
+
+        logClients.forEach(res => {
+            res.write(`data: ${payload}\n\n`);
+        });
+
+        if (callback) callback();
+    }
+}
+
 const logger = winston.createLogger({
     level: 'info',
     format: winston.format.json(),
     transports: [
         new winston.transports.Console({ format: winston.format.simple() }),
+        new SseTransport() as any,
     ],
 });
 
@@ -47,6 +70,42 @@ app.use(cors());
 app.use(express.json());
 
 // -- Endpoints --
+
+// 0. Log Stream (SSE)
+app.get('/api/logs/stream', (req, res) => {
+    const { token } = req.query;
+    const secret = process.env.API_SECRET;
+
+    if (!secret || token !== secret) {
+        return res.status(401).json({ error: 'Unauthorized' });
+    }
+
+    res.writeHead(200, {
+        'Content-Type': 'text/event-stream',
+        'Cache-Control': 'no-cache',
+        'Connection': 'keep-alive',
+        'X-Accel-Buffering': 'no'
+    });
+
+    const initMsg = JSON.stringify({
+        type: 'system',
+        message: 'Connected to backend log stream',
+        timestamp: new Date().toISOString()
+    });
+    res.write(`data: ${initMsg}\n\n`);
+
+    logClients.push(res);
+
+    const keepAlive = setInterval(() => {
+        res.write(': keep-alive\n\n');
+    }, 15000);
+
+    req.on('close', () => {
+        clearInterval(keepAlive);
+        const index = logClients.indexOf(res);
+        if (index !== -1) logClients.splice(index, 1);
+    });
+});
 
 // 1. Heartbeat (DAU/MAU + Session)
 app.post('/api/heartbeat', async (req, res) => {
