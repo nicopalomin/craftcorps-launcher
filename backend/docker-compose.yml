@@ -19,8 +19,6 @@ services:
   backend:
     build: .
     restart: always
-    ports:
-      - "${PORT:-3000}:3000"
     environment:
       - PORT=3000
       - API_SECRET=${API_SECRET}
@@ -29,6 +27,13 @@ services:
       postgres:
         condition: service_healthy
     command: sh -c "npx prisma db push && npm start"
+
+  tunnel:
+    image: cloudflare/cloudflared:latest
+    restart: always
+    environment:
+      - TUNNEL_TOKEN=${TUNNEL_TOKEN}
+    command: tunnel run
 
 volumes:
   postgres_data:

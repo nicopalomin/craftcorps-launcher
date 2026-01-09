@@ -2,7 +2,7 @@
 import { v4 as uuidv4 } from 'uuid';
 
 const STORE_KEY = 'telemetry_user_id';
-const API_BASE = 'http://telemetry.craftcorps.net/api';
+const API_BASE = 'https://telemetry.craftcorps.net/api';
 
 class TelemetryService {
     constructor() {
