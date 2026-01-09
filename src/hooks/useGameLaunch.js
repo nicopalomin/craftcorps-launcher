@@ -172,6 +172,7 @@ export const useGameLaunch = (selectedInstance, ram, activeAccount, updateLastPl
                 uuid: activeAccount.uuid,
                 accessToken: activeAccount.accessToken,
                 userType: activeAccount.type,
+                xuid: activeAccount.xuid,
                 useDefaultPath: !selectedInstance.path,
                 gameDir: selectedInstance.path || null,
                 server: selectedInstance.autoConnect ? selectedInstance.serverAddress : null,

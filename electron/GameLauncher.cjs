@@ -49,7 +49,8 @@ class GameLauncher extends EventEmitter {
                 uuid: options.uuid || '00000000-0000-0000-0000-000000000000',
                 name: options.username || 'Player',
                 user_properties: '{}',
-                meta: { type: options.userType === 'Microsoft' ? 'msa' : 'mojang' }
+                meta: { type: options.userType === 'Microsoft' ? 'msa' : 'mojang' },
+                xuid: options.xuid
             },
             root: commonRoot,
             version: {

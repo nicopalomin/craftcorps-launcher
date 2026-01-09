@@ -169,7 +169,8 @@ async function refreshMicrosoftAuth(refreshToken) {
                 name: profile.name,
                 accessToken: mcLoginData.access_token,
                 refreshToken: msTokenData.refresh_token || refreshToken, // specific logic might vary, usually new one is provided.
-                type: 'Microsoft'
+                type: 'Microsoft',
+                xuid: xblData.DisplayClaims.xui[0].uhs
             };
         } catch (e) {
             throw new Error('AUTH_PROFILE_FAILED');
@@ -327,7 +328,8 @@ async function authenticateMicrosoft(mainWindow) {
                                 name: profile.name,
                                 accessToken: mcLoginData.access_token,
                                 refreshToken: msTokenData.refresh_token,
-                                type: 'Microsoft'
+                                type: 'Microsoft',
+                                xuid: xblData.DisplayClaims.xui[0].uhs
                             });
                         } catch (e) {
                             throw new Error('AUTH_PROFILE_FAILED');

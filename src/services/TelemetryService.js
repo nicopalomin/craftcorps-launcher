@@ -13,8 +13,24 @@ class TelemetryService {
         this.flushInterval = null;
     }
 
+    _log(message, data) {
+        console.log(message, data || '');
+        if (window.electronAPI && window.electronAPI.log) {
+            try {
+                const dataStr = data ? JSON.stringify(data) : '';
+                window.electronAPI.log('info', `[Telemetry] ${message} ${dataStr}`);
+            } catch (e) {
+                // Ignore serialization errors
+            }
+        }
+    }
+
     async init(store) {
-        if (!store) return;
+        this._log('Initializing telemetry service...');
+        if (!store) {
+            this._log('Store not provided to init');
+            return;
+        }
 
         // Get or Create Anonymous ID
         let id = await store.get(STORE_KEY);
@@ -35,7 +51,7 @@ class TelemetryService {
             if (pending) {
                 const events = JSON.parse(pending);
                 if (Array.isArray(events) && events.length > 0) {
-                    console.log('[Telemetry] Found pending offline events:', events.length);
+                    this._log('Found pending offline events:', events.length);
                     this.eventBuffer.push(...events);
                     // Clear storage now, if flush fails they will be re-saved
                     localStorage.removeItem('pending_telemetry_events');
@@ -61,6 +77,7 @@ class TelemetryService {
 
     async sendHeartbeat() {
         if (!this.userId) return;
+        this._log('Sending heartbeat...', { userId: this.userId });
         try {
             const res = await fetch(`${API_BASE}/heartbeat`, {
                 method: 'POST',
@@ -72,6 +89,7 @@ class TelemetryService {
                 }),
             });
             const data = await res.json();
+            this._log('Heartbeat response:', data);
             if (data.sessionId) {
                 this.sessionId = data.sessionId;
             }
@@ -115,6 +133,7 @@ class TelemetryService {
         if (this.eventBuffer.length === 0 || !this.userId) return;
 
         const events = [...this.eventBuffer];
+        this._log(`Flushing ${events.length} events:`, events);
         this.eventBuffer = []; // Clear buffer immediately
 
         try {
@@ -123,6 +142,7 @@ class TelemetryService {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ userId: this.userId, events }),
             });
+            this._log('Automatically flushed events successfully.');
         } catch (e) {
             console.error('[Telemetry] Failed to flush events', e);
 
