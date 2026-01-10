@@ -368,7 +368,17 @@ app.get('/api/crashes/:id/dump', requireAuth, async (req, res) => {
             return res.status(404).send('Dump not found');
         }
 
-        res.download(crash.dumpPath);
+        // Force text/plain so it doesn't try to download as binary octet-stream causing issues in some viewers,
+        // or ensure it sends the correct extension. 
+        res.setHeader('Content-Type', 'text/plain');
+        res.download(crash.dumpPath, `crash-${id}.txt`, (err) => {
+            if (err) {
+                if (!res.headersSent) {
+                    res.status(500).send('Error downloading file');
+                }
+                logger.error('Download callback error', err);
+            }
+        });
     } catch (error) {
         logger.error('Download dump error', error);
         res.status(500).send('Error');
