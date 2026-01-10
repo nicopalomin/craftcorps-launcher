@@ -78,7 +78,8 @@ function App() {
         handleNewCrop,
         handleEditCrop,
         updateLastPlayed,
-        reorderInstances
+        reorderInstances,
+        isLoading: isLoadingInstances
     } = useInstances();
 
     // Wrapped Handlers for Toasts
@@ -214,6 +215,7 @@ function App() {
                     ram={ram} setRam={setRam} javaPath={javaPath} setJavaPath={setJavaPath} hideOnLaunch={hideOnLaunch} setHideOnLaunch={setHideOnLaunch} setDisableAnimations={setDisableAnimations} availableJavas={availableJavas} enableDiscordRPC={enableDiscordRPC} setEnableDiscordRPC={setEnableDiscordRPC}
                     theme={theme} setTheme={setTheme}
                     onSaveCropWithToast={onSaveCropWithToast}
+                    isLoadingInstances={isLoadingInstances}
                 />
             </main>
 

@@ -166,6 +166,11 @@ app.whenReady().then(async () => {
         return getInstances;
     });
 
+    lazyHandle('get-instance-by-path', () => {
+        const { getInstanceByPath } = require('./handlers/gameHandler.cjs');
+        return getInstanceByPath;
+    });
+
     // Lazy: Mods & Resource Packs & Modrinth
     let cachedModHandlers = null;
     const createModLoader = (channel) => async () => {

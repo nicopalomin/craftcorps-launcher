@@ -15,14 +15,34 @@ export const useInstances = () => {
             setIsLoading(true);
             try {
                 if (window.electronAPI && window.electronAPI.getInstances) {
+
+                    // 1. Try to fast-load last selected instance
+                    let hasSetInitial = false;
+                    try {
+                        const lastPath = await window.electronAPI.storeGet('lastSelectedInstancePath');
+                        if (lastPath) {
+                            const lastInstance = await window.electronAPI.getInstanceByPath(lastPath);
+                            if (lastInstance) {
+                                setSelectedInstance(lastInstance);
+                                hasSetInitial = true;
+                            }
+                        }
+                    } catch (e) {
+                        console.warn("Fast-load failed:", e);
+                    }
+
+                    // 2. Load all instances
                     const loaded = await window.electronAPI.getInstances();
 
                     if (loaded && loaded.length > 0) {
                         // Sort by lastPlayed descending (newest first)
                         const sorted = loaded.sort((a, b) => (b.lastPlayed || 0) - (a.lastPlayed || 0));
                         setInstances(sorted);
-                        // Auto-select first if none selected, or maybe the most recently played?
-                        if (!selectedInstance) setSelectedInstance(sorted[0]);
+
+                        // Select first if we haven't set one yet
+                        if (!hasSetInitial) {
+                            setSelectedInstance(sorted[0]);
+                        }
                     } else {
                         // Fallback to empty or initial
                         setInstances([]);
@@ -57,7 +77,12 @@ export const useInstances = () => {
                 }
             }
         }
-    }, [instances]);
+
+        // Persist last selected instance path
+        if (selectedInstance && selectedInstance.path && window.electronAPI?.storeSet) {
+            window.electronAPI.storeSet('lastSelectedInstancePath', selectedInstance.path);
+        }
+    }, [instances, selectedInstance]);
 
     const handleSaveCrop = async (cropData) => {
         // Save to Backend

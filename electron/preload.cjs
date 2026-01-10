@@ -91,6 +91,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
 
     // Instances
     getInstances: () => ipcRenderer.invoke('get-instances'),
+    getInstanceByPath: (path) => ipcRenderer.invoke('get-instance-by-path', path),
     saveInstance: (data) => ipcRenderer.invoke('save-instance', data),
 
     // Import

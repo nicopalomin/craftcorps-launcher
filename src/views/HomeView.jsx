@@ -33,7 +33,8 @@ const HomeView = ({
     showProfileMenu,
     setShowProfileMenu,
     disableAnimations,
-    theme
+    theme,
+    isLoadingInstances
 }) => {
     const { t } = useTranslation();
     const { addToast: showToast } = useToast();
@@ -307,17 +308,12 @@ const HomeView = ({
         return () => observer.disconnect();
     }, [selectedInstance, hasLoadedMods]);
 
-    if (!selectedInstance) {
-        return <EmptyState onNewCrop={onNewCrop} />;
-    }
-
-    const isModded = selectedInstance.loader !== 'Vanilla';
+    const isModded = selectedInstance && selectedInstance.loader !== 'Vanilla';
 
     return (
         <div className={`flex-1 flex flex-col relative animate-in fade-in zoom-in-95 duration-500 select-none overflow-hidden ${isModded ? 'justify-start' : 'justify-center'}`}>
             {/* Dynamic Background */}
-            {/* Dynamic Background */}
-            {!['midnight', 'white'].includes(theme) && (
+            {selectedInstance && !['midnight', 'white'].includes(theme) && (
                 <div
                     className={`absolute inset-0 bg-gradient-to-br ${selectedInstance.bgGradient} transition-colors duration-1000`}
                 />
@@ -340,100 +336,106 @@ const HomeView = ({
             />
 
             {/* Edit Button - positioned under profile */}
-            <button
-                onClick={() => onEditCrop(selectedInstance)}
-                className="absolute top-24 right-8 flex items-center gap-2 px-4 py-2 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800/50 border border-transparent hover:border-slate-700 transition-all backdrop-blur-sm z-40 group"
-                title={t('home_edit_crop')}
-            >
-                <Edit3 size={18} className="group-hover:text-emerald-400 transition-colors" />
-                <span className="font-medium text-sm">{t('home_edit_crop')}</span>
-            </button>
+            {selectedInstance && (
+                <button
+                    onClick={() => onEditCrop(selectedInstance)}
+                    className="absolute top-24 right-8 flex items-center gap-2 px-4 py-2 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800/50 border border-transparent hover:border-slate-700 transition-all backdrop-blur-sm z-40 group"
+                    title={t('home_edit_crop')}
+                >
+                    <Edit3 size={18} className="group-hover:text-emerald-400 transition-colors" />
+                    <span className="font-medium text-sm">{t('home_edit_crop')}</span>
+                </button>
+            )}
 
             {/* Main Content Scrollable Area */}
             <div
                 className={`relative z-10 flex-1 w-full overflow-y-auto custom-scrollbar ${isModded ? '' : 'flex flex-col items-center justify-center'}`}
                 onScroll={handleScroll}
             >
+                {selectedInstance ? (
+                    <>
+                        <InstanceHero
+                            selectedInstance={selectedInstance}
+                            launchStatus={launchStatus}
+                            launchFeedback={launchFeedback}
+                            onPlay={onPlay}
+                            onStop={onStop}
+                            theme={theme}
+                        />
 
-                <InstanceHero
-                    selectedInstance={selectedInstance}
-                    launchStatus={launchStatus}
-                    launchFeedback={launchFeedback}
-                    onPlay={onPlay}
-                    onStop={onStop}
-                    theme={theme}
-                />
+                        {/* Modded Details Section */}
+                        {isModded && (
+                            <div ref={modsSectionRef} className="w-full max-w-7xl mx-auto px-8 pb-8 animate-in slide-in-from-bottom-10 fade-in duration-700 delay-100">
+                                {/* Unified Glass Card */}
+                                <div className={`backdrop-blur-md flex flex-col h-[750px] overflow-hidden relative border rounded-3xl transition-colors duration-300 ${theme === 'white' ? 'bg-white/90 border-white/50 shadow-xl' : 'bg-slate-900/40 border-white/5'}`}>
 
-                {/* Modded Details Section */}
-                {/* Modded Details Section */}
-                {isModded && (
-                    <div ref={modsSectionRef} className="w-full max-w-7xl mx-auto px-8 pb-8 animate-in slide-in-from-bottom-10 fade-in duration-700 delay-100">
-                        {/* Unified Glass Card */}
-                        <div className={`backdrop-blur-md flex flex-col h-[750px] overflow-hidden relative border rounded-3xl transition-colors duration-300 ${theme === 'white' ? 'bg-white/90 border-white/50 shadow-xl' : 'bg-slate-900/40 border-white/5'}`}>
+                                    {/* Internal Tab Switcher */}
+                                    <div className={`flex items-center justify-center pt-6 pb-4 border-b ${theme === 'white' ? 'border-slate-200 bg-slate-50/50' : 'border-white/5 bg-white/[0.02]'}`}>
+                                        <div className={`flex p-1 rounded-xl border relative ${theme === 'white' ? 'bg-slate-200/50 border-slate-300/50' : 'bg-slate-950/50 border-white/10'}`}>
+                                            <button
+                                                onClick={() => setActiveTab('mods')}
+                                                className={`relative px-8 py-2 rounded-lg font-medium text-sm transition-all duration-300 flex items-center justify-center gap-2 min-w-[140px] z-10 ${activeTab === 'mods'
+                                                    ? 'text-white bg-indigo-600 shadow-lg shadow-indigo-500/20'
+                                                    : (theme === 'white' ? 'text-slate-600 hover:text-slate-900 hover:bg-white/60' : 'text-slate-400 hover:text-white hover:bg-white/5')
+                                                    }`}
+                                            >
+                                                <Box size={16} />
+                                                <span>Mods</span>
+                                            </button>
+                                            <button
+                                                onClick={() => setActiveTab('resourcepacks')}
+                                                className={`relative px-8 py-2 rounded-lg font-medium text-sm transition-all duration-300 flex items-center justify-center gap-2 min-w-[140px] z-10 ${activeTab === 'resourcepacks'
+                                                    ? 'text-white bg-pink-600 shadow-lg shadow-pink-500/20'
+                                                    : (theme === 'white' ? 'text-slate-600 hover:text-slate-900 hover:bg-white/60' : 'text-slate-400 hover:text-white hover:bg-white/5')
+                                                    }`}
+                                            >
+                                                <Layers size={16} />
+                                                <span>Resource Packs</span>
+                                            </button>
+                                        </div>
+                                    </div>
 
-                            {/* Internal Tab Switcher */}
-                            <div className={`flex items-center justify-center pt-6 pb-4 border-b ${theme === 'white' ? 'border-slate-200 bg-slate-50/50' : 'border-white/5 bg-white/[0.02]'}`}>
-                                <div className={`flex p-1 rounded-xl border relative ${theme === 'white' ? 'bg-slate-200/50 border-slate-300/50' : 'bg-slate-950/50 border-white/10'}`}>
-                                    <button
-                                        onClick={() => setActiveTab('mods')}
-                                        className={`relative px-8 py-2 rounded-lg font-medium text-sm transition-all duration-300 flex items-center justify-center gap-2 min-w-[140px] z-10 ${activeTab === 'mods'
-                                            ? 'text-white bg-indigo-600 shadow-lg shadow-indigo-500/20'
-                                            : (theme === 'white' ? 'text-slate-600 hover:text-slate-900 hover:bg-white/60' : 'text-slate-400 hover:text-white hover:bg-white/5')
-                                            }`}
-                                    >
-                                        <Box size={16} />
-                                        <span>Mods</span>
-                                    </button>
-                                    <button
-                                        onClick={() => setActiveTab('resourcepacks')}
-                                        className={`relative px-8 py-2 rounded-lg font-medium text-sm transition-all duration-300 flex items-center justify-center gap-2 min-w-[140px] z-10 ${activeTab === 'resourcepacks'
-                                            ? 'text-white bg-pink-600 shadow-lg shadow-pink-500/20'
-                                            : (theme === 'white' ? 'text-slate-600 hover:text-slate-900 hover:bg-white/60' : 'text-slate-400 hover:text-white hover:bg-white/5')
-                                            }`}
-                                    >
-                                        <Layers size={16} />
-                                        <span>Resource Packs</span>
-                                    </button>
+                                    {/* Content Area */}
+                                    <div className="flex-1 overflow-hidden relative">
+                                        {activeTab === 'mods' ? (
+                                            <ModsList
+                                                installedMods={installedMods}
+                                                selectedInstance={selectedInstance}
+                                                isLoading={isLoadingMods}
+                                                onRefresh={handleRefreshMods}
+                                                onAdd={handleAddMods}
+                                                onBrowse={onBrowseMods}
+                                                onDelete={handleDeleteMod}
+                                                isDraggingGlobal={isDragging}
+                                                onDragOver={handleDragOver}
+                                                onDragLeave={handleDragLeave}
+                                                onDrop={handleDrop}
+                                                theme={theme}
+                                                className="!bg-transparent !border-none !rounded-none !shadow-none !h-full !p-6 animate-in fade-in duration-300"
+                                            />
+                                        ) : (
+                                            <ResourcePacksList
+                                                resourcePacks={resourcePacks}
+                                                selectedInstance={selectedInstance}
+                                                isLoading={isLoadingResourcePacks}
+                                                onRefresh={handleRefreshResourcePacks}
+                                                onAdd={handleAddResourcePacks}
+                                                onDelete={handleDeleteResourcePack}
+                                                isDraggingGlobal={isDragging}
+                                                onDragOver={handleDragOver}
+                                                onDragLeave={handleDragLeave}
+                                                onDrop={handleResourcePackDrop}
+                                                theme={theme}
+                                                className="!bg-transparent !border-none !rounded-none !shadow-none !h-full !p-6 animate-in fade-in duration-300"
+                                            />
+                                        )}
+                                    </div>
                                 </div>
                             </div>
-
-                            {/* Content Area */}
-                            <div className="flex-1 overflow-hidden relative">
-                                {activeTab === 'mods' ? (
-                                    <ModsList
-                                        installedMods={installedMods}
-                                        selectedInstance={selectedInstance}
-                                        isLoading={isLoadingMods}
-                                        onRefresh={handleRefreshMods}
-                                        onAdd={handleAddMods}
-                                        onBrowse={onBrowseMods}
-                                        onDelete={handleDeleteMod}
-                                        isDraggingGlobal={isDragging}
-                                        onDragOver={handleDragOver}
-                                        onDragLeave={handleDragLeave}
-                                        onDrop={handleDrop}
-                                        theme={theme}
-                                        className="!bg-transparent !border-none !rounded-none !shadow-none !h-full !p-6 animate-in fade-in duration-300"
-                                    />
-                                ) : (
-                                    <ResourcePacksList
-                                        resourcePacks={resourcePacks}
-                                        selectedInstance={selectedInstance}
-                                        isLoading={isLoadingResourcePacks}
-                                        onRefresh={handleRefreshResourcePacks}
-                                        onAdd={handleAddResourcePacks}
-                                        onDelete={handleDeleteResourcePack}
-                                        isDraggingGlobal={isDragging}
-                                        onDragOver={handleDragOver}
-                                        onDragLeave={handleDragLeave}
-                                        onDrop={handleResourcePackDrop}
-                                        theme={theme}
-                                        className="!bg-transparent !border-none !rounded-none !shadow-none !h-full !p-6 animate-in fade-in duration-300"
-                                    />
-                                )}
-                            </div>
-                        </div>
-                    </div>
+                        )}
+                    </>
+                ) : (
+                    isLoadingInstances ? null : <EmptyState onNewCrop={onNewCrop} />
                 )}
             </div>
             {/* Quick Switch Panel */}

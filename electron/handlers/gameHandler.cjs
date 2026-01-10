@@ -2,11 +2,12 @@ const { ipcMain, app } = require('electron');
 const log = require('electron-log');
 const fs = require('fs');
 const path = require('path');
-const { setActivity } = require('../discordRpc.cjs');
-const GameLauncher = require('../GameLauncher.cjs');
-const JavaManager = require('../JavaManager.cjs');
 
 function setupGameHandlers(getMainWindow) {
+    const { setActivity } = require('../discordRpc.cjs');
+    const GameLauncher = require('../GameLauncher.cjs');
+    const JavaManager = require('../JavaManager.cjs');
+
     const launcher = new GameLauncher();
 
     let lastCrashReport = null;
@@ -23,6 +24,7 @@ function setupGameHandlers(getMainWindow) {
     ipcMain.removeAllListeners('stop-game');
     ipcMain.removeHandler('delete-instance-folder');
     ipcMain.removeHandler('get-instances');
+    ipcMain.removeHandler('get-instance-by-path'); // [NEW]
     ipcMain.removeHandler('save-instance');
     ipcMain.removeHandler('get-new-instance-path');
 
@@ -241,6 +243,11 @@ function setupGameHandlers(getMainWindow) {
     ipcMain.handle('get-instances', getInstances);
 
     /**
+     * Get Single Instance by Path (Optimized for startup)
+     */
+    ipcMain.handle('get-instance-by-path', getInstanceByPath);
+
+    /**
      * Save/Update Instance
      */
     ipcMain.handle('save-instance', async (event, instanceData) => {
@@ -349,4 +356,37 @@ const getInstances = async () => {
     }
 };
 
-module.exports = { setupGameHandlers, getInstances };
+
+
+const getInstanceByPath = async (event, fullPath) => {
+    // If called via IPC, event is first arg.
+    const targetPath = (typeof event === 'string') ? event : fullPath;
+    if (!targetPath) return null;
+
+    try {
+        const jsonPath = path.join(targetPath, 'instance.json');
+
+        // Check if exists first to avoid throwing
+        if (!fs.existsSync(jsonPath)) return null;
+
+        const jsonContent = await fs.promises.readFile(jsonPath, 'utf8');
+        const data = JSON.parse(jsonContent);
+        data.path = targetPath;
+
+        // Load Icon
+        const iconPath = path.join(targetPath, 'icon.png');
+        try {
+            const iconBuffer = await fs.promises.readFile(iconPath);
+            data.icon = `data:image/png;base64,${iconBuffer.toString('base64')}`;
+        } catch (e) {
+            // No icon
+        }
+
+        return data;
+    } catch (e) {
+        log.warn(`[Instance] Failed to load instance from ${targetPath}: ${e.message}`);
+        return null; // Return null effectively handles deleted instances
+    }
+};
+
+module.exports = { setupGameHandlers, getInstances, getInstanceByPath };

@@ -13,6 +13,15 @@ const QuickSwitchPanel = ({
 }) => {
     const { t } = useTranslation();
     const scrollContainerRef = React.useRef(null);
+    const [hasResetScroll, setHasResetScroll] = React.useState(false);
+
+    // Initial scroll reset
+    React.useEffect(() => {
+        if (instances && instances.length > 0 && !hasResetScroll && scrollContainerRef.current) {
+            scrollContainerRef.current.scrollLeft = 0;
+            setHasResetScroll(true);
+        }
+    }, [instances, hasResetScroll]);
 
     const handleWheel = (e) => {
         if (scrollContainerRef.current) {

@@ -18,7 +18,8 @@ const AppContent = ({
     onDeleteCropWithToast, reorderInstances,
     ram, setRam, javaPath, setJavaPath, hideOnLaunch, setHideOnLaunch, setDisableAnimations, availableJavas, enableDiscordRPC, setEnableDiscordRPC,
     theme, setTheme,
-    onSaveCropWithToast
+    onSaveCropWithToast,
+    isLoadingInstances
 }) => {
     const { addToast } = useToast();
 
@@ -62,6 +63,7 @@ const AppContent = ({
                         setShowProfileMenu={setShowProfileMenu}
                         disableAnimations={disableAnimations}
                         theme={theme}
+                        isLoadingInstances={isLoadingInstances}
                     />
                 )
             )}
