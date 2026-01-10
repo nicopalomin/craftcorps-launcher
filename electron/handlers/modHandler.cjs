@@ -4,9 +4,15 @@ const { setupResourcePackHandlers } = require('./resourcePackHandler.cjs');
 
 function setupModHandlers(getMainWindow) {
     console.log('[MAIN] setupModHandlers called');
-    setupModrinthHandlers();
-    setupLocalModHandlers();
-    setupResourcePackHandlers();
+    const modrinthHandlers = setupModrinthHandlers();
+    const localModHandlers = setupLocalModHandlers();
+    const resourcePackHandlers = setupResourcePackHandlers();
+
+    return {
+        ...modrinthHandlers,
+        ...localModHandlers,
+        ...resourcePackHandlers
+    };
 }
 
 module.exports = { setupModHandlers };

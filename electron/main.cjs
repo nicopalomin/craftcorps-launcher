@@ -166,22 +166,33 @@ app.whenReady().then(async () => {
         return getInstances;
     });
 
-    // Lazy: Mods & Resource Packs (Grouped)
-    // We register these individually but they all trigger the same setup function
-    // which replaces ALL of them with the real handlers.
-    const modLoader = async () => {
-        console.log('[IPC] Lazy loading Mod Handlers...');
-        // We need to clean up the proxy handlers we just made
-        // But since setupModHandlers clears them too, it's fine.
-        const { setupModHandlers: setupMods } = require('./handlers/modHandler.cjs');
-        setupMods(getMainWindow); // This replaces handlers
-
-        // Return a handler function for the current request
-        return () => [];
+    // Lazy: Mods & Resource Packs & Modrinth
+    let cachedModHandlers = null;
+    const createModLoader = (channel) => async () => {
+        if (!cachedModHandlers) {
+            console.log('[IPC] Lazy loading Mod Handlers...');
+            const { setupModHandlers: setupMods } = require('./handlers/modHandler.cjs');
+            cachedModHandlers = setupMods(getMainWindow);
+        }
+        const handler = cachedModHandlers[channel];
+        if (!handler) {
+            console.error(`[IPC] No handler found for ${channel} after loading.`);
+            return () => null;
+        }
+        return handler;
     };
 
-    lazyHandle('get-instance-mods', modLoader);
-    lazyHandle('get-instance-resource-packs', modLoader);
+    const modChannels = [
+        'get-instance-mods', 'delete-mod', 'add-instance-mods', 'select-mod-files',
+        'get-instance-resource-packs', 'select-resource-pack-files', 'add-instance-resource-packs', 'delete-resource-pack',
+        'modrinth-cancel-install', 'modrinth-search', 'modrinth-get-tags',
+        'modrinth-install-mod', 'modrinth-install-modpack',
+        'modrinth-get-project', 'modrinth-get-projects', 'modrinth-get-versions'
+    ];
+
+    modChannels.forEach(channel => {
+        lazyHandle(channel, createModLoader(channel));
+    });
 
 
     // Lazy: Updates (Self-Upgrading)
@@ -225,8 +236,7 @@ app.whenReady().then(async () => {
 
             setupJavaHandlers(getMainWindow);
             setupGameHandlers(getMainWindow);
-            console.log('[MAIN] Setting up Mod Handlers (Deferred)...');
-            setupModHandlers(getMainWindow);
+
             setupImportHandlers();
             setupUpdateHandlers(getMainWindow); // It's safe to call again (removes/re-adds)
             ipcMain.handle('subscribe-newsletter', subscribeToNewsletter);

@@ -276,31 +276,36 @@ const HomeView = ({
         lastScrollY.current = currentScrollY;
     };
 
-    useEffect(() => {
-        if (selectedInstance && selectedInstance.loader !== 'Vanilla') {
-            if (window.electronAPI && selectedInstance.path) {
-                setIsLoadingMods(true);
-                window.electronAPI.getInstanceMods(selectedInstance.path)
-                    .then(mods => setInstalledMods(mods))
-                    .catch(err => {
-                        console.error("Failed to load mods:", err);
-                        setInstalledMods([]);
-                    })
-                    .finally(() => setIsLoadingMods(false));
+    // Lazy Load Mods on Scroll
+    const modsSectionRef = React.useRef(null);
+    const [hasLoadedMods, setHasLoadedMods] = useState(false);
 
-                setIsLoadingResourcePacks(true);
-                window.electronAPI.getInstanceResourcePacks(selectedInstance.path)
-                    .then(packs => setResourcePacks(packs))
-                    .catch(err => {
-                        console.error("Failed to load resource packs:", err);
-                        setResourcePacks([]);
-                    })
-                    .finally(() => setIsLoadingResourcePacks(false));
-            } else {
-                setInstalledMods([]);
-            }
-        }
+    useEffect(() => {
+        // Reset when instance changes
+        setInstalledMods([]);
+        setResourcePacks([]);
+        setHasLoadedMods(false);
     }, [selectedInstance]);
+
+    useEffect(() => {
+        if (!selectedInstance || selectedInstance.loader === 'Vanilla' || hasLoadedMods) return;
+
+        const observer = new IntersectionObserver((entries) => {
+            if (entries[0].isIntersecting) {
+                // Trigger load
+                setHasLoadedMods(true);
+                handleRefreshMods();
+                handleRefreshResourcePacks();
+                observer.disconnect();
+            }
+        }, { threshold: 0.1 });
+
+        if (modsSectionRef.current) {
+            observer.observe(modsSectionRef.current);
+        }
+
+        return () => observer.disconnect();
+    }, [selectedInstance, hasLoadedMods]);
 
     if (!selectedInstance) {
         return <EmptyState onNewCrop={onNewCrop} />;
@@ -362,7 +367,7 @@ const HomeView = ({
                 {/* Modded Details Section */}
                 {/* Modded Details Section */}
                 {isModded && (
-                    <div className="w-full max-w-7xl mx-auto px-8 pb-8 animate-in slide-in-from-bottom-10 fade-in duration-700 delay-100">
+                    <div ref={modsSectionRef} className="w-full max-w-7xl mx-auto px-8 pb-8 animate-in slide-in-from-bottom-10 fade-in duration-700 delay-100">
                         {/* Unified Glass Card */}
                         <div className={`backdrop-blur-md flex flex-col h-[750px] overflow-hidden relative border rounded-3xl transition-colors duration-300 ${theme === 'white' ? 'bg-white/90 border-white/50 shadow-xl' : 'bg-slate-900/40 border-white/5'}`}>
 
