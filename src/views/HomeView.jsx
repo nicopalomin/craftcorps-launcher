@@ -11,6 +11,7 @@ import ModsList from '../components/home/ModsList';
 import ResourcePacksList from '../components/home/ResourcePacksList';
 import EmptyState from '../components/home/EmptyState';
 import QuickSwitchPanel from '../components/home/QuickSwitchPanel';
+import HomeSkeleton from '../components/home/HomeSkeleton';
 
 const HomeView = ({
     selectedInstance,
@@ -435,7 +436,7 @@ const HomeView = ({
                         )}
                     </>
                 ) : (
-                    isLoadingInstances ? null : <EmptyState onNewCrop={onNewCrop} />
+                    isLoadingInstances ? <HomeSkeleton theme={theme} /> : <EmptyState onNewCrop={onNewCrop} />
                 )}
             </div>
             {/* Quick Switch Panel */}

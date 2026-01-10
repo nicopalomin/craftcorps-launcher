@@ -3,7 +3,7 @@ import React, { useState, useEffect } from 'react';
 import Sidebar from './components/layout/Sidebar';
 import TitleBar from './components/layout/TitleBar';
 import AppContent from './components/layout/AppContent';
-import AppOverlays from './components/layout/AppOverlays';
+const AppOverlays = React.lazy(() => import('./components/layout/AppOverlays'));
 
 import { useGameLaunch } from './hooks/useGameLaunch';
 import { useInstances } from './hooks/useInstances';
@@ -29,7 +29,10 @@ function App() {
 
             telemetry.init(storeWrapper).then(() => {
                 telemetry.track('APP_OPEN');
-                telemetry.sendHardwareInfo();
+                // Defer hardware info to avoid startup slowdown
+                setTimeout(() => {
+                    telemetry.sendHardwareInfo();
+                }, 15000);
             });
         }
     }, []);
@@ -220,23 +223,25 @@ function App() {
             </main>
 
             {/* Overlays */}
-            <AppOverlays
-                logs={logs} showConsole={showConsole} setShowConsole={setShowConsole}
-                launchStatus={launchStatus} launchStep={launchStep} launchProgress={launchProgress} selectedInstance={selectedInstance} handleStop={handleStop}
-                showLoginModal={showLoginModal} setShowLoginModal={setShowLoginModal} onAddAccountWithToast={onAddAccountWithToast} isRefreshing={isRefreshing}
-                showCropModal={showCropModal} setShowCropModal={setShowCropModal} onSaveCropWithToast={onSaveCropWithToast} editingCrop={editingCrop} onDeleteCropWithToast={onDeleteCropWithToast}
-                showJavaModal={showJavaModal} setShowJavaModal={setShowJavaModal} handleJavaInstallComplete={handleJavaInstallComplete} refreshJavas={refreshJavas} requiredJavaVersion={requiredJavaVersion}
-                errorModal={errorModal} setErrorModal={setErrorModal}
-                crashModal={crashModal} setCrashModal={setCrashModal}
-                showUpdateModal={showUpdateModal} setShowUpdateModal={setShowUpdateModal}
-                updateStatus={updateStatus} updateInfo={updateInfo} downloadProgress={downloadProgress}
-                onDownloadUpdate={() => {
-                    downloadUpdate();
-                    // Modal stays open to show progress usually, or we can close it and let user re-open via titlebar (if we add button there)
-                    // For now, keep open so they see progress bar
-                }}
-                onInstallUpdate={quitAndInstall}
-            />
+            <React.Suspense fallback={null}>
+                <AppOverlays
+                    logs={logs} showConsole={showConsole} setShowConsole={setShowConsole}
+                    launchStatus={launchStatus} launchStep={launchStep} launchProgress={launchProgress} selectedInstance={selectedInstance} handleStop={handleStop}
+                    showLoginModal={showLoginModal} setShowLoginModal={setShowLoginModal} onAddAccountWithToast={onAddAccountWithToast} isRefreshing={isRefreshing}
+                    showCropModal={showCropModal} setShowCropModal={setShowCropModal} onSaveCropWithToast={onSaveCropWithToast} editingCrop={editingCrop} onDeleteCropWithToast={onDeleteCropWithToast}
+                    showJavaModal={showJavaModal} setShowJavaModal={setShowJavaModal} handleJavaInstallComplete={handleJavaInstallComplete} refreshJavas={refreshJavas} requiredJavaVersion={requiredJavaVersion}
+                    errorModal={errorModal} setErrorModal={setErrorModal}
+                    crashModal={crashModal} setCrashModal={setCrashModal}
+                    showUpdateModal={showUpdateModal} setShowUpdateModal={setShowUpdateModal}
+                    updateStatus={updateStatus} updateInfo={updateInfo} downloadProgress={downloadProgress}
+                    onDownloadUpdate={() => {
+                        downloadUpdate();
+                        // Modal stays open to show progress usually, or we can close it and let user re-open via titlebar (if we add button there)
+                        // For now, keep open so they see progress bar
+                    }}
+                    onInstallUpdate={quitAndInstall}
+                />
+            </React.Suspense>
         </div>
     );
 }

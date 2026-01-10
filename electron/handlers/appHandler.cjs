@@ -4,12 +4,13 @@ const fs = require('fs');
 const path = require('path');
 
 const os = require('os');
-const si = require('systeminformation');
+// const si = require('systeminformation'); // Lazy loaded
 
 function setupAppHandlers(getMainWindow, store) {
 
     // System Info for Telemetry
     ipcMain.handle('get-system-info', async () => {
+        const si = require('systeminformation');
         try {
             const cpu = await si.cpu();
             const mem = await si.mem();

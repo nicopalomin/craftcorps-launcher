@@ -114,6 +114,21 @@
   .no-drag {
     -webkit-app-region: no-drag;
   }
+
+  @keyframes shimmer {
+    0% {
+      background-position: -1000px 0;
+    }
+    100% {
+      background-position: 1000px 0;
+    }
+  }
+
+  .animate-shimmer {
+    animation: shimmer 2s infinite linear;
+    background: linear-gradient(to right, var(--color-bg-card) 4%, var(--color-bg-element) 25%, var(--color-bg-card) 36%);
+    background-size: 1000px 100%;
+  }
 }
 
 /* THEMES */

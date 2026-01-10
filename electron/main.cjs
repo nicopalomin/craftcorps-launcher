@@ -1,7 +1,8 @@
 console.time('[MAIN] boot');
-const { app, BrowserWindow, ipcMain, dialog, crashReporter } = require('electron');
+const { app, BrowserWindow, ipcMain, dialog } = require('electron');
 const path = require('path');
 const log = require('electron-log');
+const telemetryService = require('./services/telemetryService.cjs');
 
 // Set AppUserModelID for Windows Taskbar
 if (process.platform === 'win32') {
@@ -25,11 +26,13 @@ log.errorHandler.startCatching();
 
 process.on('uncaughtException', (error) => {
     log.error('CRITICAL: Uncaught Exception:', error);
+    telemetryService.trackCrash(error);
     dialog.showErrorBox('Application Error', `An unexpected error occurred.\n\n${error.message}`);
 });
 
 process.on('unhandledRejection', (reason) => {
     log.error('CRITICAL: Unhandled Rejection:', reason);
+    telemetryService.trackCrash(reason instanceof Error ? reason : new Error(String(reason)));
 });
 
 let mainWindow;
@@ -50,6 +53,7 @@ async function createWindow() {
     if (!store) {
         const { default: Store } = await import('electron-store');
         store = new Store();
+        telemetryService.init(store);
     }
 
     // Restore saved window state
@@ -219,15 +223,7 @@ app.whenReady().then(async () => {
         if (process.env.NODE_ENV === 'development') console.log('[MAIN] Deferring non-critical handlers...');
 
         setTimeout(() => {
-            // Initialize Crash Reporter
-            crashReporter.start({
-                productName: 'CraftCorps',
-                companyName: 'CraftCorps Authors',
-                submitURL: 'http://148.113.49.235:3000/crash-report',
-                uploadToServer: true,
-                compress: true,
-                extra: { 'platform': process.platform }
-            });
+            // Remove crashReporter, usage replaced by TelemetryService
 
             // Heavy Imports - Run setups if they haven't been triggered by lazy loading yet
             // Note: setupXHandlers are safe to call multiple times because we added removal logic.

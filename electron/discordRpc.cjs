@@ -1,5 +1,5 @@
 const { ipcMain } = require('electron');
-const DiscordRPC = require('discord-rpc');
+// const DiscordRPC = require('discord-rpc'); // Lazy loaded
 const log = require('electron-log');
 
 const clientId = '1454519577508708462';
@@ -14,6 +14,7 @@ function initDiscordRPC() {
     // Especially if connection fails or times out.
     setTimeout(() => {
         try {
+            const DiscordRPC = require('discord-rpc');
             log.info('[Discord RPC] Initializing...');
             rpc = new DiscordRPC.Client({ transport: 'ipc' });
 
@@ -38,7 +39,7 @@ function initDiscordRPC() {
         } catch (e) {
             log.error(`[Discord RPC] Initialization failed: ${e.message}`);
         }
-    }, 1500); // 1.5s delay to let app load first
+    }, 5000); // 5s delay to let app load first
 
     // Register IPC handlers immediately so frontend doesn't crash if it calls them too early
     // We just return early if rpc isn't ready.
