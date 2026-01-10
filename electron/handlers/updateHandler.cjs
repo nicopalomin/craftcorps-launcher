@@ -11,6 +11,12 @@ function setupUpdateHandlers(getMainWindow) {
     autoUpdater.logger = log;
     autoUpdater.logger.transports.file.level = 'info';
 
+    // Switch to generic provider to avoid GitHub API limits/errors
+    autoUpdater.setFeedURL({
+        provider: 'generic',
+        url: 'https://download.craftcorps.net/'
+    });
+
     // Disable auto-downloading if you want to ask the user first
     // autoUpdater.autoDownload = false; 
     // For this implementation, let's keep it true for seamless updates, 

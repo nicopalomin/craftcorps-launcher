@@ -1,7 +1,7 @@
 {
   "name": "craftcorps-launcher",
   "private": true,
-  "version": "0.1.19",
+  "version": "0.2.0",
   "main": "electron/main.cjs",
   "author": "CraftCorps Authors",
   "description": "Premium Minecraft Instance Manager",
@@ -12,8 +12,9 @@
     "lint": "eslint . --ext js,jsx --report-unused-disable-directives --max-warnings 0",
     "preview": "vite preview",
     "start": "concurrently -k \"cross-env BROWSER=none npm run dev\" \"wait-on tcp:5173 && cross-env NODE_ENV=development electron .\"",
-    "electron:build": "node electron/increment-version.js && vite build && electron-builder",
-    "electron:build:linux": "node electron/increment-version.js && vite build && electron-builder --linux"
+    "electron:build": "rimraf release && node electron/increment-version.js && vite build && electron-builder",
+    "electron:build:linux": "rimraf release && node electron/increment-version.js && vite build && electron-builder --linux",
+    "publish:r2": "node electron/upload-r2.cjs"
   },
   "build": {
     "appId": "com.craftcorps.launcher",
@@ -23,9 +24,8 @@
     },
     "publish": [
       {
-        "provider": "github",
-        "owner": "orbit246",
-        "repo": "craftcorps"
+        "provider": "generic",
+        "url": "https://download.craftcorps.net/"
       }
     ],
     "files": [
@@ -35,7 +35,7 @@
     "win": {
       "target": "nsis",
       "icon": "public/icon.png",
-      "artifactName": "CraftCorps Setup 1.0.2.exe"
+      "artifactName": "CraftCorps Setup ${version}.exe"
     },
     "mac": {
       "target": {
@@ -60,7 +60,7 @@
       "allowToChangeInstallationDirectory": true,
       "createDesktopShortcut": true,
       "createStartMenuShortcut": true,
-      "artifactName": "CraftCorps Setup 1.0.2.exe",
+      "artifactName": "CraftCorps Setup ${version}.exe",
       "include": "build/installer.nsh",
       "license": "build/privacy_policy.txt"
     }
@@ -91,6 +91,7 @@
     "uuid": "^13.0.0"
   },
   "devDependencies": {
+    "@aws-sdk/client-s3": "^3.966.0",
     "@tailwindcss/vite": "^4.1.18",
     "@types/react": "^19.2.7",
     "@types/react-dom": "^19.2.3",
@@ -98,13 +99,17 @@
     "autoprefixer": "^10.4.23",
     "concurrently": "^9.2.1",
     "cross-env": "^10.1.0",
+    "dotenv": "^17.2.3",
     "electron": "^39.2.7",
     "electron-builder": "^26.0.12",
     "eslint": "^8.55.0",
     "eslint-plugin-react": "^7.33.2",
     "eslint-plugin-react-hooks": "^4.6.0",
     "eslint-plugin-react-refresh": "^0.4.5",
+    "glob": "^13.0.0",
+    "mime-types": "^3.0.2",
     "postcss": "^8.5.6",
+    "rimraf": "^6.1.2",
     "tailwindcss": "^4.1.18",
     "vite": "^7.3.0",
     "wait-on": "^9.0.3"
