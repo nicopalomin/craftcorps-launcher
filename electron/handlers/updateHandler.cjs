@@ -3,6 +3,10 @@ const { autoUpdater } = require('electron-updater');
 const log = require('electron-log');
 
 function setupUpdateHandlers(getMainWindow) {
+    ipcMain.removeHandler('check-for-updates');
+    ipcMain.removeHandler('download-update');
+    ipcMain.removeHandler('quit-and-install');
+
     // Configure logging
     autoUpdater.logger = log;
     autoUpdater.logger.transports.file.level = 'info';
@@ -59,15 +63,7 @@ function setupUpdateHandlers(getMainWindow) {
 
     // --- IPC Handlers ---
 
-    ipcMain.handle('check-for-updates', async () => {
-        try {
-            const result = await autoUpdater.checkForUpdates();
-            return result;
-        } catch (e) {
-            log.error('Failed to check for updates:', e);
-            throw e;
-        }
-    });
+    ipcMain.handle('check-for-updates', checkForUpdates);
 
     ipcMain.handle('download-update', async () => {
         return autoUpdater.downloadUpdate();
@@ -78,4 +74,14 @@ function setupUpdateHandlers(getMainWindow) {
     });
 }
 
-module.exports = { setupUpdateHandlers };
+const checkForUpdates = async () => {
+    try {
+        const result = await autoUpdater.checkForUpdates();
+        return result;
+    } catch (e) {
+        log.error('Failed to check for updates:', e);
+        throw e;
+    }
+};
+
+module.exports = { setupUpdateHandlers, checkForUpdates };

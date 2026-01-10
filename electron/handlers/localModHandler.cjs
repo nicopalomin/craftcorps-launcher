@@ -6,14 +6,14 @@ const path = require('path');
 const fs = require('fs');
 const AdmZip = require('adm-zip');
 
-const getModMetadata = (fullPath) => {
+const getModMetadata = (fullPath, buffer = null) => {
     const file = path.basename(fullPath);
     const isEnabled = !file.endsWith('.disabled');
     let name = file;
     let version = '';
 
     try {
-        const zip = new AdmZip(fullPath);
+        const zip = buffer ? new AdmZip(buffer) : new AdmZip(fullPath);
         const zipEntries = zip.getEntries();
 
         // 1. Fabric (fabric.mod.json)
@@ -57,6 +57,13 @@ const getModMetadata = (fullPath) => {
 function setupLocalModHandlers() {
     console.log('[MAIN] Registered connection: setupLocalModHandlers');
     log.info('[MAIN] Registered connection: setupLocalModHandlers');
+
+    // Cleanup existing handlers (Safe for re-registration)
+    ipcMain.removeHandler('get-instance-mods');
+    ipcMain.removeHandler('delete-mod');
+    ipcMain.removeHandler('add-instance-mods');
+    ipcMain.removeHandler('select-mod-files');
+
     /**
      * Get Installed Mods
      */
@@ -67,13 +74,31 @@ function setupLocalModHandlers() {
         if (!fs.existsSync(modsDir)) return [];
 
         try {
-            const files = fs.readdirSync(modsDir).filter(f => f.endsWith('.jar') || f.endsWith('.jar.disabled'));
+            const dirFiles = await fs.promises.readdir(modsDir);
+            const files = dirFiles.filter(f => f.endsWith('.jar') || f.endsWith('.jar.disabled'));
 
             const mods = [];
-            for (const file of files) {
-                // Yield to event loop to unblock UI/IPC
-                await new Promise(resolve => setImmediate(resolve));
-                mods.push(getModMetadata(path.join(modsDir, file)));
+            const chunkSize = 20; // Process 20 files at a time to check resource usage
+
+            for (let i = 0; i < files.length; i += chunkSize) {
+                const chunk = files.slice(i, i + chunkSize);
+
+                // Process chunk in parallel
+                const chunkResults = await Promise.all(chunk.map(async (file) => {
+                    const fullPath = path.join(modsDir, file);
+                    try {
+                        const buffer = await fs.promises.readFile(fullPath);
+                        return getModMetadata(fullPath, buffer);
+                    } catch (e) {
+                        return null;
+                    }
+                }));
+
+                // Filter nulls and add to main list
+                chunkResults.forEach(r => { if (r) mods.push(r); });
+
+                // Small yield to keep UI responsive if list is huge
+                if (files.length > 100) await new Promise(r => setImmediate(r));
             }
 
             return mods;

@@ -3,6 +3,12 @@ const log = require('electron-log');
 const JavaManager = require('../JavaManager.cjs');
 
 function setupJavaHandlers(getMainWindow) {
+    ipcMain.removeHandler('install-java');
+    ipcMain.removeHandler('cancel-java-install');
+    ipcMain.removeHandler('pause-java-install');
+    ipcMain.removeHandler('resume-java-install');
+    ipcMain.removeHandler('get-available-javas');
+
     ipcMain.handle('install-java', async (event, version = 17) => {
         try {
             // First check if we already have it
@@ -36,4 +42,8 @@ function setupJavaHandlers(getMainWindow) {
     });
 }
 
-module.exports = { setupJavaHandlers };
+const getAvailableJavas = async () => {
+    return JavaManager.scanForJavas();
+};
+
+module.exports = { setupJavaHandlers, getAvailableJavas };

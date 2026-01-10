@@ -18,6 +18,14 @@ function setupGameHandlers(getMainWindow) {
         }
     };
 
+    // Clear existing handlers to allow safe re-registration/lazy-loading overrides
+    ipcMain.removeAllListeners('launch-game');
+    ipcMain.removeAllListeners('stop-game');
+    ipcMain.removeHandler('delete-instance-folder');
+    ipcMain.removeHandler('get-instances');
+    ipcMain.removeHandler('save-instance');
+    ipcMain.removeHandler('get-new-instance-path');
+
     // --- Launcher Events ---
     launcher.on('log', (data) => {
         const { type, message } = data;
@@ -230,57 +238,7 @@ function setupGameHandlers(getMainWindow) {
      * Get All Instances
      * Scans the instances directory for valid instance.json files
      */
-    ipcMain.handle('get-instances', async () => {
-        const userData = app.getPath('userData');
-        const instancesDir = path.join(userData, 'instances');
-
-        if (!fs.existsSync(instancesDir)) {
-            try { fs.mkdirSync(instancesDir, { recursive: true }); } catch (e) { }
-            return [];
-        }
-
-        try {
-            const dirs = fs.readdirSync(instancesDir, { withFileTypes: true });
-            const instances = [];
-
-            for (const dir of dirs) {
-                if (dir.isDirectory()) {
-                    const fullPath = path.join(instancesDir, dir.name);
-                    const jsonPath = path.join(fullPath, 'instance.json');
-
-                    if (fs.existsSync(jsonPath)) {
-                        try {
-                            const data = JSON.parse(fs.readFileSync(jsonPath, 'utf8'));
-                            // Ensure the path is correct (in case folder moved? unlikely but safer)
-                            data.path = fullPath;
-
-                            // Load Icon if exists
-                            const iconPath = path.join(fullPath, 'icon.png');
-                            if (fs.existsSync(iconPath)) {
-                                try {
-                                    const b64 = fs.readFileSync(iconPath).toString('base64');
-                                    data.icon = `data:image/png;base64,${b64}`;
-                                } catch (e) {
-                                    // ignore corrupt icon
-                                }
-                            }
-
-                            instances.push(data);
-                        } catch (e) {
-                            log.warn(`[Instance] Failed to parse instance.json in ${dir.name}: ${e.message}`);
-                        }
-                    } else {
-                        // Optional: Handle legacy folders? 
-                        // For now we ignore them to avoid cluttering with temp folders or broken installs.
-                    }
-                }
-            }
-            return instances;
-        } catch (e) {
-            log.error(`[Instance] Failed to scan instances: ${e.message}`);
-            return [];
-        }
-    });
+    ipcMain.handle('get-instances', getInstances);
 
     /**
      * Save/Update Instance
@@ -336,4 +294,59 @@ function setupGameHandlers(getMainWindow) {
 
 }
 
-module.exports = { setupGameHandlers };
+const getInstances = async () => {
+    const userData = app.getPath('userData');
+    const instancesDir = path.join(userData, 'instances');
+
+    try {
+        await fs.promises.mkdir(instancesDir, { recursive: true });
+    } catch (e) {
+        // ignore if exists
+    }
+
+    try {
+        const dirs = await fs.promises.readdir(instancesDir, { withFileTypes: true });
+
+        // Filter directories first
+        const instanceDirs = dirs.filter(d => d.isDirectory());
+
+        // Process in parallel
+        const instances = await Promise.all(instanceDirs.map(async (dir) => {
+            const fullPath = path.join(instancesDir, dir.name);
+            const jsonPath = path.join(fullPath, 'instance.json');
+
+            try {
+                // Check existence concurrently
+                // Using stat to check if file exists, or just read and catch
+                const jsonContent = await fs.promises.readFile(jsonPath, 'utf8');
+                const data = JSON.parse(jsonContent);
+                data.path = fullPath;
+
+                // Load Icon concurrently if exists
+                const iconPath = path.join(fullPath, 'icon.png');
+                try {
+                    // Try reading icon, if fails, no icon
+                    const iconBuffer = await fs.promises.readFile(iconPath);
+                    data.icon = `data:image/png;base64,${iconBuffer.toString('base64')}`;
+                } catch (e) {
+                    // No icon or read error
+                }
+
+                return data;
+            } catch (e) {
+                // Not an instance folder or corrupt, separate catch?
+                // log.warn(`[Instance] Failed to parse ${dir.name}: ${e.message}`);
+                return null;
+            }
+        }));
+
+        // Filter out nulls
+        return instances.filter(i => i !== null);
+
+    } catch (e) {
+        log.error(`[Instance] Failed to scan instances: ${e.message}`);
+        return [];
+    }
+};
+
+module.exports = { setupGameHandlers, getInstances };

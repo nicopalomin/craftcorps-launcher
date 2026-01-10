@@ -5,6 +5,11 @@ const fs = require('fs');
 const AdmZip = require('adm-zip');
 
 function setupResourcePackHandlers() {
+    ipcMain.removeHandler('get-instance-resource-packs');
+    ipcMain.removeHandler('select-resource-pack-files');
+    ipcMain.removeHandler('add-instance-resource-packs');
+    ipcMain.removeHandler('delete-resource-pack');
+
     /**
      * Get Instance Resource Packs
      * Scans the resourcepacks directory and options.txt
@@ -43,64 +48,85 @@ function setupResourcePackHandlers() {
         }
 
         try {
-            const entries = fs.readdirSync(packsDir, { withFileTypes: true });
+            const entries = await fs.promises.readdir(packsDir, { withFileTypes: true });
             const packs = [];
 
-            for (const entry of entries) {
-                // Yield to event loop
-                await new Promise(resolve => setImmediate(resolve));
+            // Chunked processing
+            const chunkSize = 20;
+            for (let i = 0; i < entries.length; i += chunkSize) {
+                const chunk = entries.slice(i, i + chunkSize);
 
-                const fullPath = path.join(packsDir, entry.name);
-                let description = '';
-                let icon = null; // Base64
+                const chunkResults = await Promise.all(chunk.map(async (entry) => {
+                    const fullPath = path.join(packsDir, entry.name);
+                    let description = '';
+                    let icon = null; // Base64
 
-                try {
-                    if (entry.isDirectory()) {
-                        const mcmetaPath = path.join(fullPath, 'pack.mcmeta');
-                        if (fs.existsSync(mcmetaPath)) {
-                            const json = JSON.parse(fs.readFileSync(mcmetaPath, 'utf8'));
-                            description = json.pack?.description || '';
-                            if (typeof description !== 'string') description = JSON.stringify(description);
+                    try {
+                        if (entry.isDirectory()) {
+                            // Parallel reads for folder structure
+                            const mcmetaPath = path.join(fullPath, 'pack.mcmeta');
+                            const iconPath = path.join(fullPath, 'pack.png');
+
+                            const [metaContent, iconBuffer] = await Promise.all([
+                                fs.promises.readFile(mcmetaPath, 'utf8').catch(() => null),
+                                fs.promises.readFile(iconPath).catch(() => null)
+                            ]);
+
+                            if (metaContent) {
+                                try {
+                                    const json = JSON.parse(metaContent);
+                                    description = json.pack?.description || '';
+                                    if (typeof description !== 'string') description = JSON.stringify(description);
+                                } catch (e) { }
+                            }
+                            if (iconBuffer) {
+                                icon = `data:image/png;base64,${iconBuffer.toString('base64')}`;
+                            }
+                        } else if (entry.name.endsWith('.zip')) {
+                            // For Zips, read buffer once then AdmZip
+                            const buffer = await fs.promises.readFile(fullPath);
+                            const zip = new AdmZip(buffer);
+
+                            // Synchronous AdmZip calls now operate on in-memory buffer
+                            const mcmetaEntry = zip.getEntry('pack.mcmeta');
+                            if (mcmetaEntry) {
+                                const json = JSON.parse(zip.readAsText(mcmetaEntry));
+                                description = json.pack?.description || '';
+                                if (typeof description !== 'string') description = JSON.stringify(description);
+                            }
+                            const iconEntry = zip.getEntry('pack.png');
+                            if (iconEntry) {
+                                const buff = zip.readFile(iconEntry);
+                                if (buff) icon = `data:image/png;base64,${buff.toString('base64')}`;
+                            }
+                        } else {
+                            return null; // Not a pack
                         }
-                        const iconPath = path.join(fullPath, 'pack.png');
-                        if (fs.existsSync(iconPath)) {
-                            icon = `data:image/png;base64,${fs.readFileSync(iconPath).toString('base64')}`;
-                        }
-                    } else if (entry.name.endsWith('.zip')) {
-                        const zip = new AdmZip(fullPath);
-                        const mcmetaEntry = zip.getEntry('pack.mcmeta');
-                        if (mcmetaEntry) {
-                            const json = JSON.parse(zip.readAsText(mcmetaEntry));
-                            description = json.pack?.description || '';
-                            if (typeof description !== 'string') description = JSON.stringify(description);
-                        }
-                        const iconEntry = zip.getEntry('pack.png');
-                        if (iconEntry) {
-                            const buff = zip.readFile(iconEntry);
-                            if (buff) icon = `data:image/png;base64,${buff.toString('base64')}`;
-                        }
-                    } else {
-                        continue;
+
+                        return {
+                            name: entry.name,
+                            path: fullPath,
+                            description: description.substring(0, 100), // Limit length
+                            icon,
+                            enabled: enabledPacks.includes(entry.name)
+                        };
+
+                    } catch (e) {
+                        // Skip corrupt packs or read errors
+                        // log.warn(`[ResourcePacks] Failed to read ${entry.name}: ${e.message}`);
+                        return {
+                            name: entry.name,
+                            path: fullPath,
+                            description: "Failed to read pack info",
+                            enabled: enabledPacks.includes(entry.name)
+                        };
                     }
+                }));
 
-                    packs.push({
-                        name: entry.name,
-                        path: fullPath,
-                        description: description.substring(0, 100), // Limit length
-                        icon,
-                        enabled: enabledPacks.includes(entry.name)
-                    });
-                } catch (e) {
-                    // Skip corrupt packs
-                    log.warn(`[ResourcePacks] Failed to read ${entry.name}: ${e.message}`);
-                    packs.push({
-                        name: entry.name,
-                        path: fullPath,
-                        description: "Failed to read pack info",
-                        enabled: enabledPacks.includes(entry.name)
-                    });
-                }
+                chunkResults.forEach(p => { if (p) packs.push(p); });
+                if (entries.length > 50) await new Promise(r => setImmediate(r));
             }
+
             return packs;
         } catch (error) {
             log.error(`[ResourcePacks] Failed to scan: ${error.message}`);

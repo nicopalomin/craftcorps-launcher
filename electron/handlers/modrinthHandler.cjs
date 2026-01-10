@@ -15,6 +15,15 @@ function setupModrinthHandlers() {
     // Track active installations for cancellation
     const activeInstalls = new Map();
 
+    ipcMain.removeHandler('modrinth-cancel-install');
+    ipcMain.removeHandler('modrinth-search');
+    ipcMain.removeHandler('modrinth-get-tags');
+    ipcMain.removeHandler('modrinth-install-mod');
+    ipcMain.removeHandler('modrinth-install-modpack');
+    ipcMain.removeHandler('modrinth-get-project');
+    ipcMain.removeHandler('modrinth-get-projects');
+    ipcMain.removeHandler('modrinth-get-versions');
+
     /**
      * Cancel Installation
      */
