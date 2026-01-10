@@ -364,9 +364,34 @@ app.get('/api/crashes/:id/dump', requireAuth, async (req, res) => {
         const id = parseInt(req.params.id);
         const crash = await prisma.crashReport.findUnique({ where: { id } });
 
-        if (!crash || !crash.dumpPath || !fs.existsSync(crash.dumpPath)) {
+        logger.info(`[Download] Request for crash ID: ${id}`);
+
+        if (!crash) {
+            logger.warn(`[Download] Crash ID ${id} not found in DB`);
             return res.status(404).send('Dump not found');
         }
+
+        logger.info(`[Download] Found crash in DB. Path: ${crash.dumpPath}`);
+
+        if (!crash.dumpPath) {
+            logger.warn(`[Download] Crash ID ${id} has no dumpPath set`);
+            return res.status(404).send('Dump path missing');
+        }
+
+        if (!fs.existsSync(crash.dumpPath)) {
+            logger.error(`[Download] File not found on disk: ${crash.dumpPath}`);
+            // Check if directory exists for context
+            const dir = path.dirname(crash.dumpPath);
+            const dirExists = fs.existsSync(dir);
+            logger.info(`[Download] Directory ${dir} exists? ${dirExists}`);
+            if (dirExists) {
+                const files = fs.readdirSync(dir);
+                logger.info(`[Download] Directory contents: ${files.join(', ')}`);
+            }
+            return res.status(404).send('Dump file missing on server');
+        }
+
+        logger.info(`[Download] File exists. Size: ${fs.statSync(crash.dumpPath).size} bytes. Streaming...`);
 
         // Force text/plain so it doesn't try to download as binary octet-stream causing issues in some viewers,
         // or ensure it sends the correct extension. 
