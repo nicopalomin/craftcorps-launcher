@@ -23,6 +23,8 @@ services:
       - PORT=3000
       - API_SECRET=${API_SECRET}
       - DATABASE_URL=postgresql://${POSTGRES_USER:-craftuser}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-craftcorps}
+    volumes:
+      - ./uploads:/app/uploads
     depends_on:
       postgres:
         condition: service_healthy

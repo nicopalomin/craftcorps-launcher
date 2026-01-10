@@ -410,6 +410,40 @@ app.get('/api/crashes/:id/dump', requireAuth, async (req, res) => {
     }
 });
 
+// 8. Delete Crash Report (Protected)
+app.delete('/api/crashes/:id', requireAuth, async (req, res) => {
+    try {
+        const id = parseInt(req.params.id);
+        const crash = await prisma.crashReport.findUnique({ where: { id } });
+
+        if (!crash) {
+            return res.status(404).send('Crash report not found');
+        }
+
+        // Delete file if exists
+        if (crash.dumpPath && fs.existsSync(crash.dumpPath)) {
+            try {
+                fs.unlinkSync(crash.dumpPath);
+                logger.info(`[Delete] Deleted crash file: ${crash.dumpPath}`);
+            } catch (err) {
+                logger.error(`[Delete] Failed to delete file ${crash.dumpPath}`, err);
+                // Continue to delete DB record anyway? Usually yes.
+            }
+        } else {
+            logger.warn(`[Delete] File not found or no path for crash ${id}, skipping file delete.`);
+        }
+
+        // Delete from DB
+        await prisma.crashReport.delete({ where: { id } });
+        logger.info(`[Delete] Deleted crash record ${id} from DB`);
+
+        res.json({ success: true });
+    } catch (error) {
+        logger.error('Delete crash error', error);
+        res.status(500).send('Error deleting crash report');
+    }
+});
+
 // -- Start Server --
 if (require.main === module) {
     app.listen(PORT, () => {
