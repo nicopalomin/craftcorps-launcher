@@ -96,6 +96,7 @@ function setupAppHandlers(getMainWindow, store) {
     // Manual Log Upload
     ipcMain.handle('upload-logs-manually', async () => {
         try {
+            const telemetryService = require('../services/telemetryService.cjs'); // Lazy import
             const logPath = log.transports.file.getFile().path;
 
             // Read the log file
@@ -110,7 +111,7 @@ function setupAppHandlers(getMainWindow, store) {
                 logContent = `Failed to read log file: ${err.message}`;
             }
 
-            // Add system info for context
+            // System Info for Context
             const sysInfo = `
 === SYSTEM INFO ===
 OS: ${process.platform} ${process.arch} ${typeof process.getSystemVersion === 'function' ? process.getSystemVersion() : 'Unknown Version'}
@@ -120,23 +121,11 @@ Date: ${new Date().toISOString()}
 ===================
             `;
 
-            const finalContent = sysInfo + '\n' + logContent;
+            // Use the Crash Report endpoint via Telemetry Service
+            // This ensures it appears in the "Crash Reports" tab of the panel
+            await telemetryService.sendManualCrashReport(logContent, sysInfo);
 
-            // Upload
-            const blob = new Blob([finalContent], { type: 'text/plain' });
-            const formData = new FormData();
-            formData.append('file', blob, 'manual_log_report.txt');
-
-            const uploadUrl = 'http://148.113.49.235:3000/crash-report';
-
-            const response = await fetch(uploadUrl, {
-                method: 'POST',
-                body: formData
-            });
-
-            if (!response.ok) throw new Error(`Server returned ${response.status}: ${response.statusText}`);
-
-            return { success: true, message: 'Logs uploaded successfully.' };
+            return { success: true, message: 'Logs uploaded successfully to crash reporter.' };
         } catch (e) {
             log.error('Manual Log Upload Failed:', e);
             return { success: false, error: e.message };

@@ -138,12 +138,45 @@ class TelemetryService {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ userId: this.userId, events }),
             });
-            // this._log('Flushed events successfully.');
+            this._log(`Flushed ${events.length} events successfully.`);
         } catch (e) {
             console.error('[Telemetry] Failed to flush events', e.message);
 
             // Save back to store for next run
             this.savePendingEvents(events);
+        }
+    }
+
+    // New Wrapper for Manual Log Upload (Legacy Endpoint)
+    // This allows it to show up in the "Crash Reports" tab of the admin panel
+    async sendManualCrashReport(logContent, sysInfoString) {
+        if (!this.userId) throw new Error('Telemetry not initialized');
+
+        const finalContent = sysInfoString + '\n' + logContent;
+
+        // Node 18+ has Blob/FormData global
+        const blob = new Blob([finalContent], { type: 'text/plain' });
+        const formData = new FormData();
+        formData.append('upload_file_minidump', blob, 'manual_log.txt');
+
+        // Additional Fields expected by Backend/Electron crashReporter
+        formData.append('guid', uuidv4());
+        formData.append('ver', this.appVersion);
+        formData.append('platform', process.platform);
+        formData.append('process_type', 'browser'); // Main process is 'browser' in Electron terms usually
+        formData.append('_productName', 'CraftCorps');
+        formData.append('_version', this.appVersion);
+        formData.append('userId', this.userId); // Custom field we added to backend
+
+        const uploadUrl = 'https://telemetry.craftcorps.net/api/crash-report';
+
+        const response = await fetch(uploadUrl, {
+            method: 'POST',
+            body: formData
+        });
+
+        if (!response.ok) {
+            throw new Error(`Server returned ${response.status}: ${response.statusText}`);
         }
     }
 

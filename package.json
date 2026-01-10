@@ -1,7 +1,7 @@
 {
   "name": "craftcorps-launcher",
   "private": true,
-  "version": "0.1.17",
+  "version": "0.1.18",
   "main": "electron/main.cjs",
   "author": "CraftCorps Authors",
   "description": "Premium Minecraft Instance Manager",
@@ -48,6 +48,7 @@
       "category": "public.app-category.games",
       "icon": "public/icon.png"
     },
+    "compression": "maximum",
     "linux": {
       "target": "AppImage",
       "icon": "public/icon.png",
