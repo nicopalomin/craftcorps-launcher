@@ -54,6 +54,9 @@ const getModMetadata = (fullPath, buffer = null) => {
     };
 };
 
+
+const modCache = {}; // { [instancePath]: { mtime: number, mods: [] } }
+
 /**
  * Get Installed Mods
  */
@@ -64,7 +67,20 @@ const getInstanceMods = async (event, instancePath) => {
     if (!fs.existsSync(modsDir)) return [];
 
     try {
+        const stats = await fs.promises.stat(modsDir);
+        const folderMtime = stats.mtimeMs;
+
+        // Check Cache
+        if (modCache[instancePath] && modCache[instancePath].mtime === folderMtime) {
+            log.info(`[Mods] Returning cached mods for ${path.basename(instancePath)}`);
+            return modCache[instancePath].mods;
+        }
+
         const dirFiles = await fs.promises.readdir(modsDir);
+        // Additional check: directory mtime might not update if file content changes but file count doesn't? 
+        // Actually on Windows/Linux adding/deleting files updates dir mtime. 
+        // Just keep in mind for external edits.
+
         const files = dirFiles.filter(f => f.endsWith('.jar') || f.endsWith('.jar.disabled'));
 
         const mods = [];
@@ -88,6 +104,13 @@ const getInstanceMods = async (event, instancePath) => {
             if (files.length > 100) await new Promise(r => setImmediate(r));
         }
 
+        // Update Cache
+        modCache[instancePath] = {
+            mtime: folderMtime,
+            mods: mods
+        };
+        log.info(`[Mods] Cached ${mods.length} mods for ${path.basename(instancePath)}`);
+
         return mods;
     } catch (error) {
         log.error(`[Mods] Failed to scan mods: ${error.message}`);
@@ -110,6 +133,16 @@ const deleteMod = async (event, filePath) => {
         }
 
         log.info(`[Mods] Deleting mod: ${filePath}`);
+
+        // Invalidate Cache
+        // We need to find which instance this file belongs to.
+        // Assuming structure .../instances/InstanceName/mods/mod.jar
+        const instancePath = path.dirname(path.dirname(filePath));
+        if (modCache[instancePath]) {
+            delete modCache[instancePath];
+            log.info(`[Mods] Invalidated cache for ${path.basename(instancePath)}`);
+        }
+
         fs.unlinkSync(filePath);
         return { success: true };
     } catch (error) {
@@ -128,6 +161,12 @@ const addInstanceMods = async (event, { instancePath, filePaths }) => {
         if (!instancePath || !filePaths || filePaths.length === 0) {
             console.warn('[MAIN] Invalid arguments for add-instance-mods');
             return { success: false, error: 'Invalid arguments' };
+        }
+
+        // Invalidate Cache immediately
+        if (modCache[instancePath]) {
+            delete modCache[instancePath];
+            log.info(`[Mods] Invalidated cache for ${path.basename(instancePath)}`);
         }
 
         const modsDir = path.join(instancePath, 'mods');
