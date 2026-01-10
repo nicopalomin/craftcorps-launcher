@@ -60,7 +60,7 @@ const SettingsView = ({ ram, setRam, javaPath, setJavaPath, hideOnLaunch, setHid
 
                 <div className="bg-slate-900 rounded-xl p-6 border border-slate-800">
                     <h3 className="text-lg font-medium text-slate-200 mb-4 flex items-center gap-2">
-                        <Palette size={18} className="text-emerald-500" /> {t('settings_theme', 'Theme')}
+                        <Palette size={18} className="text-emerald-500" /> {t('settings_theme')}
                     </h3>
                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                         {[
@@ -110,7 +110,7 @@ const SettingsView = ({ ram, setRam, javaPath, setJavaPath, hideOnLaunch, setHid
                                                 </option>
                                             ))
                                         ) : (
-                                            <option value={javaPath} disabled>{t('settings_no_java') || "No detected runtimes"}</option>
+                                            <option value={javaPath} disabled>{t('settings_no_java')}</option>
                                         )}
                                         {/* Always allow the current path even if not detected, so it doesn't break */}
                                         {!availableJavas?.find(j => j.path === javaPath) && javaPath && (
@@ -190,7 +190,7 @@ const SettingsView = ({ ram, setRam, javaPath, setJavaPath, hideOnLaunch, setHid
                         <div>
                             <p className="text-sm text-slate-200 font-medium">
                                 {t('settings_disable_animations')}
-                                {theme === 'midnight' && <span className="ml-2 text-xs text-orange-400 font-normal">(Always off in Midnight)</span>}
+                                {theme === 'midnight' && <span className="ml-2 text-xs text-orange-400 font-normal">{t('settings_midnight_warning')}</span>}
                             </p>
                             <p className="text-xs text-slate-500">{t('settings_performance')}</p>
                         </div>
@@ -208,8 +208,8 @@ const SettingsView = ({ ram, setRam, javaPath, setJavaPath, hideOnLaunch, setHid
 
                     <div className="flex items-center justify-between mt-6 pt-6 border-t border-slate-800/50">
                         <div>
-                            <p className="text-sm text-slate-200 font-medium">Discord Rich Presence</p>
-                            <p className="text-xs text-slate-500">Show your game status on Discord</p>
+                            <p className="text-sm text-slate-200 font-medium">{t('settings_discord')}</p>
+                            <p className="text-xs text-slate-500">{t('settings_discord_desc')}</p>
                         </div>
                         <label className="relative inline-flex items-center cursor-pointer">
                             <input
@@ -246,14 +246,14 @@ const SettingsView = ({ ram, setRam, javaPath, setJavaPath, hideOnLaunch, setHid
                                     if (btn) { btn.disabled = true; btn.innerText = "Uploading..."; }
                                     try {
                                         const res = await window.electronAPI.uploadLogsManually();
-                                        alert(res.success ? "Logs uploaded successfully!" : "Upload failed: " + res.error);
-                                    } catch (e) { alert("Error uploading logs"); }
-                                    if (btn) { btn.disabled = false; btn.innerText = "Upload to Support"; }
+                                        alert(res.success ? t('toast_logs_uploaded') : t('toast_logs_failed') + res.error);
+                                    } catch (e) { alert(t('toast_logs_failed') + "Unknown error"); }
+                                    if (btn) { btn.disabled = false; btn.innerText = t('btn_upload_logs'); }
                                 }}
                                 id="upload-logs-btn"
                                 className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 rounded-lg text-sm font-medium text-white transition-colors shadow-lg shadow-emerald-900/20"
                             >
-                                Upload to Support
+                                {t('btn_upload_logs')}
                             </button>
                         </div>
                     </div>
