@@ -14,6 +14,9 @@
     "start": "concurrently -k \"cross-env BROWSER=none npm run dev\" \"wait-on tcp:5173 && cross-env NODE_ENV=development electron .\"",
     "electron:build": "rimraf release && node electron/increment-version.js && vite build && electron-builder",
     "electron:build:linux": "rimraf release && node electron/increment-version.js && vite build && electron-builder --linux",
+    "ci:build:win": "rimraf release && vite build && electron-builder --win",
+    "ci:build:mac": "rimraf release && vite build && electron-builder --mac",
+    "ci:build:linux": "rimraf release && vite build && electron-builder --linux",
     "publish:r2": "node electron/upload-r2.cjs"
   },
   "build": {

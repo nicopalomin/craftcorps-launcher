@@ -58,23 +58,11 @@ async function main() {
     // NOTE: electron-builder output is usually flat in the output directory, or in subfolders per version?
     // Usually flat or flat-ish for the latest. files.
 
-    // We look for files typically associated with Electron auto-updates
-    const patterns = [
-        '*.yml',           // latest.yml, latest-mac.yml
-        '*.exe',           // Windows Installer
-        '*.exe.blockmap',  // Windows Delta
-        '*.zip',           // Mac
-        '*.dmg',           // Mac
-        '*.dmg.blockmap',
-        '*.AppImage',      // Linux
-        '*.AppImage.blockmap'
-    ];
+    // Use brace expansion to catch all artifact types in a single glob pattern
+    // This finds: .yml (auto-updater), .exe (Win), .zip/.dmg (Mac), .AppImage (Linux), and .blockmap (Delta updates)
+    const pattern = '*.{yml,exe,exe.blockmap,zip,dmg,dmg.blockmap,AppImage,AppImage.blockmap}';
 
-    // For specific version matching, you might want to look at package.json version, 
-    // but usually uploading everything in 'release' that looks like a build artifact is safe 
-    // as long as you clean the directory before build.
-
-    const matches = await glob(patterns, { cwd: DIST_DIR, absolute: true });
+    const matches = await glob(pattern, { cwd: DIST_DIR, absolute: true });
 
     if (matches.length === 0) {
         console.warn('No artifacts found to upload. Did you run the build script?');
