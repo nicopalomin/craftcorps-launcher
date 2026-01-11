@@ -136,14 +136,31 @@ function App() {
     const { updateStatus, updateInfo, downloadProgress, downloadUpdate, quitAndInstall } = useAutoUpdate();
     const [showUpdateModal, setShowUpdateModal] = useState(false);
 
+    // Silently auto-download significant updates (Major or Minor version bump)
     useEffect(() => {
-        if (updateStatus === 'available') {
-            setShowUpdateModal(true);
+        if (updateStatus === 'available' && updateInfo?.version) {
+            try {
+                const currentVersion = typeof __APP_VERSION__ !== 'undefined' ? __APP_VERSION__ : '0.0.0';
+
+                // Parse versions (handling potential non-semver strings gracefully)
+                const parseVer = (v) => v.split('.').map(n => parseInt(n, 10) || 0);
+                const [curMajor, curMinor] = parseVer(currentVersion);
+                const [newMajor, newMinor] = parseVer(updateInfo.version);
+
+                // Check if update is at least 0.1.0 difference (Major different or Minor different)
+                const isSignificant = newMajor > curMajor || (newMajor === curMajor && newMinor > curMinor);
+
+                if (isSignificant) {
+                    console.log(`[AutoUpdate] Significant update detected (${currentVersion} -> ${updateInfo.version}). Auto-downloading...`);
+                    downloadUpdate();
+                }
+            } catch (e) {
+                console.error('[AutoUpdate] Failed to compare versions:', e);
+            }
         }
-        if (updateStatus === 'downloaded') {
-            setShowUpdateModal(true);
-        }
-    }, [updateStatus]);
+    }, [updateStatus, updateInfo, downloadUpdate]);
+
+
 
     // Update Discord RPC based on activeTab
     useEffect(() => {
@@ -205,6 +222,7 @@ function App() {
                     authError={authError}
                     onOpenConsole={() => setShowConsole(true)}
                     updateStatus={updateStatus}
+                    updateInfo={updateInfo}
                     onOpenUpdateModal={() => setShowUpdateModal(true)}
                 />
 
