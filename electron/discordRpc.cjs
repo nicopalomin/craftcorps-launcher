@@ -6,6 +6,7 @@ const clientId = '1454519577508708462';
 let rpc;
 let rpcReady = false;
 let startTimestamp = Date.now();
+let currentActivity = null;
 
 function initDiscordRPC() {
     // DiscordRPC.register(clientId); // Not strictly needed for IPC presence and can cause issues on some systems
@@ -22,15 +23,20 @@ function initDiscordRPC() {
                 rpcReady = true;
                 log.info('[Discord RPC] Ready');
 
-                // Set initial activity, using current time as baseline
-                setActivity({
-                    details: 'In Launcher',
-                    state: 'Idling',
-                    startTimestamp: Date.now(),
-                    largeImageKey: 'icon',
-                    largeImageText: 'CraftCorps Launcher',
-                    instance: false,
-                });
+                if (currentActivity) {
+                    // If activity was set while connecting (e.g. game launched), use that
+                    rpc.setActivity(currentActivity).catch(err => log.error(`[Discord RPC] Set pending activity failed: ${err}`));
+                } else {
+                    // Set initial activity, using current time as baseline
+                    setActivity({
+                        details: 'In Launcher',
+                        state: 'Idling',
+                        startTimestamp: Date.now(),
+                        largeImageKey: 'icon',
+                        largeImageText: 'CraftCorps Launcher',
+                        instance: false,
+                    });
+                }
             });
 
             rpc.login({ clientId }).catch(err => {
@@ -53,8 +59,6 @@ function initDiscordRPC() {
 }
 
 async function setActivity(activity) {
-    if (!rpcReady || !rpc) return;
-
     // Check if startTimestamp is provided in the update (e.g. Game Start/Stop)
     // If so, update our local tracker.
     if (activity.startTimestamp) {
@@ -64,10 +68,15 @@ async function setActivity(activity) {
         activity.startTimestamp = startTimestamp;
     }
 
+    currentActivity = activity;
+
+    if (!rpcReady || !rpc) return;
+
     return rpc.setActivity(activity).catch(err => log.error(`[Discord RPC] Set activity failed: ${err}`));
 }
 
 async function clearActivity() {
+    currentActivity = null;
     if (!rpcReady || !rpc) return;
     return rpc.clearActivity().catch(err => log.error(`[Discord RPC] Clear activity failed: ${err}`));
 }
