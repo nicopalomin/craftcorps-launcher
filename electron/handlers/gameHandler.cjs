@@ -2,14 +2,19 @@ const { ipcMain, app } = require('electron');
 const log = require('electron-log');
 const fs = require('fs');
 const path = require('path');
+const GameLauncher = require('../GameLauncher.cjs');
+
+const launcher = new GameLauncher();
+
+function isGameRunning() {
+    return !!launcher.process;
+}
 
 function setupGameHandlers(getMainWindow) {
     const { setActivity } = require('../discordRpc.cjs');
-    const GameLauncher = require('../GameLauncher.cjs');
     const JavaManager = require('../JavaManager.cjs');
 
-    const launcher = new GameLauncher();
-
+    // launcher used to be here
     let lastCrashReport = null;
 
     const safeSend = (channel, ...args) => {
@@ -405,4 +410,4 @@ const getNewInstancePath = async (event, name) => {
     }
 };
 
-module.exports = { setupGameHandlers, getInstances, getInstanceByPath, saveInstance, deleteInstanceFolder, getNewInstancePath };
+module.exports = { setupGameHandlers, getInstances, getInstanceByPath, saveInstance, deleteInstanceFolder, getNewInstancePath, isGameRunning };

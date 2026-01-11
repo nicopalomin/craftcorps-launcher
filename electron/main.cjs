@@ -1,5 +1,5 @@
 console.time('[MAIN] boot');
-const { app, BrowserWindow, ipcMain, dialog } = require('electron');
+const { app, BrowserWindow, ipcMain, dialog, Tray, Menu } = require('electron');
 const path = require('path');
 const log = require('electron-log');
 const telemetryService = require('./services/telemetryService.cjs');
@@ -10,6 +10,21 @@ if (process.platform === 'win32') {
 }
 app.setName('CraftCorps Launcher');
 
+const gotTheLock = app.requestSingleInstanceLock();
+
+if (!gotTheLock) {
+    app.quit();
+} else {
+    app.on('second-instance', (event, commandLine, workingDirectory) => {
+        // Someone tried to run a second instance, we should focus our window.
+        if (mainWindow) {
+            if (mainWindow.isMinimized()) mainWindow.restore();
+            if (!mainWindow.isVisible()) mainWindow.show();
+            mainWindow.focus();
+        }
+    });
+}
+
 // Import Handlers - Moved to app.whenReady for faster startup
 
 // Configure logging
@@ -17,6 +32,9 @@ log.transports.file.level = 'info';
 log.transports.console.format = '[{h}:{i}:{s} {level}] {text}';
 console.log = log.log;
 Object.assign(console, log.functions);
+
+let tray;
+let mainWindow;
 
 // Crash Handling
 app.setPath('crashDumps', path.join(app.getPath('userData'), 'crashDumps'));
@@ -34,8 +52,6 @@ process.on('unhandledRejection', (reason) => {
     log.error('CRITICAL: Unhandled Rejection:', reason);
     telemetryService.trackCrash(reason instanceof Error ? reason : new Error(String(reason)));
 });
-
-let mainWindow;
 
 const preloadPath = path.join(__dirname, 'preload.cjs');
 console.log('Loading preload from:', preloadPath);
@@ -100,6 +116,21 @@ async function createWindow() {
         mainWindow.focus();
     });
 
+    mainWindow.on('close', (e) => {
+        if (app.isQuitting) return;
+
+        try {
+            const { isGameRunning } = require('./handlers/gameHandler.cjs');
+            if (isGameRunning()) {
+                e.preventDefault();
+                mainWindow.hide();
+                return;
+            }
+        } catch (err) {
+            console.error('Failed to check game status on close:', err);
+        }
+    });
+
     console.time('[MAIN] loadURL');
     if (process.env.NODE_ENV === 'development') {
         await mainWindow.loadURL('http://localhost:5173');
@@ -107,6 +138,24 @@ async function createWindow() {
         await mainWindow.loadURL(startUrl);
     }
     console.timeEnd('[MAIN] loadURL');
+
+    // Create Tray if not exists
+    if (!tray) {
+        tray = new Tray(iconPath);
+        const contextMenu = Menu.buildFromTemplate([
+            { label: 'Show Launcher', click: () => mainWindow.show() },
+            { type: 'separator' },
+            {
+                label: 'Quit', click: () => {
+                    app.isQuitting = true;
+                    app.quit();
+                }
+            }
+        ]);
+        tray.setToolTip('CraftCorps Launcher');
+        tray.setContextMenu(contextMenu);
+        tray.on('double-click', () => mainWindow.show());
+    }
 }
 
 // Helper to access mainWindow from handlers

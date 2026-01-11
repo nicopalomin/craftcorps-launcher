@@ -14,7 +14,18 @@ function setupWindowHandlers(getMainWindow) {
         }
     });
 
-    ipcMain.on('window-close', () => getMainWindow()?.close());
+    ipcMain.on('window-close', () => {
+        try {
+            const { isGameRunning } = require('./gameHandler.cjs');
+            if (isGameRunning()) {
+                getMainWindow()?.hide();
+                return;
+            }
+        } catch (e) {
+            console.error('[WindowHandler] Failed to check game status:', e);
+        }
+        getMainWindow()?.close();
+    });
     ipcMain.on('window-hide', () => getMainWindow()?.hide());
     ipcMain.on('window-show', () => getMainWindow()?.show());
 }
