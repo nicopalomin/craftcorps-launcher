@@ -169,7 +169,13 @@ function setupGameHandlers(getMainWindow) {
                 if (managed) {
                     // get version again to be sure? checkJava returns path.
                     const ver = JavaManager.getVersionFromBinary(managed);
-                    selectedJava = { path: managed, version: ver };
+
+                    // Validate the fallback version matches requirements
+                    if (ver === v || (v !== 8 && ver >= v)) {
+                        selectedJava = { path: managed, version: ver };
+                    } else {
+                        log.warn(`[Launch] Fallback Java found at ${managed} is version ${ver}, but ${v} is required. Ignoring.`);
+                    }
                 }
             }
 
@@ -207,34 +213,9 @@ function setupGameHandlers(getMainWindow) {
         launcher.kill();
     });
 
-    ipcMain.handle('delete-instance-folder', async (event, folderPath) => {
-        if (!folderPath) return { success: false, error: 'No path provided' };
 
-        // Safety checks to prevent deleting system folders
-        const norm = path.normalize(folderPath);
-        const root = path.parse(norm).root;
-        const appData = process.env.APPDATA || process.env.HOME;
 
-        if (norm === root) return { success: false, error: 'Cannot delete root directory' };
-        if (norm === appData) return { success: false, error: 'Cannot delete AppData/Home' };
-        if (!norm.includes('craftcorps') && !norm.includes('.minecraft')) {
-            // Extra paranoid check, though user might have custom paths.
-            // Let's at least check it exists.
-        }
-
-        try {
-            if (fs.existsSync(norm)) {
-                log.info(`[Instance] Deleting instance folder: ${norm}`);
-                fs.rmSync(norm, { recursive: true, force: true });
-                return { success: true };
-            } else {
-                return { success: false, error: 'Folder does not exist' };
-            }
-        } catch (e) {
-            log.error(`[Instance] Failed to delete folder ${norm}: ${e.message}`);
-            return { success: false, error: e.message };
-        }
-    });
+    ipcMain.handle('delete-instance-folder', deleteInstanceFolder);
 
     /**
      * Get All Instances
@@ -250,54 +231,16 @@ function setupGameHandlers(getMainWindow) {
     /**
      * Save/Update Instance
      */
-    ipcMain.handle('save-instance', async (event, instanceData) => {
-        if (!instanceData || !instanceData.path) return { success: false, error: 'Invalid instance data' };
 
-        try {
-            if (!fs.existsSync(instanceData.path)) {
-                fs.mkdirSync(instanceData.path, { recursive: true });
-            }
-            const jsonPath = path.join(instanceData.path, 'instance.json');
-            fs.writeFileSync(jsonPath, JSON.stringify(instanceData, null, 4));
-            return { success: true };
-        } catch (e) {
-            log.error(`[Instance] Failed to save instance: ${e.message}`);
-            return { success: false, error: e.message };
-        }
-    });
 
-    ipcMain.handle('get-new-instance-path', async (event, name) => {
-        try {
-            const userData = app.getPath('userData');
-            const sanitized = name.replace(/[^a-zA-Z0-9_-]/g, '_');
-            const instancesDir = path.join(userData, 'instances');
+    /**
+     * Save/Update Instance
+     */
+    ipcMain.handle('save-instance', saveInstance);
 
-            if (!fs.existsSync(instancesDir)) {
-                fs.mkdirSync(instancesDir, { recursive: true });
-            }
 
-            // Uniquify
-            let finalName = sanitized;
-            let counter = 1;
-            while (fs.existsSync(path.join(instancesDir, finalName))) {
-                finalName = `${sanitized}_${counter}`;
-                counter++;
-            }
 
-            const finalPath = path.join(instancesDir, finalName);
-            // We don't create the folder yet, MCLC/launcher will do it, or we can do it now.
-            // Better to do it now to reserve the name? 
-            // Actually MCLC creates if not exists. 
-            // But let's return the path. 
-            // Also ensure we create the dir so the user can verify it exists if they click "Open Folder" immediately?
-            fs.mkdirSync(finalPath, { recursive: true });
-
-            return finalPath;
-        } catch (e) {
-            log.error(`Failed to generate instance path: ${e.message}`);
-            return null;
-        }
-    });
+    ipcMain.handle('get-new-instance-path', getNewInstancePath);
 
 }
 
@@ -389,4 +332,77 @@ const getInstanceByPath = async (event, fullPath) => {
     }
 };
 
-module.exports = { setupGameHandlers, getInstances, getInstanceByPath };
+const deleteInstanceFolder = async (event, folderPath) => {
+    if (!folderPath) return { success: false, error: 'No path provided' };
+
+    // Safety checks to prevent deleting system folders
+    const norm = path.normalize(folderPath);
+    const root = path.parse(norm).root;
+    const appData = process.env.APPDATA || process.env.HOME;
+
+    if (norm === root) return { success: false, error: 'Cannot delete root directory' };
+    if (norm === appData) return { success: false, error: 'Cannot delete AppData/Home' };
+    if (!norm.includes('craftcorps') && !norm.includes('.minecraft')) {
+        // Extra paranoid check, though user might have custom paths.
+        // Let's at least check it exists.
+    }
+
+    try {
+        if (fs.existsSync(norm)) {
+            log.info(`[Instance] Deleting instance folder: ${norm}`);
+            fs.rmSync(norm, { recursive: true, force: true });
+            return { success: true };
+        } else {
+            return { success: false, error: 'Folder does not exist' };
+        }
+    } catch (e) {
+        log.error(`[Instance] Failed to delete folder ${norm}: ${e.message}`);
+        return { success: false, error: e.message };
+    }
+};
+
+const saveInstance = async (event, instanceData) => {
+    if (!instanceData || !instanceData.path) return { success: false, error: 'Invalid instance data' };
+
+    try {
+        if (!fs.existsSync(instanceData.path)) {
+            fs.mkdirSync(instanceData.path, { recursive: true });
+        }
+        const jsonPath = path.join(instanceData.path, 'instance.json');
+        fs.writeFileSync(jsonPath, JSON.stringify(instanceData, null, 4));
+        return { success: true };
+    } catch (e) {
+        log.error(`[Instance] Failed to save instance: ${e.message}`);
+        return { success: false, error: e.message };
+    }
+};
+
+const getNewInstancePath = async (event, name) => {
+    try {
+        const userData = app.getPath('userData');
+        const sanitized = name.replace(/[^a-zA-Z0-9_-]/g, '_');
+        const instancesDir = path.join(userData, 'instances');
+
+        if (!fs.existsSync(instancesDir)) {
+            fs.mkdirSync(instancesDir, { recursive: true });
+        }
+
+        // Uniquify
+        let finalName = sanitized;
+        let counter = 1;
+        while (fs.existsSync(path.join(instancesDir, finalName))) {
+            finalName = `${sanitized}_${counter}`;
+            counter++;
+        }
+
+        const finalPath = path.join(instancesDir, finalName);
+        fs.mkdirSync(finalPath, { recursive: true });
+
+        return finalPath;
+    } catch (e) {
+        log.error(`Failed to generate instance path: ${e.message}`);
+        return null;
+    }
+};
+
+module.exports = { setupGameHandlers, getInstances, getInstanceByPath, saveInstance, deleteInstanceFolder, getNewInstancePath };

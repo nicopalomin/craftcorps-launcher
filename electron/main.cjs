@@ -204,6 +204,30 @@ app.whenReady().then(async () => {
     });
 
 
+    // Lazy: Game Launch
+    ipcMain.on('launch-game', (event, ...args) => {
+        console.log('[IPC] Lazy loading Game Launch...');
+        const { setupGameHandlers } = require('./handlers/gameHandler.cjs');
+        setupGameHandlers(getMainWindow);
+        // Handler is now replaced. Re-emit logic.
+        ipcMain.emit('launch-game', event, ...args);
+    });
+
+    lazyHandle('save-instance', () => {
+        const { saveInstance } = require('./handlers/gameHandler.cjs');
+        return saveInstance;
+    });
+
+    lazyHandle('delete-instance-folder', () => {
+        const { deleteInstanceFolder } = require('./handlers/gameHandler.cjs');
+        return deleteInstanceFolder;
+    });
+
+    lazyHandle('get-new-instance-path', () => {
+        const { getNewInstancePath } = require('./handlers/gameHandler.cjs');
+        return getNewInstancePath;
+    });
+
     // Lazy: Updates (Self-Upgrading)
     // We handle this manually to ensure setupUpdateHandlers is called to register events
     ipcMain.handle('check-for-updates', async (event, ...args) => {
@@ -229,14 +253,14 @@ app.whenReady().then(async () => {
             // Note: setupXHandlers are safe to call multiple times because we added removal logic.
 
             const { setupJavaHandlers } = require('./handlers/javaHandler.cjs');
-            const { setupGameHandlers } = require('./handlers/gameHandler.cjs');
+            // const { setupGameHandlers } = require('./handlers/gameHandler.cjs'); // REMOVED: Loaded via lazy 'launch-game'
             const { setupModHandlers } = require('./handlers/modHandler.cjs');
             const { setupImportHandlers } = require('./handlers/importHandler.cjs');
             const { setupUpdateHandlers } = require('./handlers/updateHandler.cjs');
             const { subscribeToNewsletter } = require('./handlers/marketingHandler.cjs');
 
             setupJavaHandlers(getMainWindow);
-            setupGameHandlers(getMainWindow);
+            // setupGameHandlers(getMainWindow); // REMOVED
 
             setupImportHandlers();
             setupUpdateHandlers(getMainWindow); // It's safe to call again (removes/re-adds)
