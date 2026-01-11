@@ -283,3 +283,12 @@ app.on('window-all-closed', () => {
         app.quit();
     }
 });
+
+app.on('will-quit', () => {
+    try {
+        const { saveModCacheToDisk } = require('./handlers/localModHandler.cjs');
+        if (saveModCacheToDisk) saveModCacheToDisk();
+    } catch (e) {
+        // Module might not have been loaded or other error
+    }
+});

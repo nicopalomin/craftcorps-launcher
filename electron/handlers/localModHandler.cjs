@@ -1,6 +1,6 @@
 console.log('[DEBUG] Loading localModHandler.cjs');
 
-const { ipcMain, dialog } = require('electron');
+const { ipcMain, dialog, app } = require('electron');
 const log = require('electron-log');
 const path = require('path');
 const fs = require('fs');
@@ -55,62 +55,135 @@ const getModMetadata = (fullPath, buffer = null) => {
 };
 
 
-const modCache = {}; // { [instancePath]: { mtime: number, mods: [] } }
+let modCache = {}; // { [instancePath]: { mtime: number, mods: [] } }
+const modCachePath = path.join(app.getPath('userData'), 'mod-cache.json');
+
+const loadModCacheFromDisk = () => {
+    try {
+        if (fs.existsSync(modCachePath)) {
+            const data = fs.readFileSync(modCachePath, 'utf8');
+            modCache = JSON.parse(data);
+            log.info(`[Mods] Loaded mod cache from disk (${Object.keys(modCache).length} instances)`);
+        }
+    } catch (e) {
+        log.error(`[Mods] Failed to load mod cache: ${e.message}`);
+    }
+};
+
+const saveModCacheToDisk = () => {
+    try {
+        fs.writeFileSync(modCachePath, JSON.stringify(modCache));
+        log.info('[Mods] Saved mod cache to disk');
+    } catch (e) {
+        log.error(`[Mods] Failed to save mod cache: ${e.message}`);
+    }
+};
+
+// Load immediately on module load
+loadModCacheFromDisk();
+
+const scanModsDirectory = async (instancePath, modsDir) => {
+    const dirFiles = await fs.promises.readdir(modsDir);
+    const files = dirFiles.filter(f => f.endsWith('.jar') || f.endsWith('.jar.disabled'));
+
+    const mods = [];
+    const chunkSize = 20;
+
+    for (let i = 0; i < files.length; i += chunkSize) {
+        const chunk = files.slice(i, i + chunkSize);
+        const chunkResults = await Promise.all(chunk.map(async (file) => {
+            const fullPath = path.join(modsDir, file);
+            try {
+                const buffer = await fs.promises.readFile(fullPath);
+                return getModMetadata(fullPath, buffer);
+            } catch (e) {
+                return null;
+            }
+        }));
+        chunkResults.forEach(r => { if (r) mods.push(r); });
+        if (files.length > 100) await new Promise(r => setImmediate(r));
+    }
+    return mods;
+};
 
 /**
- * Get Installed Mods
+ * Verify Instance Mods (Background)
  */
-const getInstanceMods = async (event, instancePath) => {
-    if (!instancePath || !fs.existsSync(instancePath)) return [];
-
+const verifyInstanceMods = async (event, instancePath) => {
+    if (!instancePath) return;
     const modsDir = path.join(instancePath, 'mods');
-    if (!fs.existsSync(modsDir)) return [];
+
+    // If mods dir missing, empty list
+    if (!fs.existsSync(modsDir)) {
+        if (modCache[instancePath] && modCache[instancePath].mods.length > 0) {
+            // Changed from having mods to no mods
+            modCache[instancePath] = { mtime: 0, mods: [] };
+            if (event && event.sender && !event.sender.isDestroyed()) {
+                event.sender.send('instance-mods-updated', { instancePath, mods: [] });
+            }
+        }
+        return;
+    }
 
     try {
         const stats = await fs.promises.stat(modsDir);
         const folderMtime = stats.mtimeMs;
 
-        // Check Cache
+        // Check if cache is stale based on directory mtime
         if (modCache[instancePath] && modCache[instancePath].mtime === folderMtime) {
-            log.info(`[Mods] Returning cached mods for ${path.basename(instancePath)}`);
-            return modCache[instancePath].mods;
+            // Cache is valid based on mtime.
+            return;
         }
 
-        const dirFiles = await fs.promises.readdir(modsDir);
-        // Additional check: directory mtime might not update if file content changes but file count doesn't? 
-        // Actually on Windows/Linux adding/deleting files updates dir mtime. 
-        // Just keep in mind for external edits.
-
-        const files = dirFiles.filter(f => f.endsWith('.jar') || f.endsWith('.jar.disabled'));
-
-        const mods = [];
-        const chunkSize = 20;
-
-        for (let i = 0; i < files.length; i += chunkSize) {
-            const chunk = files.slice(i, i + chunkSize);
-
-            const chunkResults = await Promise.all(chunk.map(async (file) => {
-                const fullPath = path.join(modsDir, file);
-                try {
-                    const buffer = await fs.promises.readFile(fullPath);
-                    return getModMetadata(fullPath, buffer);
-                } catch (e) {
-                    return null;
-                }
-            }));
-
-            chunkResults.forEach(r => { if (r) mods.push(r); });
-
-            if (files.length > 100) await new Promise(r => setImmediate(r));
-        }
+        // Mtime changed, scan.
+        const mods = await scanModsDirectory(instancePath, modsDir);
 
         // Update Cache
         modCache[instancePath] = {
             mtime: folderMtime,
             mods: mods
         };
-        log.info(`[Mods] Cached ${mods.length} mods for ${path.basename(instancePath)}`);
 
+        // Notify Frontend
+        if (event && event.sender && !event.sender.isDestroyed()) {
+            log.info(`[Mods] Background scan updated mods for ${path.basename(instancePath)}`);
+            event.sender.send('instance-mods-updated', { instancePath, mods });
+        }
+
+    } catch (e) {
+        log.error(`[Mods] Background verification failed: ${e.message}`);
+    }
+};
+
+/**
+ * Get Installed Mods
+ */
+const getInstanceMods = async (event, instancePath) => {
+    if (!instancePath) return [];
+
+    // 1. Return Cache Immediately if available
+    if (modCache[instancePath]) {
+        // Trigger background verification
+        verifyInstanceMods(event, instancePath).catch(err => console.error(err));
+
+        log.info(`[Mods] Returning cached mods for ${path.basename(instancePath)} (Lazy verification started)`);
+        return modCache[instancePath].mods;
+    }
+
+    // 2. If no cache, perform synchronous wait (or async but awaited) for first load
+    if (!fs.existsSync(instancePath)) return [];
+    const modsDir = path.join(instancePath, 'mods');
+    if (!fs.existsSync(modsDir)) return [];
+
+    try {
+        const stats = await fs.promises.stat(modsDir);
+        const folderMtime = stats.mtimeMs;
+        const mods = await scanModsDirectory(instancePath, modsDir);
+
+        modCache[instancePath] = {
+            mtime: folderMtime,
+            mods: mods
+        };
         return mods;
     } catch (error) {
         log.error(`[Mods] Failed to scan mods: ${error.message}`);
@@ -135,12 +208,10 @@ const deleteMod = async (event, filePath) => {
         log.info(`[Mods] Deleting mod: ${filePath}`);
 
         // Invalidate Cache
-        // We need to find which instance this file belongs to.
-        // Assuming structure .../instances/InstanceName/mods/mod.jar
         const instancePath = path.dirname(path.dirname(filePath));
+
         if (modCache[instancePath]) {
-            delete modCache[instancePath];
-            log.info(`[Mods] Invalidated cache for ${path.basename(instancePath)}`);
+            modCache[instancePath].mods = modCache[instancePath].mods.filter(m => m.path !== filePath);
         }
 
         fs.unlinkSync(filePath);
@@ -161,12 +232,6 @@ const addInstanceMods = async (event, { instancePath, filePaths }) => {
         if (!instancePath || !filePaths || filePaths.length === 0) {
             console.warn('[MAIN] Invalid arguments for add-instance-mods');
             return { success: false, error: 'Invalid arguments' };
-        }
-
-        // Invalidate Cache immediately
-        if (modCache[instancePath]) {
-            delete modCache[instancePath];
-            log.info(`[Mods] Invalidated cache for ${path.basename(instancePath)}`);
         }
 
         const modsDir = path.join(instancePath, 'mods');
@@ -201,6 +266,14 @@ const addInstanceMods = async (event, { instancePath, filePaths }) => {
                 errors.push(`Failed to copy ${path.basename(filePath)}: ${e.message}`);
             }
         }
+
+        // Update Cache
+        if (modCache[instancePath]) {
+            modCache[instancePath].mods = [...modCache[instancePath].mods, ...addedMods];
+            const stats = fs.statSync(modsDir);
+            modCache[instancePath].mtime = stats.mtimeMs;
+        }
+
         return { success: true, added: addedCount, errors, addedMods };
 
     } catch (globalError) {
@@ -240,8 +313,9 @@ function setupLocalModHandlers() {
         'get-instance-mods': getInstanceMods,
         'delete-mod': deleteMod,
         'add-instance-mods': addInstanceMods,
-        'select-mod-files': selectModFiles
+        'select-mod-files': selectModFiles,
+        saveModCacheToDisk // Exported for use in main
     };
 }
 
-module.exports = { setupLocalModHandlers, getInstanceMods, deleteMod, addInstanceMods, selectModFiles };
+module.exports = { setupLocalModHandlers, getInstanceMods, deleteMod, addInstanceMods, selectModFiles, saveModCacheToDisk };

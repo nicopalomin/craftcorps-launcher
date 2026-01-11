@@ -59,6 +59,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
     modrinthGetTags: (type) => ipcRenderer.invoke('modrinth-get-tags', { type }),
     modrinthInstallMod: (params) => ipcRenderer.invoke('modrinth-install-mod', params),
     getInstanceMods: (instancePath) => ipcRenderer.invoke('get-instance-mods', instancePath),
+    onInstanceModsUpdated: (callback) => ipcRenderer.on('instance-mods-updated', (_event, value) => callback(value)),
+    removeInstanceModsListener: () => ipcRenderer.removeAllListeners('instance-mods-updated'),
     deleteMod: (filePath) => ipcRenderer.invoke('delete-mod', filePath),
     addInstanceMods: async (instancePath, filePaths) => {
         console.log('[Preload] Invoking add-instance-mods', { instancePath, count: filePaths?.length });

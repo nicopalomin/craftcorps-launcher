@@ -309,6 +309,28 @@ const HomeView = ({
         return () => observer.disconnect();
     }, [selectedInstance, hasLoadedMods]);
 
+    // Listener for background updates (Lazy Load)
+    useEffect(() => {
+        if (!selectedInstance || !window.electronAPI) return;
+
+        const handleUpdate = (data) => {
+            if (data.instancePath === selectedInstance.path) {
+                console.log('[Home] Background mods updated');
+                setInstalledMods(data.mods);
+            }
+        };
+
+        if (window.electronAPI.onInstanceModsUpdated) {
+            window.electronAPI.onInstanceModsUpdated(handleUpdate);
+        }
+
+        return () => {
+            if (window.electronAPI.removeInstanceModsListener) {
+                window.electronAPI.removeInstanceModsListener();
+            }
+        };
+    }, [selectedInstance]);
+
     const isModded = selectedInstance && selectedInstance.loader !== 'Vanilla';
 
     return (
