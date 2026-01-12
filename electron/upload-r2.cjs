@@ -76,6 +76,36 @@ async function main() {
     }
 
     console.log('🚀 All files uploaded successfully to R2!');
+
+    // Revalidate website
+    const revalidationToken = process.env.REVALIDATION_TOKEN;
+    // Default to craftcorps.net if not specified, but allow override
+    const revalidationUrl = process.env.REVALIDATION_URL || 'https://craftcorps.net/api/revalidate';
+
+    if (revalidationToken) {
+        console.log(`Triggering website revalidation at ${revalidationUrl}...`);
+        try {
+            const response = await fetch(revalidationUrl, {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${revalidationToken}`
+                }
+            });
+
+            if (response.ok) {
+                const data = await response.json().catch(() => ({}));
+                console.log('✅ Website revalidation successful:', data);
+            } else {
+                console.warn(`⚠️ Website revalidation failed: ${response.status} ${response.statusText}`);
+                const text = await response.text();
+                console.warn('Response:', text);
+            }
+        } catch (e) {
+            console.error('❌ Error triggering revalidation:', e);
+        }
+    } else {
+        console.log('ℹ️ REVALIDATION_TOKEN not set, skipping website revalidation.');
+    }
 }
 
 main().catch(err => {
