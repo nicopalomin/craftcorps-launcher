@@ -1,8 +1,8 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import {
     Sprout, Pickaxe, Axe, Sword, Shield, Box,
     Map, Compass, Flame, Snowflake, Droplet,
-    Zap, Heart, Skull, Ghost, Trophy, Server, X, Play, Loader2, ChevronRight
+    Zap, Heart, Skull, Ghost, Trophy, Server, X, Play, Loader2, ChevronRight, Clock
 } from 'lucide-react';
 import { formatLastPlayed } from '../../utils/dateUtils';
 import { useTranslation } from 'react-i18next';
@@ -11,6 +11,16 @@ const ICON_MAP = {
     Sprout, Pickaxe, Axe, Sword, Shield, Box,
     Map, Compass, Flame, Snowflake, Droplet,
     Zap, Heart, Skull, Ghost, Trophy
+};
+
+const formatPlayTime = (ms) => {
+    if (!ms) return '0m';
+    const seconds = Math.floor(ms / 1000);
+    const minutes = Math.floor(seconds / 60);
+    const hours = Math.floor(minutes / 60);
+
+    if (hours > 0) return `${hours}h ${minutes % 60} m`;
+    return `${minutes} m`;
 };
 
 const InstanceHero = ({
@@ -23,6 +33,23 @@ const InstanceHero = ({
 }) => {
     const { t } = useTranslation();
     const isModded = selectedInstance.loader !== 'Vanilla';
+    const [playTime, setPlayTime] = useState(null);
+
+    useEffect(() => {
+        let active = true;
+        setPlayTime(0); // Reset or set to 0 initially
+        if (selectedInstance?.path) {
+            window.electronAPI.getInstancePlayTime(selectedInstance.path).then((time) => {
+                if (active) setPlayTime(time || 0);
+            });
+        }
+        return () => { active = false; };
+    }, [selectedInstance?.path, launchStatus]);
+
+    const timeString = formatPlayTime(playTime);
+
+    // Last Played Text
+    const lastPlayedText = selectedInstance.lastPlayed ? formatLastPlayed(selectedInstance.lastPlayed, t) : t('home_never');
 
     return (
         <div className={`flex flex-col items-center text-center w-full px-8 pb-8 ${isModded ? 'pt-16 max-w-7xl mx-auto' : 'max-w-4xl'}`}>
@@ -54,24 +81,34 @@ const InstanceHero = ({
                             <span className={`font-mono ${theme === 'white' ? 'text-emerald-600' : 'text-emerald-300'}`}>{selectedInstance.version}</span>
                         </div>
 
-                        <span className={`w-1 h-1 rounded-full bg-slate-500 ${isModded ? 'hidden' : ''}`} />
+                        <span className="w-1 h-1 rounded-full bg-slate-500" />
 
                         <div className={`flex items-center gap-2 px-3 py-1.5 rounded-lg border ${theme === 'white' ? 'bg-slate-200/50 border-slate-300/50' : 'bg-black/20 border-white/5'}`}>
                             <div className={`w-2 h-2 rounded-full ${isModded ? 'bg-amber-400' : 'bg-slate-400'}`}></div>
                             <span>{selectedInstance.loader}</span>
                         </div>
 
-                        <span className={`w-1 h-1 rounded-full bg-slate-500 ${isModded ? 'hidden' : ''}`} />
+                        <span className="w-1 h-1 rounded-full bg-slate-500" />
 
                         <div className={`flex items-center gap-2 px-3 py-1.5 rounded-lg border ${theme === 'white' ? 'bg-slate-200/50 border-slate-300/50' : 'bg-black/20 border-white/5'}`}>
                             <span className={`${theme === 'white' ? 'text-emerald-600' : 'text-emerald-400'} font-medium`}>{selectedInstance.status === 'Ready' ? t('home_status_ready') : selectedInstance.status}</span>
                         </div>
 
+                        {/* Play Time Tag */}
+                        <span className="w-1 h-1 rounded-full bg-slate-500" />
+                        <div className={`flex items-center gap-2 px-3 py-1.5 rounded-lg border ${theme === 'white' ? 'bg-slate-200/50 border-slate-300/50' : 'bg-black/20 border-white/5'}`}>
+                            <Clock size={14} className={theme === 'white' ? 'text-blue-600' : 'text-blue-400'} />
+                            <span className={`font-mono ${theme === 'white' ? 'text-blue-600' : 'text-blue-300'}`}>{timeString}</span>
+                        </div>
+
                         {selectedInstance.autoConnect && (
-                            <div className={`flex items-center gap-2 px-3 py-1.5 rounded-lg border text-emerald-400 ${theme === 'white' ? 'bg-slate-200/50 border-slate-300/50' : 'bg-black/20 border-white/5'}`}>
-                                <Server size={14} />
-                                <span className="text-xs font-medium">{selectedInstance.serverAddress}</span>
-                            </div>
+                            <>
+                                <span className="w-1 h-1 rounded-full bg-slate-500" />
+                                <div className={`flex items-center gap-2 px-3 py-1.5 rounded-lg border text-emerald-400 ${theme === 'white' ? 'bg-slate-200/50 border-slate-300/50' : 'bg-black/20 border-white/5'}`}>
+                                    <Server size={14} />
+                                    <span className="text-xs font-medium">{selectedInstance.serverAddress}</span>
+                                </div>
+                            </>
                         )}
                     </div>
 
@@ -103,7 +140,7 @@ const InstanceHero = ({
                                             <Play size={isModded ? 28 : 32} fill="currentColor" />
                                             <span className="flex flex-col items-start leading-none gap-1">
                                                 <span>{t('home_playing')}</span>
-                                                {isModded && <span className="text-xs font-medium text-emerald-200 opacity-80 font-sans tracking-wide">Last Played: {formatLastPlayed(selectedInstance.lastPlayed, t)}</span>}
+                                                {isModded && <span className="text-xs font-medium text-emerald-200 opacity-80 font-sans tracking-wide">Last Played: {lastPlayedText}</span>}
                                             </span>
                                         </span>
                                         {isModded && <ChevronRight size={24} className="opacity-50 group-hover:opacity-100 group-hover:translate-x-1 transition-all" />}
@@ -128,7 +165,7 @@ const InstanceHero = ({
                     {/* Last Played - Only for Vanilla layout as it's inline for Modded */}
                     {!isModded && (
                         <p className="mt-6 text-slate-500 text-sm font-medium">
-                            {t('home_last_harvested')} {formatLastPlayed(selectedInstance.lastPlayed, t)}
+                            {t('home_last_harvested')} {lastPlayedText}
                         </p>
                     )}
                 </div>

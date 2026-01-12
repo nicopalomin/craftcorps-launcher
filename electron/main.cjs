@@ -71,6 +71,14 @@ async function createWindow() {
         const { default: Store } = await import('electron-store');
         store = new Store();
         telemetryService.init(store);
+
+        // Init PlayTime Service
+        const playTimeService = require('./services/playTimeService.cjs');
+        playTimeService.init(store);
+
+        // Register PlayTime Listeners immediately (lightweight)
+        ipcMain.handle('get-total-playtime', () => playTimeService.getTotalPlayTime());
+        ipcMain.handle('get-instance-playtime', (e, id) => playTimeService.getInstancePlayTime(id));
     }
 
     // Restore saved window state
@@ -254,6 +262,7 @@ app.whenReady().then(async () => {
     });
 
 
+    // Lazy: Game Launch
     // Lazy: Game Launch
     ipcMain.on('launch-game', (event, ...args) => {
         console.log('[IPC] Lazy loading Game Launch...');

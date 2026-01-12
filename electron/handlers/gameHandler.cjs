@@ -10,7 +10,12 @@ function isGameRunning() {
     return !!launcher.process;
 }
 
-function setupGameHandlers(getMainWindow) {
+const playTimeService = require('../services/playTimeService.cjs'); // [NEW]
+
+
+let currentGameDir = null; // [NEW]
+
+function setupGameHandlers(getMainWindow) { // [UPDATED] - Added store
     const { setActivity } = require('../discordRpc.cjs');
     const JavaManager = require('../JavaManager.cjs');
 
@@ -29,7 +34,7 @@ function setupGameHandlers(getMainWindow) {
     ipcMain.removeAllListeners('stop-game');
     ipcMain.removeHandler('delete-instance-folder');
     ipcMain.removeHandler('get-instances');
-    ipcMain.removeHandler('get-instance-by-path'); // [NEW]
+    ipcMain.removeHandler('get-instance-by-path');
     ipcMain.removeHandler('save-instance');
     ipcMain.removeHandler('get-new-instance-path');
 
@@ -67,11 +72,19 @@ function setupGameHandlers(getMainWindow) {
     launcher.on('launch-error', (error) => {
         log.error(`[Main] Launch Error: ${error.summary}`);
         safeSend('launch-error', error);
+        playTimeService.stopSession(currentGameDir); // [NEW] Stop session on error
+        currentGameDir = null;
     });
 
     launcher.on('exit', (code) => {
         log.info(`[Main] Game exited with code ${code}`);
         safeSend('game-exit', code);
+
+        // [NEW] Stop Tracking Play Time
+        if (currentGameDir) {
+            playTimeService.stopSession(currentGameDir);
+            currentGameDir = null;
+        }
 
         setActivity({
             details: 'In Launcher',
@@ -93,10 +106,13 @@ function setupGameHandlers(getMainWindow) {
 
     // --- IPC Handlers ---
 
-
     ipcMain.on('launch-game', async (event, options) => {
         lastCrashReport = null; // Reset on new launch
+        currentGameDir = options.gameDir; // [NEW] Track current game dir
         log.info(`[Launch] Received Request. GameDir: ${options.gameDir}, JavaPath: ${options.javaPath}, Version: ${options.version}`);
+
+        // [NEW] Start Tracking Play Time
+        playTimeService.startSession(options.gameDir);
 
         // 1. Determine Required Java Version
         let v = 17;
@@ -198,6 +214,8 @@ function setupGameHandlers(getMainWindow) {
                     summary: `Java ${v} is missing.`,
                     advice: `Please install Java ${v} (JDK ${v}) to play this version.`
                 });
+                playTimeService.stopSession(currentGameDir); // [NEW] Stop session
+                currentGameDir = null;
                 return; // Stop launch
             }
         }
@@ -236,14 +254,7 @@ function setupGameHandlers(getMainWindow) {
     /**
      * Save/Update Instance
      */
-
-
-    /**
-     * Save/Update Instance
-     */
     ipcMain.handle('save-instance', saveInstance);
-
-
 
     ipcMain.handle('get-new-instance-path', getNewInstancePath);
 
