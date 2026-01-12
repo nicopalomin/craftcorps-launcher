@@ -1,6 +1,6 @@
 import React, { useRef, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Sprout, Play, Edit3, HardDrive, Settings, Shirt, ShoppingBag } from 'lucide-react';
+import { Sprout, Play, Edit3, HardDrive, Settings, Shirt, ShoppingBag, Gift } from 'lucide-react';
 import SidebarItem from './SidebarItem';
 import SneakyAd from '../common/SneakyAd';
 
@@ -115,6 +115,12 @@ const Sidebar = ({ activeTab, onTabChange, theme }) => {
                     label={t('nav_market', { defaultValue: 'Market' })}
                     active={activeTab === 'market'}
                     onClick={() => onTabChange('market')}
+                />
+                <SidebarItem
+                    icon={Gift}
+                    label="Beta Rewards"
+                    active={activeTab === 'rewards'}
+                    onClick={() => onTabChange('rewards')}
                 />
                 <div className="pt-4 mt-4 border-t border-slate-800">
                     <SidebarItem
