@@ -1,4 +1,5 @@
 const log = require('electron-log');
+const telemetryService = require('./telemetryService');
 
 let store;
 
@@ -10,6 +11,8 @@ function init(electronStore) {
     store = electronStore;
 }
 
+const activeSessions = {};
+
 /**
  * Start tracking play time for a specific instance.
  * @param {string} instanceIdOrPath - Unique identifier for the instance (using path as ID)
@@ -17,16 +20,18 @@ function init(electronStore) {
 function startSession(instanceIdOrPath) {
     if (!store) return;
     const now = Date.now();
-    // We'll store the start time in memory or in a temporary store key
-    // For simplicity and crash recovery, let's store it in a volatile part of the store or just memory variable
-    // Since we only run one game at a time, a single variable works, but using a map is safer for future proofing.
 
-    // Using a simple in-memory map for active sessions.
-    // If the launcher crashes, we might lose the session time, which is acceptable vs complexity of state recovery.
-    activeSessions[instanceIdOrPath] = now;
+    // Start 5-minute interval for server-side tracking (Rewards)
+    const intervalId = setInterval(() => {
+        telemetryService.track('PLAY_TIME_PING', {
+            instanceId: instanceIdOrPath,
+            duration: 300000 // 5 minutes 
+        });
+        log.info(`[PlayTime] Server ping sent for ${instanceIdOrPath}`);
+    }, 300000); // 5 minutes
+
+    activeSessions[instanceIdOrPath] = { startTime: now, intervalId };
 }
-
-const activeSessions = {};
 
 /**
  * Stop tracking play time and update the total duration.
@@ -34,11 +39,14 @@ const activeSessions = {};
  */
 function stopSession(instanceIdOrPath) {
     if (!store) return;
-    const startTime = activeSessions[instanceIdOrPath];
-    if (!startTime) return;
+    const session = activeSessions[instanceIdOrPath];
+    if (!session) return;
+
+    // Stop server pinging
+    if (session.intervalId) clearInterval(session.intervalId);
 
     const endTime = Date.now();
-    const durationMs = endTime - startTime;
+    const durationMs = endTime - session.startTime;
 
     // clean up
     delete activeSessions[instanceIdOrPath];

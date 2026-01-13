@@ -14,6 +14,7 @@ model AnalyticsUser {
   createdAt DateTime @default(now())
   lastSeen  DateTime @updatedAt
   country   String?  // [NEW] ISO Country Code (e.g. "US")
+  playTimeMinutes Int @default(0) // [NEW] Total play time in minutes
   hardware  Hardware?
   events    Event[]
   sessions  Session[]

@@ -224,12 +224,30 @@ app.post('/api/telemetry', async (req, res) => {
     }
 
     try {
-        // Ensure user exists first
+        // Calculate play time to add
+        let addedMinutes = 0;
+        for (const e of events) {
+            if (e.type === 'PLAY_TIME_PING' && e.metadata && typeof e.metadata.duration === 'number') {
+                addedMinutes += Math.floor(e.metadata.duration / 60000); // 300000ms -> 5 mins
+            }
+        }
+
+        // Ensure user exists first and update play time if needed
         await prisma.analyticsUser.upsert({
             where: { id: userId },
-            update: { lastSeen: new Date() },
-            create: { id: userId },
+            update: {
+                lastSeen: new Date(),
+                playTimeMinutes: addedMinutes > 0 ? { increment: addedMinutes } : undefined
+            },
+            create: {
+                id: userId,
+                playTimeMinutes: addedMinutes
+            },
         });
+
+        if (addedMinutes > 0) {
+            logger.info(`[Telemetry] Added ${addedMinutes} mins to User ${userId}`);
+        }
 
         const eventData = events.map((e: any) => ({
             userId,
