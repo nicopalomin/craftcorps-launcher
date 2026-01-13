@@ -15,6 +15,17 @@ model AnalyticsUser {
   lastSeen  DateTime @updatedAt
   country   String?  // [NEW] ISO Country Code (e.g. "US")
   playTimeMinutes Int @default(0) // [NEW] Total play time in minutes
+  
+  // -- Lifecycle Tracking --
+  firstLaunch     DateTime?
+  firstLogin      DateTime?
+  firstInstance   DateTime?
+  firstGameLaunch DateTime?
+  
+  // -- Usage Stats --
+  streak          Int      @default(0)
+  streakLastUpdated DateTime?
+  currentTheme    String?
   hardware  Hardware?
   events    Event[]
   sessions  Session[]

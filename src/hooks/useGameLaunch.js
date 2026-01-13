@@ -45,6 +45,7 @@ export const useGameLaunch = (selectedInstance, ram, activeAccount, updateLastPl
 
     // Use ref to track status inside callbacks safely without dependency issues
     const launchStatusRef = React.useRef(launchStatus);
+    const launchStartTimeRef = React.useRef(0); // [TELEMETRY] Track start time
 
     useEffect(() => {
         launchStatusRef.current = launchStatus;
@@ -55,6 +56,7 @@ export const useGameLaunch = (selectedInstance, ram, activeAccount, updateLastPl
 
         setLaunchStatus('launching');
         launchStatusRef.current = 'launching'; // Sync ref
+        launchStartTimeRef.current = Date.now(); // [TELEMETRY] Start timer
         setLaunchProgress(0);
         setLaunchStep("Initializing...");
         setLaunchFeedback(null);
@@ -95,8 +97,10 @@ export const useGameLaunch = (selectedInstance, ram, activeAccount, updateLastPl
                 if (isJavaError) {
                     setShowJavaModal(true);
                     setErrorModal(null); // specific modal handles it
+                    telemetry.track('JAVA_MISSING', { error: err.summary });
                 } else {
                     setErrorModal(err);
+                    telemetry.track('LAUNCH_ERROR', { error: err.summary, code: err.code || 'unknown' });
                 }
 
                 const timeStr = new Date().toLocaleTimeString();
@@ -118,6 +122,13 @@ export const useGameLaunch = (selectedInstance, ram, activeAccount, updateLastPl
                 } else if (log.message.includes('Game process started')) {
                     setLaunchStep("Game started!");
                     setLaunchProgress(100);
+
+                    // [TELEMETRY] Track Duration
+                    if (launchStartTimeRef.current > 0) {
+                        const duration = Date.now() - launchStartTimeRef.current;
+                        telemetry.track('GAME_LAUNCH_DURATION', { durationMs: duration });
+                        launchStartTimeRef.current = 0; // Reset
+                    }
 
                     if (hideOnLaunch && window.electronAPI) {
                         window.electronAPI.hide();

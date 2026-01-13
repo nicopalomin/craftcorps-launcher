@@ -13,10 +13,12 @@ class TelemetryService {
         this.eventBuffer = [];
         this.flushInterval = null;
         this.store = null;
+        this.startupTime = Date.now() - (process.uptime() * 1000); // Approximate process start time
     }
 
     _log(message, data) {
-        console.log(`[Telemetry] ${message}`, data || '');
+        // Non-blocking log
+        setImmediate(() => console.log(`[Telemetry] ${message}`, data || ''));
     }
 
     async init(store) {
@@ -45,8 +47,18 @@ class TelemetryService {
             this.flushEvents();
         }
 
-        // Start flush timer (every 30s)
-        this.flushInterval = setInterval(() => this.flushEvents(), 30000);
+        // Start flush timer (every 60s - less frequent for performance)
+        this.flushInterval = setInterval(() => this.flushEvents(), 60000);
+
+        // Track Startup Time (once)
+        if (!store.get('has_sent_startup_perf')) {
+            const startupDuration = Date.now() - this.startupTime;
+            this.track('APP_STARTUP_TIME', { durationMs: startupDuration });
+            // Don't save permanent flag if we want to track *every* startup, 
+            // but plan implies "First Launch" mostly. 
+            // Better: Track every startup as generic event, but "First Launch" is special.
+            // Let's track startup time every time.
+        }
 
         // Send immediate heartbeat (Starts Session)
         // this.sendHeartbeat(); // Disabled to avoid duplicate sessions
@@ -105,15 +117,26 @@ class TelemetryService {
     track(type, metadata = {}, immediate = false) {
         if (!this.userId) return;
 
+        // Constraint: Max buffer size
+        if (this.eventBuffer.length > 100) {
+            this.eventBuffer.shift(); // Drop oldest
+        }
+
         this.eventBuffer.push({
             type,
-            metadata,
+            metadata: JSON.stringify(metadata), // Pre-stringify to avoid deep obj issues later
             timestamp: new Date().toISOString(),
         });
 
-        if (immediate || this.eventBuffer.length >= 10) {
-            this.flushEvents();
+        if (immediate || this.eventBuffer.length >= 20) {
+            // Debounce flush
+            if (this._flushTimer) clearTimeout(this._flushTimer);
+            this._flushTimer = setTimeout(() => this.flushEvents(), 2000);
         }
+    }
+
+    trackError(source, message) {
+        this.track('ERROR', { source, message });
     }
 
     // Specific helper for crashes

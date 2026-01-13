@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { User, X, Loader2, ShieldCheck, ChevronRight, WifiOff, Info } from 'lucide-react';
+import { telemetry } from '../../services/TelemetryService';
 
 import { getOfflineUUID } from '../../utils/uuid';
 
@@ -62,6 +63,7 @@ const LoginModal = ({ isOpen, onClose, onAddAccount, isAutoRefreshing }) => {
 
                     setErrorMsg(t(key));
                     setIsLoading(false);
+                    telemetry.track('AUTH_FAILURE', { error: err, type: key });
                 }
             } else {
                 console.error("Electron API not available");
@@ -76,6 +78,7 @@ const LoginModal = ({ isOpen, onClose, onAddAccount, isAutoRefreshing }) => {
             }
             setErrorMsg(e.message || t('auth_err_unknown'));
             setIsLoading(false);
+            telemetry.track('AUTH_FAILURE', { error: e.message || 'Unknown', type: 'exception' });
         }
 
     };

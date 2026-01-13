@@ -37,6 +37,16 @@ function App() {
         }
     }, []);
 
+    // Track Page Views
+    useEffect(() => {
+        telemetry.trackPage(activeTab);
+    }, [activeTab]);
+
+    // Track Theme Changes
+    useEffect(() => {
+        if (theme) telemetry.trackThemeChange(theme);
+    }, [theme]);
+
     // Hooks
     const {
         ram, setRam,
@@ -99,6 +109,12 @@ function App() {
     const onAddAccountWithToast = (account) => {
         handleAddAccount(account);
         addToast(`${t('toast_welcome')}, ${account.name}!`, 'success');
+
+        // Track First Login
+        if (!localStorage.getItem('has_sent_first_login')) {
+            telemetry.track('FIRST_LOGIN', { authType: account.type || 'microsoft' });
+            localStorage.setItem('has_sent_first_login', 'true');
+        }
     };
 
     const onLogoutWithToast = () => {
@@ -110,6 +126,7 @@ function App() {
         if (activeAccount?.id === account.id) return;
         handleAccountSwitch(account);
         addToast(`Switched to ${account.name}`, 'info');
+        telemetry.track('ACCOUNT_SWITCH', { accountId: account.id });
     }
 
     const {

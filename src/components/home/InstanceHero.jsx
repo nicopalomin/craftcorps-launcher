@@ -6,6 +6,7 @@ import {
 } from 'lucide-react';
 import { formatLastPlayed } from '../../utils/dateUtils';
 import { useTranslation } from 'react-i18next';
+import { telemetry } from '../../services/TelemetryService';
 
 const ICON_MAP = {
     Sprout, Pickaxe, Axe, Sword, Shield, Box,
@@ -126,7 +127,11 @@ const InstanceHero = ({
                             ) : (
                                 <div className="group relative w-full max-w-sm">
                                     <button
-                                        onClick={onPlay}
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            telemetry.track('CLICK_PLAY', { instanceId: selectedInstance.id });
+                                            onPlay(selectedInstance);
+                                        }}
                                         className={`relative w-full bg-emerald-600 group-hover:bg-emerald-500 text-white rounded-2xl font-bold ${['midnight', 'white'].includes(theme)
                                             ? 'shadow-lg shadow-black/40 group-hover:shadow-2xl group-hover:shadow-black/60'
                                             : 'shadow-[0_0_40px_rgba(5,150,105,0.4)] group-hover:shadow-[0_0_60px_rgba(5,150,105,0.6)]'

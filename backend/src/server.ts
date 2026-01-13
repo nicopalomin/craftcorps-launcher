@@ -158,11 +158,38 @@ app.post('/api/heartbeat', async (req, res) => {
         const geo = geoip.lookup(ip);
         const country = geo ? geo.country : null;
 
-        // 1. Update User Last Seen
+        // 1. Update User Last Seen & Streak Logic
+        const todayStr = new Date().toISOString().split('T')[0];
+
+        // Fetch existing user to check streak
+        const existingUser = await prisma.analyticsUser.findUnique({ where: { id: userId } });
+
+        const lastSeen = existingUser ? existingUser.lastSeen : null;
+        let streakUpdate = {};
+
+        if (lastSeen) {
+            const lastSeenStr = lastSeen.toISOString().split('T')[0];
+            const yesterday = new Date();
+            yesterday.setDate(yesterday.getDate() - 1);
+            const yesterdayStr = yesterday.toISOString().split('T')[0];
+
+            if (lastSeenStr === yesterdayStr) {
+                // Streak continues
+                streakUpdate = { streak: { increment: 1 }, streakLastUpdated: new Date() };
+            } else if (lastSeenStr !== todayStr) {
+                // Streak broken (if not today)
+                streakUpdate = { streak: 1, streakLastUpdated: new Date() };
+            }
+            // If lastSeenStr === todayStr, do nothing (already counted for today)
+        } else {
+            // First time
+            streakUpdate = { streak: 1, streakLastUpdated: new Date() };
+        }
+
         await prisma.analyticsUser.upsert({
             where: { id: userId },
-            update: { lastSeen: new Date(), country: country },
-            create: { id: userId, country: country },
+            update: { lastSeen: new Date(), country: country, ...streakUpdate },
+            create: { id: userId, country: country, streak: 1, streakLastUpdated: new Date() },
         });
 
         // 2. Manage Session
@@ -172,7 +199,7 @@ app.post('/api/heartbeat', async (req, res) => {
             // Update existing session
             await prisma.session.updateMany({
                 where: { id: currentSessionId, userId: userId },
-                data: { endTime: new Date() }
+                data: { endTime: new Date(), appVersion: appVersion }
             });
         } else {
             // Create new session
@@ -181,13 +208,13 @@ app.post('/api/heartbeat', async (req, res) => {
                     userId: userId,
                     startTime: new Date(),
                     endTime: new Date(),
-                    appVersion: appVersion || 'Unknown' // [NEW]
+                    appVersion: appVersion || 'Unknown'
                 }
             });
             currentSessionId = session.id;
         }
 
-        logger.info(`[Heartbeat] User ${userId} [${country || 'Unknown'}] Session: ${currentSessionId} (v${appVersion || '??'})`);
+        logger.info(`[Heartbeat] User ${userId} [${country || 'Unknown'}] Session: ${currentSessionId} (v${appVersion || '??'}) Streak: ${user?.streak || 1}`);
         res.json({ success: true, sessionId: currentSessionId });
     } catch (error) {
         logger.error('Heartbeat error', error);
@@ -233,15 +260,37 @@ app.post('/api/telemetry', async (req, res) => {
         }
 
         // Ensure user exists first and update play time if needed
+        const userUpdate: any = {
+            lastSeen: new Date(),
+            playTimeMinutes: addedMinutes > 0 ? { increment: addedMinutes } : undefined
+        };
+
+        // Check for Lifecycle Events in the batch
+        for (const e of events) {
+            if (e.type === 'FIRST_LAUNCH') userUpdate.firstLaunch = new Date(e.timestamp || Date.now());
+            if (e.type === 'FIRST_LOGIN') userUpdate.firstLogin = new Date(e.timestamp || Date.now());
+            if (e.type === 'FIRST_INSTANCE') userUpdate.firstInstance = new Date(e.timestamp || Date.now());
+            if (e.type === 'FIRST_GAME_LAUNCH') userUpdate.firstGameLaunch = new Date(e.timestamp || Date.now());
+            if (e.type === 'THEME_CHANGE' && e.metadata) {
+                try {
+                    const meta = typeof e.metadata === 'string' ? JSON.parse(e.metadata) : e.metadata;
+                    if (meta.theme) userUpdate.currentTheme = meta.theme;
+                } catch (err) { /* ignore */ }
+            }
+        }
+
         await prisma.analyticsUser.upsert({
             where: { id: userId },
-            update: {
-                lastSeen: new Date(),
-                playTimeMinutes: addedMinutes > 0 ? { increment: addedMinutes } : undefined
-            },
+            update: userUpdate,
             create: {
                 id: userId,
-                playTimeMinutes: addedMinutes
+                playTimeMinutes: addedMinutes,
+                // If it's a create, we might want to capture these too if present
+                firstLaunch: userUpdate.firstLaunch,
+                firstLogin: userUpdate.firstLogin,
+                firstInstance: userUpdate.firstInstance,
+                firstGameLaunch: userUpdate.firstGameLaunch,
+                currentTheme: userUpdate.currentTheme
             },
         });
 
@@ -288,6 +337,26 @@ app.get('/api/public/stats', requireAuth, async (req, res) => {
             where: { type: 'GAME_LAUNCH' }
         });
 
+        // New Aggregates
+        const totalInstalls = await prisma.analyticsUser.count({ where: { firstLaunch: { not: null } } });
+        const totalActivations = await prisma.analyticsUser.count({ where: { firstGameLaunch: { not: null } } });
+
+        // Simple Funnel (Counts)
+        const funnel = {
+            installs: totalInstalls, // Step 1
+            logins: await prisma.analyticsUser.count({ where: { firstLogin: { not: null } } }), // Step 2
+            instances: await prisma.analyticsUser.count({ where: { firstInstance: { not: null } } }), // Step 3
+            activations: totalActivations // Step 4
+        };
+
+        // Theme Usage
+        const themeStats = await prisma.analyticsUser.groupBy({
+            by: ['currentTheme'],
+            _count: { currentTheme: true },
+            where: { currentTheme: { not: null } }
+        });
+
+
         // 2. Bucket by Day (in Memory - efficient enough for <100k users)
         // Initialize last 30 days with 0
         const dailyStats: Record<string, number> = {};
@@ -323,7 +392,11 @@ app.get('/api/public/stats', requireAuth, async (req, res) => {
             active_users_30d: active30,
             active_users_14d: active14,
             total_launches: totalLaunches,
-            daily_active_users: dailyArray
+            daily_active_users: dailyArray,
+            funnel: funnel,
+            theme_usage: themeStats.map(t => ({ theme: t.currentTheme, count: t._count.currentTheme })),
+            total_installs: totalInstalls,
+            total_activations: totalActivations
         });
     } catch (error) {
         logger.error('Stats error', error);

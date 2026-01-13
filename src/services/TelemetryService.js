@@ -11,6 +11,20 @@ class TelemetryService {
         this.appVersion = null;
         this.eventBuffer = [];
         this.flushInterval = null;
+        this.pageViewDebounce = null;
+    }
+
+    trackPage(pageName) {
+        if (!this.userId) return;
+        // Simple debounce to avoid rapid switching spam
+        if (this.pageViewDebounce) clearTimeout(this.pageViewDebounce);
+        this.pageViewDebounce = setTimeout(() => {
+            this.track('VIEW_PAGE', { page: pageName });
+        }, 1000);
+    }
+
+    trackThemeChange(newTheme) {
+        this.track('THEME_CHANGE', { theme: newTheme });
     }
 
     _log(message, data) {
@@ -67,6 +81,12 @@ class TelemetryService {
 
         // Send immediate heartbeat (Starts Session)
         this.sendHeartbeat();
+
+        // Check for First Launch (Client Trigger)
+        if (!localStorage.getItem('has_sent_first_launch')) {
+            this.track('FIRST_LAUNCH', {}, true);
+            localStorage.setItem('has_sent_first_launch', 'true');
+        }
 
         // Track App Close
         window.addEventListener('beforeunload', () => {
