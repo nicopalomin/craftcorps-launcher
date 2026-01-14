@@ -427,29 +427,40 @@ app.get('/api/servers/discover', requireTelemetryAuth, async (req, res) => {
 
             // Fetch fresh
             try {
-                const response = await fetch(`https://api.mcsrvstat.us/3/${ip}`, {
-                    headers: { 'User-Agent': 'CraftCorps-Launcher/1.0 (admin@craftcorps.net)' }
-                });
-                if (!response.ok) return null;
-                const data = await response.json();
-                if (!data.online) return null;
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => controller.abort(), 5000); // 5s timeout
 
-                const serverData = {
-                    ip: ip,
-                    name: ip,
-                    icon: data.icon,
-                    motd: data.motd?.html,
-                    players: data.players?.online || 0,
-                    maxPlayers: data.players?.max || 0,
-                    version: data.version,
-                    software: data.software
-                };
+                try {
+                    const response = await fetch(`https://api.mcsrvstat.us/3/${ip}`, {
+                        headers: { 'User-Agent': 'CraftCorps-Launcher/1.0 (admin@craftcorps.net)' },
+                        signal: controller.signal
+                    });
+                    clearTimeout(timeoutId);
 
-                // Update Cache
-                serverCache.set(ip, { data: serverData, timestamp: now });
-                return serverData;
+                    if (!response.ok) return null;
+                    const data = await response.json();
+                    if (!data.online) return null;
+
+                    const serverData = {
+                        ip: ip,
+                        name: ip,
+                        icon: data.icon,
+                        motd: data.motd?.html,
+                        players: data.players?.online || 0,
+                        maxPlayers: data.players?.max || 0,
+                        version: data.version,
+                        software: data.software
+                    };
+
+                    // Update Cache
+                    serverCache.set(ip, { data: serverData, timestamp: now });
+                    return serverData;
+                } catch (fetchErr) {
+                    clearTimeout(timeoutId);
+                    throw fetchErr;
+                }
             } catch (err) {
-                logger.error(`Failed to fetch ${ip}`, err);
+                logger.error(`Failed to fetch ${ip}:`, err);
                 // Return stale if available
                 if (cached) return cached.data;
                 return null;
