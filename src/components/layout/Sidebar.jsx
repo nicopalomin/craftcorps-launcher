@@ -80,14 +80,87 @@ const Sidebar = ({ activeTab, onTabChange, theme }) => {
     return (
         <aside
             ref={sidebarRef}
-            className={`${getSidebarStyles()} border-r flex flex-col p-4 z-20 select-none relative group/sidebar transition-[width,background-color] duration-500 ease-in-out`}
+            className={`${getSidebarStyles()} border-r flex flex-col z-20 select-none relative group/sidebar ${isResizing ? 'transition-none' : 'transition-[width,background-color] duration-500 ease-in-out'} transform-gpu will-change-[width] overflow-hidden`}
             style={{ width: effectiveWidth }}
             onMouseEnter={() => setIsCollapsed(false)}
             onMouseLeave={() => {
                 if (!isResizing) setIsCollapsed(true);
             }}
         >
-            {/* Collapse Toggle Removed - Hover behavior active */}
+            <div className="flex flex-col h-full overflow-hidden p-4" style={{ width: width, minWidth: width }}>
+                {/* Logo area */}
+                <div className="flex items-center mb-8 mt-2 pl-2 select-none pointer-events-none overflow-hidden whitespace-nowrap transition-all duration-500 ease-in-out">
+                    <div className="w-8 h-8 bg-gradient-to-br from-emerald-400 to-green-600 rounded-lg flex-shrink-0 flex items-center justify-center shadow-lg shadow-emerald-900/50 transition-all duration-500">
+                        <Sprout size={20} className="text-slate-200" />
+                    </div>
+                    <h1 className={`text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-emerald-400 to-green-200 transition-all duration-500 ease-in-out ${width < 180 || isCollapsed ? 'opacity-0 max-w-0 ml-0' : 'opacity-100 max-w-[200px] ml-3'}`}>
+                        CraftCorps
+                    </h1>
+                </div>
+
+                {/* Navigation */}
+                <nav className="flex-1 space-y-1 overflow-hidden">
+                    <SidebarItem
+                        icon={Play}
+                        label={t('nav_play')}
+                        active={activeTab === 'home'}
+                        onClick={() => onTabChange('home')}
+                        collapsed={isCollapsed}
+                    />
+                    <SidebarItem
+                        icon={Edit3}
+                        label={t('nav_edit_crops')}
+                        active={activeTab === 'instances'}
+                        onClick={() => onTabChange('instances')}
+                        collapsed={isCollapsed}
+                    />
+                    <SidebarItem
+                        icon={HardDrive}
+                        label={t('nav_mod_vault')}
+                        active={activeTab === 'mods'}
+                        onClick={() => onTabChange('mods')}
+                        collapsed={isCollapsed}
+                    />
+                    <SidebarItem
+                        icon={ShoppingBag}
+                        label={t('nav_market', { defaultValue: 'Market' })}
+                        active={activeTab === 'market'}
+                        onClick={() => onTabChange('market')}
+                        collapsed={isCollapsed}
+                    />
+                    <SidebarItem
+                        icon={Gift}
+                        label="Beta Rewards"
+                        active={activeTab === 'rewards'}
+                        onClick={() => onTabChange('rewards')}
+                        collapsed={isCollapsed}
+                    />
+                    <div className={`pt-4 mt-4 border-t border-slate-800 ${isCollapsed ? 'border-transparent' : ''}`}>
+                        <SidebarItem
+                            icon={Settings}
+                            label={t('nav_settings')}
+                            active={activeTab === 'settings'}
+                            onClick={() => onTabChange('settings')}
+                            collapsed={isCollapsed}
+                        />
+                        <SidebarItem
+                            icon={Shirt}
+                            label={t('nav_wardrobe')}
+                            active={activeTab === 'wardrobe'}
+                            onClick={() => onTabChange('wardrobe')}
+                            collapsed={isCollapsed}
+                        />
+                    </div>
+                </nav>
+
+                {/* Ad Space (Preserved) */}
+                <div className={`mt-auto pt-4 border-t border-slate-800 relative flex flex-col overflow-hidden transition-all duration-500 ease-in-out ${(width < 200 || isCollapsed) ? 'opacity-0 pointer-events-none hidden' : 'opacity-100'}`}>
+                    <SneakyAd />
+                    <div className="text-[10px] text-slate-600 text-center pb-2 font-mono opacity-50 hover:opacity-100 transition-opacity">
+                        v{typeof __APP_VERSION__ !== 'undefined' ? __APP_VERSION__ : '1.0.0'}
+                    </div>
+                </div>
+            </div>
 
             {/* Resize Handle */}
             {!isCollapsed && (
@@ -96,79 +169,6 @@ const Sidebar = ({ activeTab, onTabChange, theme }) => {
                     onMouseDown={startResizing}
                 />
             )}
-
-            {/* Logo area */}
-            <div className={`flex items-center mb-8 mt-2 select-none pointer-events-none overflow-hidden whitespace-nowrap transition-all duration-500 ease-in-out ${isCollapsed ? 'justify-center px-0' : 'px-2'}`}>
-                <div className="w-8 h-8 bg-gradient-to-br from-emerald-400 to-green-600 rounded-lg flex-shrink-0 flex items-center justify-center shadow-lg shadow-emerald-900/50 transition-all duration-500">
-                    <Sprout size={20} className="text-slate-200" />
-                </div>
-                <h1 className={`text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-emerald-400 to-green-200 transition-all duration-500 ease-in-out ${width < 180 || isCollapsed ? 'opacity-0 max-w-0 ml-0' : 'opacity-100 max-w-[200px] ml-3'}`}>
-                    CraftCorps
-                </h1>
-            </div>
-
-            {/* Navigation */}
-            <nav className="flex-1 space-y-1 overflow-hidden">
-                <SidebarItem
-                    icon={Play}
-                    label={t('nav_play')}
-                    active={activeTab === 'home'}
-                    onClick={() => onTabChange('home')}
-                    collapsed={isCollapsed}
-                />
-                <SidebarItem
-                    icon={Edit3}
-                    label={t('nav_edit_crops')}
-                    active={activeTab === 'instances'}
-                    onClick={() => onTabChange('instances')}
-                    collapsed={isCollapsed}
-                />
-                <SidebarItem
-                    icon={HardDrive}
-                    label={t('nav_mod_vault')}
-                    active={activeTab === 'mods'}
-                    onClick={() => onTabChange('mods')}
-                    collapsed={isCollapsed}
-                />
-                <SidebarItem
-                    icon={ShoppingBag}
-                    label={t('nav_market', { defaultValue: 'Market' })}
-                    active={activeTab === 'market'}
-                    onClick={() => onTabChange('market')}
-                    collapsed={isCollapsed}
-                />
-                <SidebarItem
-                    icon={Gift}
-                    label="Beta Rewards"
-                    active={activeTab === 'rewards'}
-                    onClick={() => onTabChange('rewards')}
-                    collapsed={isCollapsed}
-                />
-                <div className={`pt-4 mt-4 border-t border-slate-800 ${isCollapsed ? 'border-transparent' : ''}`}>
-                    <SidebarItem
-                        icon={Settings}
-                        label={t('nav_settings')}
-                        active={activeTab === 'settings'}
-                        onClick={() => onTabChange('settings')}
-                        collapsed={isCollapsed}
-                    />
-                    <SidebarItem
-                        icon={Shirt}
-                        label={t('nav_wardrobe')}
-                        active={activeTab === 'wardrobe'}
-                        onClick={() => onTabChange('wardrobe')}
-                        collapsed={isCollapsed}
-                    />
-                </div>
-            </nav>
-
-            {/* Ad Space (Preserved) */}
-            <div className={`mt-auto pt-4 border-t border-slate-800 relative flex flex-col overflow-hidden transition-all duration-500 ease-in-out ${(width < 200 || isCollapsed) ? 'opacity-0 pointer-events-none hidden' : 'opacity-100'}`}>
-                <SneakyAd />
-                <div className="text-[10px] text-slate-600 text-center pb-2 font-mono opacity-50 hover:opacity-100 transition-opacity">
-                    v{typeof __APP_VERSION__ !== 'undefined' ? __APP_VERSION__ : '1.0.0'}
-                </div>
-            </div>
         </aside>
     );
 };

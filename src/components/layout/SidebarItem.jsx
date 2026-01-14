@@ -3,7 +3,7 @@ import React from 'react';
 const SidebarItem = ({ icon: Icon, label, active, onClick, collapsed }) => (
     <button
         onClick={onClick}
-        className={`w-full flex items-center ${collapsed ? 'justify-center px-2' : 'px-4'} py-3 rounded-lg transition-all duration-500 ease-in-out group relative ${active
+        className={`w-full flex items-center pl-3.5 pr-4 py-3 rounded-lg transition-all duration-500 ease-in-out group relative ${active
             ? 'bg-emerald-500/10 text-emerald-400'
             : 'text-slate-400 hover:bg-slate-800 hover:text-slate-200'
             }`}
