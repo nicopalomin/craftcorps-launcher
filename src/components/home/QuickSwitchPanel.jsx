@@ -13,8 +13,23 @@ const QuickSwitchPanel = ({
 }) => {
     const { t } = useTranslation();
     const scrollContainerRef = React.useRef(null);
+    const panelRef = React.useRef(null);
     const [isMinimized, setIsMinimized] = React.useState(true);
     const [hasResetScroll, setHasResetScroll] = React.useState(false);
+
+    // Click outside to minimize
+    React.useEffect(() => {
+        function handleClickOutside(event) {
+            if (panelRef.current && !panelRef.current.contains(event.target) && !isMinimized) {
+                setIsMinimized(true);
+            }
+        }
+
+        document.addEventListener("mousedown", handleClickOutside);
+        return () => {
+            document.removeEventListener("mousedown", handleClickOutside);
+        };
+    }, [isMinimized]);
 
     // Initial scroll reset
     React.useEffect(() => {
@@ -34,11 +49,11 @@ const QuickSwitchPanel = ({
     };
 
     return (
-        <div className={`absolute bottom-6 left-1/2 -translate-x-1/2 w-[90%] max-w-5xl bg-slate-950/80 backdrop-blur-xl border border-white/10 p-4 rounded-3xl shadow-2xl z-40 animate-in slide-in-from-bottom-10 duration-500 transition-all ${className} ${isMinimized ? 'w-auto max-w-none px-6 py-3' : 'w-[90%] max-w-5xl'}`}>
-            <div className={`flex items-center justify-between ${isMinimized ? 'gap-4' : 'mb-3 px-2'}`}>
+        <div ref={panelRef} className={`absolute bottom-6 left-1/2 -translate-x-1/2 bg-slate-950/80 backdrop-blur-xl border border-white/10 rounded-3xl shadow-2xl z-40 animate-in slide-in-from-bottom-10 transition-all duration-700 ease-[cubic-bezier(0.32,0.72,0,1)] overflow-hidden ${className} ${isMinimized ? 'w-[90%] max-w-[240px] px-6 py-3 scale-95 opacity-80 hover:scale-100 hover:opacity-100' : 'w-[90%] max-w-5xl p-4 scale-100 opacity-100'}`}>
+            <div className={`flex items-center ${isMinimized ? 'justify-center relative' : 'justify-between mb-3 px-2'}`}>
                 <button
                     onClick={() => setIsMinimized(!isMinimized)}
-                    className="flex items-center gap-3 group focus:outline-none cursor-pointer"
+                    className={`flex items-center gap-3 group focus:outline-none cursor-pointer transition-all ${isMinimized ? 'w-full justify-center' : ''}`}
                 >
                     <span className="text-slate-500 group-hover:text-white transition-colors">
                         {isMinimized ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
