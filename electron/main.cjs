@@ -3,6 +3,7 @@ const { app, BrowserWindow, ipcMain, dialog, Tray, Menu } = require('electron');
 const path = require('path');
 const log = require('electron-log');
 const telemetryService = require('./services/telemetryService.cjs');
+const playTimeService = require('./services/playTimeService.cjs');
 
 // Set AppUserModelID for Windows Taskbar
 if (process.platform === 'win32') {
@@ -72,7 +73,8 @@ async function createWindow() {
         const { default: Store } = await import('electron-store');
         store = new Store();
 
-        const playTimeService = require('./services/playTimeService.cjs');
+        // const playTimeService = require('./services/playTimeService.cjs'); // Moved to top
+
 
         // Defer Service Init (Telemetry & PlayTime) to avoid startup contention
         setTimeout(() => {
