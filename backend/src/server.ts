@@ -386,7 +386,7 @@ app.post('/api/telemetry', requireTelemetryAuth, telemetryLimiter, async (req, r
     }
 });
 
-// 3.5 Discover Servers (Cached)
+// 3.5 Discover Servers (Cached & Paginated)
 const DISCOVER_SERVERS = [
     "mc.hypixel.net", "mineplex.com", "play.cubecraft.net", "play.wynncraft.com",
     "gommehd.net", "mccentral.org", "play.extremecraft.net",
@@ -405,77 +405,68 @@ const DISCOVER_SERVERS = [
     "top.skykingdoms.net", "play.breakdowncraft.com"
 ];
 
-let discoverCache: any[] | null = null;
-let lastDiscoverTime = 0;
-const DISCOVER_CACHE_TTL = 10 * 60 * 1000; // 10 minutes
+// Map of IP -> { data: ServerData, timestamp: number }
+const serverCache = new Map<string, { data: any, timestamp: number }>();
+const CACHE_TTL = 10 * 60 * 1000; // 10 minutes
 
 app.get('/api/servers/discover', requireTelemetryAuth, async (req, res) => {
     try {
+        const offset = parseInt(req.query.offset as string) || 0;
+        const limit = parseInt(req.query.limit as string) || 9;
+
+        // Get the specific slice of servers to return
+        const targetServers = DISCOVER_SERVERS.slice(offset, offset + limit);
         const now = Date.now();
-        if (discoverCache && (now - lastDiscoverTime < DISCOVER_CACHE_TTL)) {
-            return res.json({ success: true, servers: discoverCache, cached: true });
-        }
 
-        // Fetch fresh data
-        logger.info('[Discover] refreshing server cache...');
-
-        const results: any[] = [];
-        const CHUNK_SIZE = 5;
-
-        for (let i = 0; i < DISCOVER_SERVERS.length; i += CHUNK_SIZE) {
-            const chunk = DISCOVER_SERVERS.slice(i, i + CHUNK_SIZE);
-
-            // Fetch chunk in parallel
-            const chunkResults = await Promise.all(chunk.map(async (ip) => {
-                try {
-                    const response = await fetch(`https://api.mcsrvstat.us/3/${ip}`, {
-                        headers: {
-                            'User-Agent': 'CraftCorps-Launcher/1.0 (admin@craftcorps.net)'
-                        }
-                    });
-                    if (!response.ok) return null;
-                    const data = await response.json();
-                    if (!data.online) return null;
-
-                    return {
-                        ip: ip,
-                        name: ip,
-                        icon: data.icon,
-                        motd: data.motd?.html,
-                        players: data.players?.online || 0,
-                        maxPlayers: data.players?.max || 0,
-                        version: data.version,
-                        software: data.software
-                    };
-                } catch (err) {
-                    logger.error(`Failed to fetch ${ip}`, err);
-                    return null;
-                }
-            }));
-
-            results.push(...chunkResults);
-
-            // Delay between chunks to be nice to the API
-            if (i + CHUNK_SIZE < DISCOVER_SERVERS.length) {
-                await new Promise(resolve => setTimeout(resolve, 1000));
+        const results = await Promise.all(targetServers.map(async (ip) => {
+            // Check valid cache
+            const cached = serverCache.get(ip);
+            if (cached && (now - cached.timestamp < CACHE_TTL)) {
+                return cached.data;
             }
-        }
+
+            // Fetch fresh
+            try {
+                const response = await fetch(`https://api.mcsrvstat.us/3/${ip}`, {
+                    headers: { 'User-Agent': 'CraftCorps-Launcher/1.0 (admin@craftcorps.net)' }
+                });
+                if (!response.ok) return null;
+                const data = await response.json();
+                if (!data.online) return null;
+
+                const serverData = {
+                    ip: ip,
+                    name: ip,
+                    icon: data.icon,
+                    motd: data.motd?.html,
+                    players: data.players?.online || 0,
+                    maxPlayers: data.players?.max || 0,
+                    version: data.version,
+                    software: data.software
+                };
+
+                // Update Cache
+                serverCache.set(ip, { data: serverData, timestamp: now });
+                return serverData;
+            } catch (err) {
+                logger.error(`Failed to fetch ${ip}`, err);
+                // Return stale if available
+                if (cached) return cached.data;
+                return null;
+            }
+        }));
 
         const validServers = results.filter(s => s !== null);
 
-        // Sort by players descending?
-        validServers.sort((a: any, b: any) => b.players - a.players);
+        // Return results (no total sorting, respecting the list order)
+        res.json({
+            success: true,
+            servers: validServers,
+            hasMore: (offset + limit) < DISCOVER_SERVERS.length
+        });
 
-        discoverCache = validServers;
-        lastDiscoverTime = now;
-
-        res.json({ success: true, servers: validServers, cached: false });
     } catch (error) {
         logger.error('Discover error', error);
-        // Serve stale cache if available
-        if (discoverCache) {
-            return res.json({ success: true, servers: discoverCache, cached: true, stale: true });
-        }
         res.status(500).json({ success: false, error: 'Failed to fetch servers' });
     }
 });
