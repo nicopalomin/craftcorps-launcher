@@ -386,7 +386,96 @@ app.post('/api/telemetry', requireTelemetryAuth, telemetryLimiter, async (req, r
     }
 });
 
-// 4. Public Stats (Protected)
+// 3.5 Discover Servers (Cached)
+const DISCOVER_SERVERS = [
+    "mc.hypixel.net", "mineplex.com", "play.cubecraft.net", "play.wynncraft.com",
+    "gommehd.net", "mccentral.org", "play.extremecraft.net",
+    "pvpwars.net", "purpleprison.org", "play.manacube.com", "blockdrop.org",
+    "top.pika-network.net", "pixelmon.complex-games.com", "hub.mc-complex.com",
+    "play.earthmc.net", "play.smashmc.eu", "invadedlands.net",
+    "minemen.club", "org.archonhq.net", "play.venicraft.net", "mc.advancius.net",
+    "play.insanitycraft.net", "play.minewind.com", "hub.opblocks.com",
+    "play.pokesaga.org", "play.vanillarealms.com", "hub.penguin.gg",
+    "games.skyblocknetwork.com", "play.minesaga.org", "play.momentonetwork.net",
+    "play.cultivatemc.com", "play.applecraft.org", "play.lemoncloud.net",
+    "play.clovercraft.net", "play.melonsmp.fun", "mc.safesurvival.net",
+    "play.loverfella.com", "play.bghddevelopment.com", "play.datblock.com",
+    "play.wildwoodsmp.com", "play.catcraft.net", "play.tulipsurvival.com",
+    "play.minerages.com", "play.grandtheftmc.net", "play.fadecloud.com",
+    "top.skykingdoms.net", "play.breakdowncraft.com"
+];
+
+let discoverCache: any[] | null = null;
+let lastDiscoverTime = 0;
+const DISCOVER_CACHE_TTL = 10 * 60 * 1000; // 10 minutes
+
+app.get('/api/servers/discover', requireTelemetryAuth, async (req, res) => {
+    try {
+        const now = Date.now();
+        if (discoverCache && (now - lastDiscoverTime < DISCOVER_CACHE_TTL)) {
+            return res.json({ success: true, servers: discoverCache, cached: true });
+        }
+
+        // Fetch fresh data
+        logger.info('[Discover] refreshing server cache...');
+
+        const results: any[] = [];
+        const CHUNK_SIZE = 5;
+
+        for (let i = 0; i < DISCOVER_SERVERS.length; i += CHUNK_SIZE) {
+            const chunk = DISCOVER_SERVERS.slice(i, i + CHUNK_SIZE);
+
+            // Fetch chunk in parallel
+            const chunkResults = await Promise.all(chunk.map(async (ip) => {
+                try {
+                    const response = await fetch(`https://api.mcsrvstat.us/3/${ip}`);
+                    if (!response.ok) return null;
+                    const data = await response.json();
+                    if (!data.online) return null;
+
+                    return {
+                        ip: ip,
+                        name: ip,
+                        icon: data.icon,
+                        motd: data.motd?.html,
+                        players: data.players?.online || 0,
+                        maxPlayers: data.players?.max || 0,
+                        version: data.version,
+                        software: data.software
+                    };
+                } catch (err) {
+                    logger.error(`Failed to fetch ${ip}`, err);
+                    return null;
+                }
+            }));
+
+            results.push(...chunkResults);
+
+            // Delay between chunks to be nice to the API
+            if (i + CHUNK_SIZE < DISCOVER_SERVERS.length) {
+                await new Promise(resolve => setTimeout(resolve, 1000));
+            }
+        }
+
+        const validServers = results.filter(s => s !== null);
+
+        // Sort by players descending?
+        validServers.sort((a: any, b: any) => b.players - a.players);
+
+        discoverCache = validServers;
+        lastDiscoverTime = now;
+
+        res.json({ success: true, servers: validServers, cached: false });
+    } catch (error) {
+        logger.error('Discover error', error);
+        // Serve stale cache if available
+        if (discoverCache) {
+            return res.json({ success: true, servers: discoverCache, cached: true, stale: true });
+        }
+        res.status(500).json({ success: false, error: 'Failed to fetch servers' });
+    }
+});
+
 app.get('/api/public/stats', requireAuth, async (req, res) => {
     // Auth handled by middleware
 
