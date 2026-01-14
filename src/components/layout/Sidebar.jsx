@@ -1,6 +1,6 @@
 import React, { useRef, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Sprout, Play, Edit3, HardDrive, Settings, Shirt, ShoppingBag, Gift, PanelLeftClose, PanelLeftOpen } from 'lucide-react';
+import { Sprout, Play, Edit3, HardDrive, Settings, Shirt, ShoppingBag, Gift, PanelLeftClose, PanelLeftOpen, Star } from 'lucide-react';
 import SidebarItem from './SidebarItem';
 import SneakyAd from '../common/SneakyAd';
 
@@ -119,6 +119,13 @@ const Sidebar = ({ activeTab, onTabChange, theme }) => {
                         label={t('nav_mod_vault')}
                         active={activeTab === 'mods'}
                         onClick={() => onTabChange('mods')}
+                        collapsed={isCollapsed}
+                    />
+                    <SidebarItem
+                        icon={Star}
+                        label={t('nav_discover', { defaultValue: 'Discover' })}
+                        active={activeTab === 'discover'}
+                        onClick={() => onTabChange('discover')}
                         collapsed={isCollapsed}
                     />
                     <SidebarItem
