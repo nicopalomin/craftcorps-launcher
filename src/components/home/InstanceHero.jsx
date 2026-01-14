@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import {
     Sprout, Pickaxe, Axe, Sword, Shield, Box,
     Map, Compass, Flame, Snowflake, Droplet,
-    Zap, Heart, Skull, Ghost, Trophy, Server, X, Play, Loader2, ChevronRight, Clock
+    Zap, Heart, Skull, Ghost, Trophy, Server, X, Play, Loader2, ChevronRight, Clock, Puzzle
 } from 'lucide-react';
 import { formatLastPlayed } from '../../utils/dateUtils';
 import { useTranslation } from 'react-i18next';
@@ -30,11 +30,15 @@ const InstanceHero = ({
     launchFeedback,
     onPlay,
     onStop,
-    theme
+    theme,
+    isAdvanced = false // New prop to control layout mode
 }) => {
     const { t } = useTranslation();
-    const isModded = selectedInstance.loader !== 'Vanilla';
     const [playTime, setPlayTime] = useState(null);
+
+    // Distinguish between content type and layout mode
+    const isModdedContent = selectedInstance.loader !== 'Vanilla';
+    const isHorizontalLayout = isModdedContent && isAdvanced;
 
     useEffect(() => {
         let active = true;
@@ -53,14 +57,14 @@ const InstanceHero = ({
     const lastPlayedText = selectedInstance.lastPlayed ? formatLastPlayed(selectedInstance.lastPlayed, t) : t('home_never');
 
     return (
-        <div className={`flex flex-col items-center text-center w-full px-8 pb-8 ${isModded ? 'pt-16 max-w-7xl mx-auto' : 'max-w-4xl'}`}>
+        <div className={`flex flex-col items-center text-center w-full px-8 pb-8 transition-all duration-500 ${isHorizontalLayout ? 'pt-16 max-w-7xl mx-auto' : 'max-w-4xl'}`}>
 
-            {/* Horizontal Hero for Modded */}
-            <div className={`${isModded ? `flex items-start gap-8 w-full text-left p-8 rounded-3xl backdrop-blur-sm shadow-xl ${theme === 'white' ? 'bg-white/60 border border-slate-200' : 'bg-slate-900/40 border border-white/5'}` : 'contents'}`}>
+            {/* Horizontal Hero for Modded/Advanced */}
+            <div className={`${isHorizontalLayout ? `flex items-start gap-8 w-full text-left p-8 rounded-3xl backdrop-blur-sm shadow-xl ${theme === 'white' ? 'bg-white/60 border border-slate-200' : 'bg-slate-900/40 border border-white/5'}` : 'contents'}`}>
 
                 {/* Instance Icon */}
                 <div
-                    className={`${isModded ? 'w-24 h-24 shrink-0' : 'w-32 h-32 mb-8'} rounded-3xl ${selectedInstance.icon ? 'bg-transparent' : selectedInstance.iconColor} flex items-center justify-center ${selectedInstance.glyphColor || 'text-slate-900'} shadow-2xl shadow-black/50 transform hover:scale-105 transition-transform duration-300 ring-4 ring-white/10 overflow-hidden`}
+                    className={`${isHorizontalLayout ? 'w-24 h-24 shrink-0' : 'w-32 h-32 mb-8'} rounded-3xl ${selectedInstance.icon ? 'bg-transparent' : selectedInstance.iconColor} flex items-center justify-center ${selectedInstance.glyphColor || 'text-slate-900'} shadow-2xl shadow-black/50 transform hover:scale-105 transition-transform duration-300 ring-4 ring-white/10 overflow-hidden`}
                 >
                     {selectedInstance.icon ? (
                         <img src={selectedInstance.icon} alt={selectedInstance.name} className="w-full h-full object-cover" />
@@ -70,26 +74,21 @@ const InstanceHero = ({
                 </div>
 
                 {/* Info & Play */}
-                <div className={isModded ? 'flex-1 min-w-0' : 'contents'}>
+                <div className={isHorizontalLayout ? 'flex-1 min-w-0' : 'contents'}>
                     {/* Title */}
-                    <h1 className={`${isModded ? 'text-3xl mb-3' : 'text-5xl mb-2'} font-bold tracking-tight truncate ${theme === 'white' ? '!text-black drop-shadow-none' : 'text-slate-200 drop-shadow-lg'}`}>
+                    <h1 className={`${isHorizontalLayout ? 'text-3xl mb-3' : 'text-5xl mb-2'} font-bold tracking-tight truncate ${theme === 'white' ? '!text-black drop-shadow-none' : 'text-slate-200 drop-shadow-lg'}`}>
                         {selectedInstance.name}
                     </h1>
 
                     {/* Tags */}
-                    <div className={`flex items-center gap-3 mb-8 ${theme === 'white' ? 'text-slate-600' : 'text-slate-300'} ${isModded ? '' : 'justify-center bg-black/20 px-4 py-2 rounded-full backdrop-blur-sm border border-white/5'}`}>
+                    <div className={`flex items-center gap-3 mb-8 ${theme === 'white' ? 'text-slate-600' : 'text-slate-300'} ${isHorizontalLayout ? '' : 'justify-center bg-black/20 px-4 py-2 rounded-full backdrop-blur-sm border border-white/5'}`}>
                         <div className={`flex items-center gap-2 px-3 py-1.5 rounded-lg border ${theme === 'white' ? 'bg-slate-200/50 border-slate-300/50' : 'bg-black/20 border-white/5'}`}>
                             <span className={`font-mono ${theme === 'white' ? 'text-emerald-600' : 'text-emerald-300'}`}>{selectedInstance.version}</span>
                         </div>
 
                         <span className="w-1 h-1 rounded-full bg-slate-500" />
 
-                        <div className={`flex items-center gap-2 px-3 py-1.5 rounded-lg border ${theme === 'white' ? 'bg-slate-200/50 border-slate-300/50' : 'bg-black/20 border-white/5'}`}>
-                            <div className={`w-2 h-2 rounded-full ${isModded ? 'bg-amber-400' : 'bg-slate-400'}`}></div>
-                            <span>{selectedInstance.loader}</span>
-                        </div>
 
-                        <span className="w-1 h-1 rounded-full bg-slate-500" />
 
                         <div className={`flex items-center gap-2 px-3 py-1.5 rounded-lg border ${theme === 'white' ? 'bg-slate-200/50 border-slate-300/50' : 'bg-black/20 border-white/5'}`}>
                             <span className={`${theme === 'white' ? 'text-emerald-600' : 'text-emerald-400'} font-medium`}>{selectedInstance.status === 'Ready' ? t('home_status_ready') : selectedInstance.status}</span>
@@ -113,8 +112,16 @@ const InstanceHero = ({
                         )}
                     </div>
 
+                    {/* Modded Loader Pill */}
+                    {isModdedContent && (
+                        <div className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-bold uppercase tracking-wider mb-6 border w-fit ${isHorizontalLayout ? '' : 'mx-auto'} ${theme === 'white' ? 'bg-amber-100 border-amber-200 text-amber-700' : 'bg-amber-500/10 border-amber-500/20 text-amber-400'}`}>
+                            <Puzzle size={14} />
+                            <span>Modded • {selectedInstance.loader}</span>
+                        </div>
+                    )}
+
                     {/* Play Button - Inline for Modded */}
-                    <div className={`${isModded ? 'max-w-md' : 'w-full flex justify-center'}`}>
+                    <div className={`${isHorizontalLayout ? 'max-w-md' : 'w-full flex justify-center'}`}>
                         {launchStatus === 'idle' ? (
                             launchFeedback === 'cancelled' ? (
                                 <button disabled className="group relative w-full max-w-sm bg-slate-800 border-2 border-slate-700 text-amber-500 py-4 px-8 rounded-2xl font-bold text-lg cursor-not-allowed flex items-center justify-center gap-3 animate-pulse">
@@ -135,20 +142,20 @@ const InstanceHero = ({
                                         className={`relative w-full bg-emerald-600 group-hover:bg-emerald-500 text-white rounded-2xl font-bold ${['midnight', 'white'].includes(theme)
                                             ? 'shadow-lg shadow-black/40 group-hover:shadow-2xl group-hover:shadow-black/60'
                                             : 'shadow-[0_0_40px_rgba(5,150,105,0.4)] group-hover:shadow-[0_0_60px_rgba(5,150,105,0.6)]'
-                                            } transform group-hover:-translate-y-1 active:translate-y-0 active:scale-95 transition-[transform,box-shadow,background-color] duration-200 overflow-hidden flex items-center ring-offset-2 ring-offset-transparent group-hover:ring-2 group-hover:ring-emerald-400/30 ${isModded ? 'py-4 text-xl justify-between text-left px-6' : 'py-6 text-2xl justify-center gap-3'}`}
+                                            } transform group-hover:-translate-y-1 active:translate-y-0 active:scale-95 transition-[transform,box-shadow,background-color] duration-200 overflow-hidden flex items-center ring-offset-2 ring-offset-transparent group-hover:ring-2 group-hover:ring-emerald-400/30 ${isHorizontalLayout ? 'py-4 text-xl justify-between text-left px-6' : 'py-6 text-2xl justify-center gap-3'}`}
                                     >
                                         {/* Shiny Edge Overlay */}
                                         <div className={`absolute inset-0 rounded-2xl ring-1 ${theme === 'midnight' ? 'ring-white/5 group-hover:ring-white/10' : 'ring-white/10 group-hover:ring-white/30'} transition-all pointer-events-none`} />
 
                                         <div className={`absolute inset-0 bg-gradient-to-r from-transparent ${theme === 'midnight' ? 'via-white/5' : 'via-white/20'} to-transparent translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-1000`} />
                                         <span className="flex items-center gap-4">
-                                            <Play size={isModded ? 28 : 32} fill="currentColor" />
+                                            <Play size={isHorizontalLayout ? 28 : 32} fill="currentColor" />
                                             <span className="flex flex-col items-start leading-none gap-1">
                                                 <span>{t('home_playing')}</span>
-                                                {isModded && <span className="text-xs font-medium text-emerald-200 opacity-80 font-sans tracking-wide">Last Played: {lastPlayedText}</span>}
+                                                {isHorizontalLayout && <span className="text-xs font-medium text-emerald-200 opacity-80 font-sans tracking-wide">Last Played: {lastPlayedText}</span>}
                                             </span>
                                         </span>
-                                        {isModded && <ChevronRight size={24} className="opacity-50 group-hover:opacity-100 group-hover:translate-x-1 transition-all" />}
+                                        {isHorizontalLayout && <ChevronRight size={24} className="opacity-50 group-hover:opacity-100 group-hover:translate-x-1 transition-all" />}
                                     </button>
                                 </div>
                             )
@@ -167,8 +174,8 @@ const InstanceHero = ({
                         )}
                     </div>
 
-                    {/* Last Played - Only for Vanilla layout as it's inline for Modded */}
-                    {!isModded && (
+                    {/* Last Played - Only for Simple/Vanilla layout as it's inline for Horizontal Modded */}
+                    {!isHorizontalLayout && (
                         <p className="mt-6 text-slate-500 text-sm font-medium">
                             {t('home_last_harvested')} {lastPlayedText}
                         </p>

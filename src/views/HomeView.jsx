@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Edit3, Box, Layers } from 'lucide-react';
+import { Paintbrush, Box, Layers, Settings } from 'lucide-react';
 import BackgroundBlobs from '../components/common/BackgroundBlobs';
 import { useToast } from '../contexts/ToastContext';
 import { useTranslation } from 'react-i18next';
@@ -47,6 +47,7 @@ const HomeView = ({
     const [isDragging, setIsDragging] = useState(false);
     const [activeTab, setActiveTab] = useState('mods');
     const [showQuickSwitch, setShowQuickSwitch] = useState(true);
+    const [showAdvanced, setShowAdvanced] = useState(false);
     const lastScrollY = React.useRef(0);
 
     // Handlers
@@ -283,10 +284,13 @@ const HomeView = ({
     const [hasLoadedMods, setHasLoadedMods] = useState(false);
 
     useEffect(() => {
-        // Reset when instance changes
         setInstalledMods([]);
         setResourcePacks([]);
         setHasLoadedMods(false);
+        // Do NOT reset showAdvanced here if we want persistence, 
+        // but user probably expects it to close when switching instances? 
+        // Let's reset it for now to keep it clean.
+        setShowAdvanced(false);
     }, [selectedInstance]);
 
     useEffect(() => {
@@ -334,7 +338,7 @@ const HomeView = ({
     const isModded = selectedInstance && selectedInstance.loader !== 'Vanilla';
 
     return (
-        <div className={`flex-1 flex flex-col relative animate-in fade-in zoom-in-95 duration-500 select-none overflow-hidden ${isModded ? 'justify-start' : 'justify-center'}`}>
+        <div className={`flex-1 flex flex-col relative animate-in fade-in zoom-in-95 duration-500 select-none overflow-hidden ${isModded && showAdvanced ? 'justify-start' : 'justify-center'}`}>
             {/* Dynamic Background */}
             {selectedInstance && !['midnight', 'white'].includes(theme) && (
                 <div
@@ -358,23 +362,41 @@ const HomeView = ({
                 onLogout={onLogout}
             />
 
-            {/* Edit Button - positioned under profile */}
+            {/* Edit/Customize Buttons */}
             {selectedInstance && (
-                <button
-                    onClick={() => onEditCrop(selectedInstance)}
-                    className="absolute top-24 right-8 flex items-center gap-2 px-4 py-2 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800/50 border border-transparent hover:border-slate-700 transition-all backdrop-blur-sm z-40 group"
-                    title={t('home_edit_crop')}
-                >
-                    <Edit3 size={18} className="group-hover:text-emerald-400 transition-colors" />
-                    <span className="font-medium text-sm">{t('home_edit_crop')}</span>
-                </button>
+                <div className="absolute top-24 right-8 flex flex-col gap-3 z-40">
+                    <button
+                        onClick={() => onEditCrop(selectedInstance)}
+                        className="flex items-center gap-2 px-4 py-2 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800/50 border border-transparent hover:border-slate-700 transition-all backdrop-blur-sm group"
+                        title={t('customize', 'Customize')}
+                    >
+                        <Paintbrush size={18} className="group-hover:text-emerald-400 transition-colors" />
+                        <span className="font-medium text-sm">Customize</span>
+                    </button>
+
+                    {isModded && (
+                        <button
+                            onClick={() => setShowAdvanced(!showAdvanced)}
+                            className={`flex items-center gap-2 px-4 py-2 rounded-xl border transition-all backdrop-blur-sm group ${showAdvanced
+                                ? 'text-white bg-slate-800/50 border-slate-700'
+                                : 'text-slate-400 hover:text-white hover:bg-slate-800/50 border-transparent hover:border-slate-700'}`}
+                            title={showAdvanced ? t('Hide Advanced') : t('Advanced Settings')}
+                        >
+                            <Settings size={18} className={`transition-colors ${showAdvanced ? 'text-indigo-400' : 'group-hover:text-indigo-400'}`} />
+                            <span className="font-medium text-sm">Edit</span>
+                        </button>
+                    )}
+                </div>
             )}
 
             {/* Main Content Scrollable Area */}
             <div
-                className={`relative z-10 flex-1 w-full overflow-y-auto custom-scrollbar ${isModded ? '' : 'flex flex-col items-center justify-center'}`}
+                className="relative z-10 flex-1 w-full overflow-y-auto custom-scrollbar flex flex-col items-center transition-all duration-500"
                 onScroll={handleScroll}
             >
+                {/* Top Spacer - animates flex-grow to slide content up */}
+                <div className={`w-full transition-all duration-500 ease-in-out ${(!isModded || !showAdvanced) ? 'flex-1 min-h-[10%]' : 'flex-none h-0'}`} />
+
                 {selectedInstance ? (
                     <>
                         <InstanceHero
@@ -384,82 +406,88 @@ const HomeView = ({
                             onPlay={onPlay}
                             onStop={onStop}
                             theme={theme}
+                            isAdvanced={showAdvanced}
                         />
 
                         {/* Modded Details Section */}
-                        {isModded && (
-                            <div ref={modsSectionRef} className="w-full max-w-7xl mx-auto px-8 pb-8 animate-in slide-in-from-bottom-10 fade-in duration-700 delay-100">
-                                {/* Unified Glass Card */}
-                                <div className={`backdrop-blur-md flex flex-col h-[750px] overflow-hidden relative border rounded-3xl transition-colors duration-300 ${theme === 'white' ? 'bg-white/90 border-white/50 shadow-xl' : 'bg-slate-900/40 border-white/5'}`}>
+                        <div className={`w-full transition-all duration-700 ease-in-out ${isModded && showAdvanced ? 'opacity-100 max-h-[2000px] translate-y-0' : 'opacity-0 max-h-0 translate-y-20 overflow-hidden'}`}>
+                            {isModded && (
+                                <div ref={modsSectionRef} className="w-full max-w-7xl mx-auto px-8 pb-8 animate-in slide-in-from-bottom-10 fade-in duration-700 delay-100">
+                                    {/* Unified Glass Card */}
+                                    <div className={`backdrop-blur-md flex flex-col h-[750px] overflow-hidden relative border rounded-3xl transition-colors duration-300 ${theme === 'white' ? 'bg-white/90 border-white/50 shadow-xl' : 'bg-slate-900/40 border-white/5'}`}>
 
-                                    {/* Internal Tab Switcher */}
-                                    <div className={`flex items-center justify-center pt-6 pb-4 border-b ${theme === 'white' ? 'border-slate-200 bg-slate-50/50' : 'border-white/5 bg-white/[0.02]'}`}>
-                                        <div className={`flex p-1 rounded-xl border relative ${theme === 'white' ? 'bg-slate-200/50 border-slate-300/50' : 'bg-slate-950/50 border-white/10'}`}>
-                                            <button
-                                                onClick={() => setActiveTab('mods')}
-                                                className={`relative px-8 py-2 rounded-lg font-medium text-sm transition-all duration-300 flex items-center justify-center gap-2 min-w-[140px] z-10 ${activeTab === 'mods'
-                                                    ? 'text-white bg-indigo-600 shadow-lg shadow-indigo-500/20'
-                                                    : (theme === 'white' ? 'text-slate-600 hover:text-slate-900 hover:bg-white/60' : 'text-slate-400 hover:text-white hover:bg-white/5')
-                                                    }`}
-                                            >
-                                                <Box size={16} />
-                                                <span>Mods</span>
-                                            </button>
-                                            <button
-                                                onClick={() => setActiveTab('resourcepacks')}
-                                                className={`relative px-8 py-2 rounded-lg font-medium text-sm transition-all duration-300 flex items-center justify-center gap-2 min-w-[140px] z-10 ${activeTab === 'resourcepacks'
-                                                    ? 'text-white bg-pink-600 shadow-lg shadow-pink-500/20'
-                                                    : (theme === 'white' ? 'text-slate-600 hover:text-slate-900 hover:bg-white/60' : 'text-slate-400 hover:text-white hover:bg-white/5')
-                                                    }`}
-                                            >
-                                                <Layers size={16} />
-                                                <span>Resource Packs</span>
-                                            </button>
+                                        {/* Internal Tab Switcher */}
+                                        <div className={`flex items-center justify-center pt-6 pb-4 border-b ${theme === 'white' ? 'border-slate-200 bg-slate-50/50' : 'border-white/5 bg-white/[0.02]'}`}>
+                                            <div className={`flex p-1 rounded-xl border relative ${theme === 'white' ? 'bg-slate-200/50 border-slate-300/50' : 'bg-slate-950/50 border-white/10'}`}>
+                                                <button
+                                                    onClick={() => setActiveTab('mods')}
+                                                    className={`relative px-8 py-2 rounded-lg font-medium text-sm transition-all duration-300 flex items-center justify-center gap-2 min-w-[140px] z-10 ${activeTab === 'mods'
+                                                        ? 'text-white bg-indigo-600 shadow-lg shadow-indigo-500/20'
+                                                        : (theme === 'white' ? 'text-slate-600 hover:text-slate-900 hover:bg-white/60' : 'text-slate-400 hover:text-white hover:bg-white/5')
+                                                        }`}
+                                                >
+                                                    <Box size={16} />
+                                                    <span>Mods</span>
+                                                </button>
+                                                <button
+                                                    onClick={() => setActiveTab('resourcepacks')}
+                                                    className={`relative px-8 py-2 rounded-lg font-medium text-sm transition-all duration-300 flex items-center justify-center gap-2 min-w-[140px] z-10 ${activeTab === 'resourcepacks'
+                                                        ? 'text-white bg-pink-600 shadow-lg shadow-pink-500/20'
+                                                        : (theme === 'white' ? 'text-slate-600 hover:text-slate-900 hover:bg-white/60' : 'text-slate-400 hover:text-white hover:bg-white/5')
+                                                        }`}
+                                                >
+                                                    <Layers size={16} />
+                                                    <span>Resource Packs</span>
+                                                </button>
+                                            </div>
+                                        </div>
+
+                                        {/* Content Area */}
+                                        <div className="flex-1 overflow-hidden relative">
+                                            {activeTab === 'mods' ? (
+                                                <ModsList
+                                                    installedMods={installedMods}
+                                                    selectedInstance={selectedInstance}
+                                                    isLoading={isLoadingMods}
+                                                    onRefresh={handleRefreshMods}
+                                                    onAdd={handleAddMods}
+                                                    onBrowse={onBrowseMods}
+                                                    onDelete={handleDeleteMod}
+                                                    isDraggingGlobal={isDragging}
+                                                    onDragOver={handleDragOver}
+                                                    onDragLeave={handleDragLeave}
+                                                    onDrop={handleDrop}
+                                                    theme={theme}
+                                                    className="!bg-transparent !border-none !rounded-none !shadow-none !h-full !p-6 animate-in fade-in duration-300"
+                                                />
+                                            ) : (
+                                                <ResourcePacksList
+                                                    resourcePacks={resourcePacks}
+                                                    selectedInstance={selectedInstance}
+                                                    isLoading={isLoadingResourcePacks}
+                                                    onRefresh={handleRefreshResourcePacks}
+                                                    onAdd={handleAddResourcePacks}
+                                                    onDelete={handleDeleteResourcePack}
+                                                    isDraggingGlobal={isDragging}
+                                                    onDragOver={handleDragOver}
+                                                    onDragLeave={handleDragLeave}
+                                                    onDrop={handleResourcePackDrop}
+                                                    theme={theme}
+                                                    className="!bg-transparent !border-none !rounded-none !shadow-none !h-full !p-6 animate-in fade-in duration-300"
+                                                />
+                                            )}
                                         </div>
                                     </div>
-
-                                    {/* Content Area */}
-                                    <div className="flex-1 overflow-hidden relative">
-                                        {activeTab === 'mods' ? (
-                                            <ModsList
-                                                installedMods={installedMods}
-                                                selectedInstance={selectedInstance}
-                                                isLoading={isLoadingMods}
-                                                onRefresh={handleRefreshMods}
-                                                onAdd={handleAddMods}
-                                                onBrowse={onBrowseMods}
-                                                onDelete={handleDeleteMod}
-                                                isDraggingGlobal={isDragging}
-                                                onDragOver={handleDragOver}
-                                                onDragLeave={handleDragLeave}
-                                                onDrop={handleDrop}
-                                                theme={theme}
-                                                className="!bg-transparent !border-none !rounded-none !shadow-none !h-full !p-6 animate-in fade-in duration-300"
-                                            />
-                                        ) : (
-                                            <ResourcePacksList
-                                                resourcePacks={resourcePacks}
-                                                selectedInstance={selectedInstance}
-                                                isLoading={isLoadingResourcePacks}
-                                                onRefresh={handleRefreshResourcePacks}
-                                                onAdd={handleAddResourcePacks}
-                                                onDelete={handleDeleteResourcePack}
-                                                isDraggingGlobal={isDragging}
-                                                onDragOver={handleDragOver}
-                                                onDragLeave={handleDragLeave}
-                                                onDrop={handleResourcePackDrop}
-                                                theme={theme}
-                                                className="!bg-transparent !border-none !rounded-none !shadow-none !h-full !p-6 animate-in fade-in duration-300"
-                                            />
-                                        )}
-                                    </div>
                                 </div>
-                            </div>
-                        )}
+                            )}
+                        </div>
                     </>
                 ) : (
                     isLoadingInstances ? <HomeSkeleton theme={theme} /> : <EmptyState onNewCrop={onNewCrop} />
                 )}
+
+                {/* Bottom Spacer - animates flex-grow to slide content up */}
+                <div className={`w-full transition-all duration-500 ease-in-out ${(!isModded || !showAdvanced) ? 'flex-1 min-h-[10%]' : 'flex-none h-0'}`} />
             </div>
             {/* Quick Switch Panel */}
             <QuickSwitchPanel
