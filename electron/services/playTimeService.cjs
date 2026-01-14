@@ -1,5 +1,5 @@
 const log = require('electron-log');
-const telemetryService = require('./telemetryService');
+const telemetryService = require('./telemetryService.cjs');
 
 let store;
 

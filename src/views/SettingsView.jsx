@@ -1,9 +1,12 @@
 import React from 'react';
 import { Cpu, Globe, Monitor, Terminal, Palette } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
+import { useToast } from '../contexts/ToastContext';
 
 const SettingsView = ({ ram, setRam, javaPath, setJavaPath, hideOnLaunch, setHideOnLaunch, disableAnimations, setDisableAnimations, availableJavas, enableDiscordRPC, setEnableDiscordRPC, theme, setTheme }) => {
     const { t, i18n } = useTranslation();
+    const { addToast } = useToast();
+    const [isUploadingLogs, setIsUploadingLogs] = React.useState(false);
     const languages = [
         { code: 'en', label: 'English' },
         { code: 'es', label: 'Español' },
@@ -242,18 +245,28 @@ const SettingsView = ({ ram, setRam, javaPath, setJavaPath, hideOnLaunch, setHid
                             </button>
                             <button
                                 onClick={async () => {
-                                    const btn = document.getElementById('upload-logs-btn');
-                                    if (btn) { btn.disabled = true; btn.innerText = "Uploading..."; }
+                                    if (isUploadingLogs) return;
+                                    setIsUploadingLogs(true);
                                     try {
                                         const res = await window.electronAPI.uploadLogsManually();
-                                        alert(res.success ? t('toast_logs_uploaded') : t('toast_logs_failed') + res.error);
-                                    } catch (e) { alert(t('toast_logs_failed') + "Unknown error"); }
-                                    if (btn) { btn.disabled = false; btn.innerText = t('btn_upload_logs'); }
+                                        if (res.success) {
+                                            addToast(t('toast_logs_uploaded'), 'success');
+                                        } else {
+                                            addToast(t('toast_logs_failed') + (res.error ? `: ${res.error}` : ''), 'error');
+                                        }
+                                    } catch (e) {
+                                        addToast(t('toast_logs_failed') + ": Unknown error", 'error');
+                                    } finally {
+                                        setIsUploadingLogs(false);
+                                    }
                                 }}
-                                id="upload-logs-btn"
-                                className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 rounded-lg text-sm font-medium text-white transition-colors shadow-lg shadow-emerald-900/20"
+                                disabled={isUploadingLogs}
+                                className={`px-4 py-2 rounded-lg text-sm font-medium text-white transition-colors shadow-lg shadow-emerald-900/20 ${isUploadingLogs
+                                    ? 'bg-emerald-600/50 cursor-not-allowed'
+                                    : 'bg-emerald-600 hover:bg-emerald-500'
+                                    }`}
                             >
-                                {t('btn_upload_logs')}
+                                {isUploadingLogs ? t('status_uploading', 'Uploading...') : t('btn_upload_logs')}
                             </button>
                         </div>
                     </div>

@@ -11,6 +11,10 @@ import geoip from 'geoip-lite';
 import multer from 'multer';
 import fs from 'fs';
 import path from 'path';
+import jwt from 'jsonwebtoken';
+import rateLimit from 'express-rate-limit';
+
+const TELEMETRY_SECRET = process.env.TELEMETRY_SECRET || 'dev_secret_change_me_in_prod';
 
 const app = express();
 const prisma = new PrismaClient();
@@ -112,6 +116,41 @@ app.use(helmet());
 app.use(cors());
 app.use(express.json({ limit: '1mb' }));
 
+// -- Rate Limiters --
+const bootstrapLimiter = rateLimit({
+    windowMs: 60 * 60 * 1000, // 1 hour
+    max: 10, // Limit each IP to 10 bootstrap requests per hour
+    message: { error: 'Too many bootstrap requests, please try again later.' },
+    standardHeaders: true,
+    legacyHeaders: false,
+});
+
+const telemetryLimiter = rateLimit({
+    windowMs: 1 * 60 * 1000, // 1 minute
+    max: 60, // Limit each IP to 60 requests per minute (burst)
+    message: { error: 'Telemetry rate limit exceeded' },
+    standardHeaders: true,
+    legacyHeaders: false,
+});
+
+// -- Custom Auth Middleware for Telemetry --
+const requireTelemetryAuth = (req: express.Request, res: express.Response, next: express.NextFunction) => {
+    const authHeader = req.headers.authorization;
+    const token = authHeader && authHeader.split(' ')[1];
+
+    if (!token) {
+        return res.status(401).json({ error: 'Missing telemetry token' });
+    }
+
+    jwt.verify(token, TELEMETRY_SECRET, (err: any, user: any) => {
+        if (err) {
+            return res.status(403).json({ error: 'Invalid or expired token' });
+        }
+        (req as any).telemetryUser = user;
+        next();
+    });
+};
+
 // -- Endpoints --
 
 // 0. Log Stream (SSE)
@@ -145,12 +184,26 @@ app.get('/api/logs/stream', requireAuth, (req, res) => {
     });
 });
 
+// 0.5 Bootstrap Telemetry Token
+app.post('/api/telemetry/bootstrap', bootstrapLimiter, async (req, res) => {
+    // Generate a temporary anonymous ID or use provided if valid?
+    // For simplicity, we mint a new token. Client must store it.
+    // Ideally, client sends a UUID they generated.
+    const { clientId } = req.body;
+    const finalId = clientId || `anon_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+
+    const token = jwt.sign({ clientId: finalId }, TELEMETRY_SECRET, { expiresIn: '24h' });
+
+    res.json({ token, clientId: finalId, expiresIn: 86400 });
+});
+
 // 1. Heartbeat (DAU/MAU + Session)
-app.post('/api/heartbeat', async (req, res) => {
-    const { userId, sessionId, appVersion } = req.body; // [NEW] appVersion
+app.post('/api/heartbeat', requireTelemetryAuth, async (req, res) => {
+    const { sessionId, appVersion } = req.body;
+    const userId = (req as any).telemetryUser.clientId;
 
     if (!userId) {
-        return res.status(400).json({ error: 'Missing userId' });
+        return res.status(400).json({ error: 'Missing userId from token' });
     }
 
     try {
@@ -214,7 +267,8 @@ app.post('/api/heartbeat', async (req, res) => {
             currentSessionId = session.id;
         }
 
-        logger.info(`[Heartbeat] User ${userId} [${country || 'Unknown'}] Session: ${currentSessionId} (v${appVersion || '??'}) Streak: ${user?.streak || 1}`);
+        // @ts-ignore
+        logger.info(`[Heartbeat] User ${userId} [${country || 'Unknown'}] Session: ${currentSessionId} (v${appVersion || '??'}) Streak: ${(existingUser as any)?.streak || 1}`);
         res.json({ success: true, sessionId: currentSessionId });
     } catch (error) {
         logger.error('Heartbeat error', error);
@@ -223,10 +277,11 @@ app.post('/api/heartbeat', async (req, res) => {
 });
 
 // 2. Hardware Specs
-app.post('/api/hardware', async (req, res) => {
-    const { userId, os, osVersion, ram, gpu, cpu } = req.body;
+app.post('/api/hardware', requireTelemetryAuth, async (req, res) => {
+    const { os, osVersion, ram, gpu, cpu } = req.body;
+    const userId = (req as any).telemetryUser.clientId;
 
-    if (!userId) return res.status(400).json({ error: 'Missing userId' });
+    if (!userId) return res.status(400).json({ error: 'Missing userId from token' });
 
     try {
         await prisma.hardware.upsert({
@@ -243,8 +298,9 @@ app.post('/api/hardware', async (req, res) => {
 });
 
 // 3. Telemetry Events (Batch)
-app.post('/api/telemetry', async (req, res) => {
-    const { userId, events } = req.body; // events = [{ type, metadata, timestamp }]
+app.post('/api/telemetry', requireTelemetryAuth, telemetryLimiter, async (req, res) => {
+    const { events } = req.body;
+    const userId = (req as any).telemetryUser.clientId;
 
     if (!userId || !Array.isArray(events)) {
         return res.status(400).json({ error: 'Invalid payload' });
@@ -255,22 +311,35 @@ app.post('/api/telemetry', async (req, res) => {
         let addedMinutes = 0;
         for (const e of events) {
             if (e.type === 'PLAY_TIME_PING' && e.metadata && typeof e.metadata.duration === 'number') {
-                addedMinutes += Math.floor(e.metadata.duration / 60000); // 300000ms -> 5 mins
+                addedMinutes += Math.floor(e.metadata.duration / 60000);
             }
         }
 
-        // Ensure user exists first and update play time if needed
+        // Fetch user first to check existing flags
+        const existingUser = await prisma.analyticsUser.findUnique({ where: { id: userId } });
+
         const userUpdate: any = {
             lastSeen: new Date(),
             playTimeMinutes: addedMinutes > 0 ? { increment: addedMinutes } : undefined
         };
 
-        // Check for Lifecycle Events in the batch
+        // Check for Lifecycle Events in the batch (Conditional Update)
         for (const e of events) {
-            if (e.type === 'FIRST_LAUNCH') userUpdate.firstLaunch = new Date(e.timestamp || Date.now());
-            if (e.type === 'FIRST_LOGIN') userUpdate.firstLogin = new Date(e.timestamp || Date.now());
-            if (e.type === 'FIRST_INSTANCE') userUpdate.firstInstance = new Date(e.timestamp || Date.now());
-            if (e.type === 'FIRST_GAME_LAUNCH') userUpdate.firstGameLaunch = new Date(e.timestamp || Date.now());
+            const ts = new Date(e.timestamp || Date.now());
+
+            if (e.type === 'FIRST_LAUNCH') {
+                if (!existingUser || !existingUser.firstLaunch) userUpdate.firstLaunch = ts;
+            }
+            if (e.type === 'FIRST_LOGIN') {
+                if (!existingUser || !existingUser.firstLogin) userUpdate.firstLogin = ts;
+            }
+            if (e.type === 'FIRST_INSTANCE') {
+                if (!existingUser || !existingUser.firstInstance) userUpdate.firstInstance = ts;
+            }
+            if (e.type === 'FIRST_GAME_LAUNCH') {
+                if (!existingUser || !existingUser.firstGameLaunch) userUpdate.firstGameLaunch = ts;
+            }
+
             if (e.type === 'THEME_CHANGE' && e.metadata) {
                 try {
                     const meta = typeof e.metadata === 'string' ? JSON.parse(e.metadata) : e.metadata;
@@ -405,7 +474,17 @@ app.get('/api/public/stats', requireAuth, async (req, res) => {
 });
 
 // 5. Crash Reporting (Public Submission)
-app.post('/api/crash-report', upload.single('upload_file_minidump'), async (req: any, res: any) => {
+// Note: Electron's crashReporter doesn't easily support custom headers for all uploads, 
+// but our manual 'sendManualCrashReport' does. 
+// For strict auth, we check for 'authorization' header. 
+// IF the standard crashReporter is used, this might fail unless we patch headers on client or allow anonymous.
+// Given strict reqs: we ENFORCE it.
+app.post('/api/crash-report', requireTelemetryAuth, upload.single('upload_file_minidump'), async (req: any, res: any, next: any) => {
+    // Custom Auth Check because multer runs before body parsing, 
+    // but headers are available.
+    // The requireTelemetryAuth middleware now handles this.
+
+    // Proceed
     try {
         const file = req.file;
         const body = req.body;
@@ -421,8 +500,7 @@ app.post('/api/crash-report', upload.single('upload_file_minidump'), async (req:
                 appVersion: body.ver || body._version || 'unknown',
                 dumpPath: file ? file.path : '',
                 ip: req.ip || '',
-                // If we had userId in extra params:
-                userId: body.userId || undefined,
+                userId: req.telemetryUser.clientId // Link to user
             }
         });
 

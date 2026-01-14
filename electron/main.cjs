@@ -67,16 +67,20 @@ async function createWindow() {
         : path.join(__dirname, '../dist/icon.png');
 
     // Dynamic import for ESM module support
+    // Dynamic import for ESM module support
     if (!store) {
         const { default: Store } = await import('electron-store');
         store = new Store();
-        telemetryService.init(store);
 
-        // Init PlayTime Service
         const playTimeService = require('./services/playTimeService.cjs');
-        playTimeService.init(store);
 
-        // Register PlayTime Listeners immediately (lightweight)
+        // Defer Service Init (Telemetry & PlayTime) to avoid startup contention
+        setTimeout(() => {
+            telemetryService.init(store);
+            playTimeService.init(store);
+        }, 5000);
+
+        // Register PlayTime Listeners immediately (lightweight, handles missing store gracefully)
         ipcMain.handle('get-total-playtime', () => playTimeService.getTotalPlayTime());
         ipcMain.handle('get-instance-playtime', (e, id) => playTimeService.getInstancePlayTime(id));
     }

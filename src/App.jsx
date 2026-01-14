@@ -19,22 +19,26 @@ function App() {
     const { t } = useTranslation();
     const [activeTab, setActiveTab] = useState('home');
 
-    // Initialize Telemetry
+    // Initialize Telemetry (Delayed)
     useEffect(() => {
-        if (window.electronAPI) {
-            const storeWrapper = {
-                get: (key) => window.electronAPI?.storeGet?.(key),
-                set: (key, val) => window.electronAPI?.storeSet?.(key, val)
-            };
+        const initTimer = setTimeout(() => {
+            if (window.electronAPI) {
+                const storeWrapper = {
+                    get: (key) => window.electronAPI?.storeGet?.(key),
+                    set: (key, val) => window.electronAPI?.storeSet?.(key, val)
+                };
 
-            telemetry.init(storeWrapper).then(() => {
-                telemetry.track('APP_OPEN');
-                // Defer hardware info to avoid startup slowdown
-                setTimeout(() => {
-                    telemetry.sendHardwareInfo();
-                }, 15000);
-            });
-        }
+                telemetry.init(storeWrapper).then(() => {
+                    telemetry.track('APP_OPEN');
+                    // Defer hardware info to avoid startup slowdown
+                    setTimeout(() => {
+                        telemetry.sendHardwareInfo();
+                    }, 15000);
+                });
+            }
+        }, 5000);
+
+        return () => clearTimeout(initTimer);
     }, []);
 
     // Track Page Views
@@ -42,10 +46,7 @@ function App() {
         telemetry.trackPage(activeTab);
     }, [activeTab]);
 
-    // Track Theme Changes
-    useEffect(() => {
-        if (theme) telemetry.trackThemeChange(theme);
-    }, [theme]);
+
 
     // Hooks
     const {
@@ -58,6 +59,11 @@ function App() {
         availableJavas,
         refreshJavas
     } = useAppSettings();
+
+    // Track Theme Changes
+    useEffect(() => {
+        if (theme) telemetry.trackThemeChange(theme);
+    }, [theme]);
 
     const {
         accounts,

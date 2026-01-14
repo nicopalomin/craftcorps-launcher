@@ -14,6 +14,8 @@ class TelemetryService {
         this.flushInterval = null;
         this.store = null;
         this.startupTime = Date.now() - (process.uptime() * 1000); // Approximate process start time
+        this.token = null;
+        this.tokenExpiry = null;
     }
 
     _log(message, data) {
@@ -37,8 +39,10 @@ class TelemetryService {
         }
         this.userId = id;
 
-        // Check for pending offline events (from store, if we saved them there)
-        // Note: effectively we might want to store pending events in store too
+        // [AUTH] Bootstrap Telemetry Token - Deferred to first flush or heartbeat
+        // await this.bootstrapToken();
+
+        // Check for pending offline events
         const pending = store.get('pending_telemetry_events_main');
         if (pending && Array.isArray(pending) && pending.length > 0) {
             this._log('Found pending offline events:', pending.length);
@@ -47,35 +51,62 @@ class TelemetryService {
             this.flushEvents();
         }
 
-        // Start flush timer (every 60s - less frequent for performance)
+        // Start flush timer
         this.flushInterval = setInterval(() => this.flushEvents(), 60000);
 
         // Track Startup Time (once)
         if (!store.get('has_sent_startup_perf')) {
             const startupDuration = Date.now() - this.startupTime;
             this.track('APP_STARTUP_TIME', { durationMs: startupDuration });
-            // Don't save permanent flag if we want to track *every* startup, 
-            // but plan implies "First Launch" mostly. 
-            // Better: Track every startup as generic event, but "First Launch" is special.
-            // Let's track startup time every time.
         }
 
-        // Send immediate heartbeat (Starts Session)
-        // this.sendHeartbeat(); // Disabled to avoid duplicate sessions
+        // Send immediate heartbeat (Starts Session) - Delayed for startup speed
+        setTimeout(() => {
+            this.sendHeartbeat();
+        }, 15000);
+    }
 
-        // Send Hardware Info on startup
-        // this.sendHardwareInfo(); // Disabled (Frontend sends detailed info)
+    async bootstrapToken() {
+        try {
+            this._log('Bootstrapping telemetry token...');
+            const res = await fetch(`${API_BASE}/telemetry/bootstrap`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ clientId: this.userId })
+            });
+
+            if (!res.ok) throw new Error(`Bootstrap failed: ${res.status}`);
+
+            const data = await res.json();
+            this.token = data.token;
+            // calculated expiry (subtract 5 mins buffer)
+            this.tokenExpiry = Date.now() + (data.expiresIn * 1000) - 300000;
+            this._log('Telemetry token acquired.');
+        } catch (e) {
+            console.error('[Telemetry] Bootstrap error:', e.message);
+        }
+    }
+
+    async ensureToken() {
+        if (!this.token || (this.tokenExpiry && Date.now() > this.tokenExpiry)) {
+            await this.bootstrapToken();
+        }
+        return this.token;
     }
 
     async sendHeartbeat() {
         if (!this.userId) return;
-        // this._log('Sending heartbeat...'); // Reduce noise
         try {
+            const token = await this.ensureToken();
+            if (!token) return;
+
             const res = await fetch(`${API_BASE}/heartbeat`, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
                 body: JSON.stringify({
-                    userId: this.userId,
                     sessionId: this.sessionId,
                     appVersion: this.appVersion
                 }),
@@ -92,21 +123,26 @@ class TelemetryService {
     async sendHardwareInfo() {
         if (!this.userId) return;
         try {
-            // Simple hardware info from os module
+            const token = await this.ensureToken(); // Optional: protect this too if needed, usually mostly stats
+            if (!token) return;
+
             const ram = Math.round(os.totalmem() / (1024 * 1024 * 1024)) + ' GB';
             const cpu = os.cpus()[0]?.model || 'Unknown CPU';
             const osInfo = `${os.type()} ${os.release()} ${os.arch()}`;
 
             await fetch(`${API_BASE}/hardware`, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
                 body: JSON.stringify({
                     userId: this.userId,
-                    os: process.platform, // 'win32', 'linux', 'darwin'
+                    os: process.platform,
                     osVersion: osInfo,
                     ram: ram,
                     cpu: cpu,
-                    gpu: 'Unknown (Main Process)' // GPU info is harder in pure Node without systeminformation/electron getGPUInfo
+                    gpu: 'Unknown (Main Process)'
                 }),
             });
         } catch (e) {
@@ -119,17 +155,16 @@ class TelemetryService {
 
         // Constraint: Max buffer size
         if (this.eventBuffer.length > 100) {
-            this.eventBuffer.shift(); // Drop oldest
+            this.eventBuffer.shift();
         }
 
         this.eventBuffer.push({
             type,
-            metadata: JSON.stringify(metadata), // Pre-stringify to avoid deep obj issues later
+            metadata: JSON.stringify(metadata),
             timestamp: new Date().toISOString(),
         });
 
         if (immediate || this.eventBuffer.length >= 20) {
-            // Debounce flush
             if (this._flushTimer) clearTimeout(this._flushTimer);
             this._flushTimer = setTimeout(() => this.flushEvents(), 2000);
         }
@@ -139,62 +174,65 @@ class TelemetryService {
         this.track('ERROR', { source, message });
     }
 
-    // Specific helper for crashes
     async trackCrash(error) {
         console.error('[Telemetry] Tracking Crash:', error);
         await this.track('CRASH', {
             message: error.message,
             stack: error.stack,
             name: error.name
-        }, true); // force immediate flush
+        }, true);
     }
 
     async flushEvents() {
         if (this.eventBuffer.length === 0 || !this.userId) return;
 
         const events = [...this.eventBuffer];
-        this.eventBuffer = []; // Clear buffer immediately
+        this.eventBuffer = [];
 
         try {
+            const token = await this.ensureToken();
+            if (!token) throw new Error('No auth token available');
+
             await fetch(`${API_BASE}/telemetry`, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ userId: this.userId, events }),
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify({ events }),
             });
             this._log(`Flushed ${events.length} events successfully.`);
         } catch (e) {
             console.error('[Telemetry] Failed to flush events', e.message);
-
-            // Save back to store for next run
             this.savePendingEvents(events);
         }
     }
 
     // New Wrapper for Manual Log Upload (Legacy Endpoint)
-    // This allows it to show up in the "Crash Reports" tab of the admin panel
     async sendManualCrashReport(logContent, sysInfoString) {
         if (!this.userId) throw new Error('Telemetry not initialized');
 
         const finalContent = sysInfoString + '\n' + logContent;
 
-        // Node 18+ has Blob/FormData global
         const blob = new Blob([finalContent], { type: 'text/plain' });
         const formData = new FormData();
         formData.append('upload_file_minidump', blob, 'manual_log.txt');
-
-        // Additional Fields expected by Backend/Electron crashReporter
         formData.append('guid', uuidv4());
         formData.append('ver', this.appVersion);
         formData.append('platform', process.platform);
-        formData.append('process_type', 'browser'); // Main process is 'browser' in Electron terms usually
+        formData.append('process_type', 'browser');
         formData.append('_productName', 'CraftCorps');
         formData.append('_version', this.appVersion);
-        formData.append('userId', this.userId); // Custom field we added to backend
+        formData.append('userId', this.userId);
 
         const uploadUrl = 'https://telemetry.craftcorps.net/api/crash-report';
 
+        const token = await this.ensureToken();
+        if (!token) throw new Error('No auth token available for crash report');
+
         const response = await fetch(uploadUrl, {
             method: 'POST',
+            headers: { 'Authorization': `Bearer ${token}` },
             body: formData
         });
 
@@ -209,7 +247,6 @@ class TelemetryService {
             const existing = this.store.get('pending_telemetry_events_main') || [];
             let allEvents = [...existing, ...failedEvents];
 
-            // Cap to 500
             if (allEvents.length > 500) {
                 allEvents = allEvents.slice(allEvents.length - 500);
             }

@@ -12,6 +12,8 @@ class TelemetryService {
         this.eventBuffer = [];
         this.flushInterval = null;
         this.pageViewDebounce = null;
+        this.token = null;
+        this.tokenExpiry = null;
     }
 
     trackPage(pageName) {
@@ -59,6 +61,9 @@ class TelemetryService {
             this.appVersion = await window.electronAPI.getAppVersion();
         }
 
+        // [AUTH] Bootstrap Telemetry Token - Deferred
+        // await this.bootstrapToken();
+
         // Check for pending offline events
         try {
             const pending = localStorage.getItem('pending_telemetry_events');
@@ -79,8 +84,10 @@ class TelemetryService {
         // Start flush timer (every 30s)
         this.flushInterval = setInterval(() => this.flushEvents(), 30000);
 
-        // Send immediate heartbeat (Starts Session)
-        this.sendHeartbeat();
+        // Send immediate heartbeat (Starts Session) - Delayed
+        setTimeout(() => {
+            this.sendHeartbeat();
+        }, 15000);
 
         // Check for First Launch (Client Trigger)
         if (!localStorage.getItem('has_sent_first_launch')) {
@@ -95,15 +102,48 @@ class TelemetryService {
         });
     }
 
+    async bootstrapToken() {
+        try {
+            this._log('Bootstrapping telemetry token...');
+            const res = await fetch(`${API_BASE}/telemetry/bootstrap`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ clientId: this.userId })
+            });
+
+            if (!res.ok) throw new Error(`Bootstrap failed: ${res.status}`);
+
+            const data = await res.json();
+            this.token = data.token;
+            // calculated expiry (subtract 5 mins buffer)
+            this.tokenExpiry = Date.now() + (data.expiresIn * 1000) - 300000;
+            this._log('Telemetry token acquired.');
+        } catch (e) {
+            console.error('[Telemetry] Bootstrap error:', e.message);
+        }
+    }
+
+    async ensureToken() {
+        if (!this.token || (this.tokenExpiry && Date.now() > this.tokenExpiry)) {
+            await this.bootstrapToken();
+        }
+        return this.token;
+    }
+
     async sendHeartbeat() {
         if (!this.userId) return;
         this._log('Sending heartbeat...', { userId: this.userId });
         try {
+            const token = await this.ensureToken();
+            if (!token) return;
+
             const res = await fetch(`${API_BASE}/heartbeat`, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
                 body: JSON.stringify({
-                    userId: this.userId,
                     sessionId: this.sessionId,
                     appVersion: this.appVersion
                 }),
@@ -121,10 +161,16 @@ class TelemetryService {
     async sendHardwareInfo() {
         if (!this.userId) return;
         try {
+            const token = await this.ensureToken();
+            if (!token) return;
+
             const info = await window.electronAPI.getSystemInfo(); // We need to implement this IPC
             await fetch(`${API_BASE}/hardware`, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
                 body: JSON.stringify({
                     userId: this.userId,
                     ...info
@@ -157,9 +203,15 @@ class TelemetryService {
         this.eventBuffer = []; // Clear buffer immediately
 
         try {
+            const token = await this.ensureToken();
+            if (!token) throw new Error('No auth token available');
+
             await fetch(`${API_BASE}/telemetry`, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
                 body: JSON.stringify({ userId: this.userId, events }),
             });
             this._log('Automatically flushed events successfully.');
