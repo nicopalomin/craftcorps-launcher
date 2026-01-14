@@ -111,7 +111,7 @@ const upload = multer({
 });
 
 // -- Middleware --
-app.set('trust proxy', true); // Enable X-Forwarded-For updates
+app.set('trust proxy', 1); // Trust first proxy (Cloudflare/Nginx)
 app.use(helmet());
 app.use(cors());
 app.use(express.json({ limit: '1mb' }));
@@ -428,7 +428,11 @@ app.get('/api/servers/discover', requireTelemetryAuth, async (req, res) => {
             // Fetch chunk in parallel
             const chunkResults = await Promise.all(chunk.map(async (ip) => {
                 try {
-                    const response = await fetch(`https://api.mcsrvstat.us/3/${ip}`);
+                    const response = await fetch(`https://api.mcsrvstat.us/3/${ip}`, {
+                        headers: {
+                            'User-Agent': 'CraftCorps-Launcher/1.0 (admin@craftcorps.net)'
+                        }
+                    });
                     if (!response.ok) return null;
                     const data = await response.json();
                     if (!data.online) return null;
