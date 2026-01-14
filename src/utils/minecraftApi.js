@@ -9,10 +9,13 @@ export const fetchMinecraftVersions = async () => {
         const data = await response.json();
 
         // Filter to only release versions (not snapshots)
-        const releases = data.versions
+        const allReleases = data.versions
             .filter(v => v.type === 'release')
-            .map(v => v.id)
-            .slice(0, 30); // Get latest 30 releases
+            .map(v => v.id);
+
+        // Get versions until 1.8
+        const cutoffIndex = allReleases.indexOf('1.8');
+        const releases = cutoffIndex !== -1 ? allReleases.slice(0, cutoffIndex + 1) : allReleases;
 
         return releases;
     } catch (error) {
