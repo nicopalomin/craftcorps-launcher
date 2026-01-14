@@ -23,6 +23,14 @@ const AppContent = ({
     isLoadingInstances
 }) => {
     const { addToast } = useToast();
+    const [hasOpenedMods, setHasOpenedMods] = React.useState(false);
+
+    // Track if mods tab has been opened to keep it alive
+    React.useEffect(() => {
+        if (activeTab === 'mods' && !hasOpenedMods) {
+            setHasOpenedMods(true);
+        }
+    }, [activeTab, hasOpenedMods]);
 
     // Wrapper for Play to check refreshing
     const onPlayWrapper = () => {
@@ -90,17 +98,20 @@ const AppContent = ({
                     theme={theme} setTheme={setTheme}
                 />
             )}
-            {activeTab === 'mods' && (
-                <ModsView
-                    selectedInstance={selectedInstance}
-                    instances={instances}
-                    onInstanceCreated={(newInstance) => {
-                        onSaveCropWithToast(newInstance);
-                        setSelectedInstance(newInstance);
-                        setActiveTab('home');
-                    }}
-                    onSwitchInstance={() => setActiveTab('instances')}
-                />
+            {/* Mods View - Keep Alive to prevent lag on re-open */}
+            {(activeTab === 'mods' || hasOpenedMods) && (
+                <div className={`flex-1 flex-col h-full overflow-hidden ${activeTab === 'mods' ? 'flex' : 'hidden'}`}>
+                    <ModsView
+                        selectedInstance={selectedInstance}
+                        instances={instances}
+                        onInstanceCreated={(newInstance) => {
+                            onSaveCropWithToast(newInstance);
+                            setSelectedInstance(newInstance);
+                            setActiveTab('home');
+                        }}
+                        onSwitchInstance={() => setActiveTab('instances')}
+                    />
+                </div>
             )}
             {activeTab === 'market' && <MarketView />}
             {activeTab === 'rewards' && <BetaRewardsView theme={theme} selectedInstance={selectedInstance} />}

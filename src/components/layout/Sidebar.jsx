@@ -80,7 +80,7 @@ const Sidebar = ({ activeTab, onTabChange, theme }) => {
     return (
         <aside
             ref={sidebarRef}
-            className={`${getSidebarStyles()} border-r flex flex-col z-20 select-none relative group/sidebar ${isResizing ? 'transition-none' : 'transition-[width,background-color] duration-500 ease-in-out'} transform-gpu will-change-[width] overflow-hidden`}
+            className={`${getSidebarStyles()} border-r flex flex-col z-20 select-none relative group/sidebar ${isResizing ? 'transition-none' : 'transition-[width,background-color] duration-500 ease-out'} transform-gpu will-change-[width] overflow-hidden`}
             style={{ width: effectiveWidth }}
             onMouseEnter={() => setIsCollapsed(false)}
             onMouseLeave={() => {
@@ -89,11 +89,11 @@ const Sidebar = ({ activeTab, onTabChange, theme }) => {
         >
             <div className="flex flex-col h-full overflow-hidden p-4" style={{ width: width, minWidth: width }}>
                 {/* Logo area */}
-                <div className="flex items-center mb-8 mt-2 pl-2 select-none pointer-events-none overflow-hidden whitespace-nowrap transition-all duration-500 ease-in-out">
+                <div className="flex items-center mb-8 mt-2 pl-2 select-none pointer-events-none overflow-hidden whitespace-nowrap transition-all duration-500 ease-out">
                     <div className="w-8 h-8 bg-gradient-to-br from-emerald-400 to-green-600 rounded-lg flex-shrink-0 flex items-center justify-center shadow-lg shadow-emerald-900/50 transition-all duration-500">
                         <Sprout size={20} className="text-slate-200" />
                     </div>
-                    <h1 className={`text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-emerald-400 to-green-200 transition-all duration-500 ease-in-out ${width < 180 || isCollapsed ? 'opacity-0 max-w-0 ml-0' : 'opacity-100 max-w-[200px] ml-3'}`}>
+                    <h1 className={`text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-emerald-400 to-green-200 transition-all duration-500 ease-out ${width < 180 || isCollapsed ? 'opacity-0 max-w-0 ml-0' : 'opacity-100 max-w-[200px] ml-3'}`}>
                         CraftCorps
                     </h1>
                 </div>
@@ -154,7 +154,7 @@ const Sidebar = ({ activeTab, onTabChange, theme }) => {
                 </nav>
 
                 {/* Ad Space (Preserved) */}
-                <div className={`mt-auto pt-4 border-t border-slate-800 relative flex flex-col overflow-hidden transition-all duration-500 ease-in-out ${(width < 200 || isCollapsed) ? 'opacity-0 pointer-events-none hidden' : 'opacity-100'}`}>
+                <div className={`mt-auto pt-4 border-t border-slate-800 relative flex flex-col overflow-hidden transition-all duration-500 ease-out ${(width < 200 || isCollapsed) ? 'opacity-0 pointer-events-none' : 'opacity-100'}`}>
                     <SneakyAd />
                     <div className="text-[10px] text-slate-600 text-center pb-2 font-mono opacity-50 hover:opacity-100 transition-opacity">
                         v{typeof __APP_VERSION__ !== 'undefined' ? __APP_VERSION__ : '1.0.0'}

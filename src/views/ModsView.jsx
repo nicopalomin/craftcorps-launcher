@@ -25,6 +25,13 @@ const ModsView = ({ selectedInstance, instances = [], onInstanceCreated, onSwitc
     const [availableCategories, setAvailableCategories] = useState([]);
     const [isLoadingFilters, setIsLoadingFilters] = useState(false);
 
+    // -- Mount Delay for Smooth Animation --
+    const [isReady, setIsReady] = useState(false);
+    useEffect(() => {
+        const timer = setTimeout(() => setIsReady(true), 350);
+        return () => clearTimeout(timer);
+    }, []);
+
     // -- State: Detail View --
     const [selectedProject, setSelectedProject] = useState(null); // The basic project info from search
     const [projectDetails, setProjectDetails] = useState(null); // Full details (body, etc)
@@ -76,6 +83,7 @@ const ModsView = ({ selectedInstance, instances = [], onInstanceCreated, onSwitc
     // Initial Filter Load
     useEffect(() => {
         const loadFilters = async () => {
+            if (!isReady) return;
             if (!window.electronAPI?.modrinthGetTags) return;
             setIsLoadingFilters(true);
             try {
@@ -124,7 +132,7 @@ const ModsView = ({ selectedInstance, instances = [], onInstanceCreated, onSwitc
             }
         };
         loadFilters();
-    }, [projectType]); // Reload categories if project type changes? Some categories are specific.
+    }, [projectType, isReady]); // Reload categories if project type changes? Some categories are specific.
 
     // -- Effects: Search --
     const prevQueryRef = useRef(searchQuery);
@@ -158,16 +166,16 @@ const ModsView = ({ selectedInstance, instances = [], onInstanceCreated, onSwitc
         if (isTextChange) {
             // Debounce text search
             const timer = setTimeout(() => {
-                performSearch(searchQuery);
+                if (isReady) performSearch(searchQuery);
             }, 300);
             return () => clearTimeout(timer);
         } else {
             // Immediate update for filters or mount
-            if (!isSearching) {
+            if (!isSearching && isReady) {
                 performSearch(searchQuery);
             }
         }
-    }, [searchQuery, projectType, filterVersion, filterCategory]);
+    }, [searchQuery, projectType, filterVersion, filterCategory, isReady]);
 
     // -- Effects: Load Details --
     useEffect(() => {
