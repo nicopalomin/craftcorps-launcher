@@ -24,10 +24,22 @@ const DiscoverView = () => {
     const [loadingMore, setLoadingMore] = useState(false);
     const [hasMore, setHasMore] = useState(true);
 
+    const log = (msg, data) => {
+        // console.log(msg, data || '');
+        if (window.electronAPI && window.electronAPI.log) {
+            try {
+                const dataStr = data ? JSON.stringify(data) : '';
+                window.electronAPI.log('info', `[DiscoverView] ${msg} ${dataStr}`);
+            } catch (e) { /* ignore */ }
+        }
+    };
+
     const loadServers = useCallback(async (isInitial = false) => {
+        log(`loadServers called. isInitial=${isInitial}`);
         if (isInitial) {
             // Try load cache first for instant render
             const cached = await telemetry.getCachedDiscoverServers();
+            log('Cached servers:', cached?.length || 'None');
             if (cached && cached.length > 0) {
                 setServers(cached);
                 setLoading(false);
@@ -42,16 +54,20 @@ const DiscoverView = () => {
             const offset = isInitial ? 0 : servers.length;
             const data = await telemetry.fetchDiscoverServers(offset, 9);
 
-            if (data && data.success) {
+
+            if (data && (data.success || Array.isArray(data.servers) || Array.isArray(data))) {
+                // Normalize for safety
+                const newServers = data.servers || (Array.isArray(data) ? data : []);
+
                 if (isInitial) {
-                    setServers(data.servers || []);
+                    setServers(newServers);
                 } else {
-                    setServers(prev => [...prev, ...data.servers]);
+                    setServers(prev => [...prev, ...newServers]);
                 }
-                setHasMore(data.hasMore);
+                setHasMore(data.hasMore === undefined ? false : data.hasMore);
             }
         } catch (err) {
-            console.error("Failed to load discover servers", err);
+            log('Failed to load discover servers', err);
             addToast("Failed to load servers", "error");
         } finally {
             setLoading(false);
@@ -87,8 +103,8 @@ const DiscoverView = () => {
                     </div>
                     {/* Stats Pill */}
                     <div className="bg-slate-800/50 px-4 py-2 rounded-full border border-white/5 flex items-center gap-2 text-sm text-slate-400">
-                        <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-                        {servers.length > 0 ? `${servers.length} Servers Listed` : 'Scanning...'}
+                        <div className={`w-2 h-2 rounded-full ${loading ? 'bg-amber-500 animate-pulse' : (servers.length > 0 ? 'bg-emerald-500' : 'bg-red-500')}`} />
+                        {loading ? 'Scanning...' : (servers.length > 0 ? `${servers.length} Servers Listed` : 'No Servers Found')}
                     </div>
                 </div>
             </div>

@@ -199,22 +199,59 @@ class TelemetryService {
         }
     }
 
+    async getCachedDiscoverServers() {
+        if (!this.store) {
+            // Store not ready yet (before init)
+            return [];
+        }
+        return (await this.store.get('cached_discover_servers')) || [];
+    }
+
     async fetchDiscoverServers(offset = 0, limit = 9) {
         try {
+            this._log(`[Discover] Fetching offset=${offset}, limit=${limit}`);
             const token = await this.ensureToken();
-            if (!token) return { servers: [], hasMore: false };
+            if (!token) {
+                this._log('[Discover] No token available');
+                return { servers: [], hasMore: false };
+            }
 
-            const res = await fetch(`${API_BASE}/servers/discover?offset=${offset}&limit=${limit}`, {
+            const url = `${API_BASE}/servers/discover?offset=${offset}&limit=${limit}`;
+            this._log(`[Discover] Requesting: ${url}`);
+
+            const res = await fetch(url, {
                 method: 'GET',
                 headers: {
                     'Authorization': `Bearer ${token}`
                 }
             });
-            if (!res.ok) throw new Error('Failed to fetch servers');
+
+            this._log(`[Discover] Response status: ${res.status}`);
+
+            if (!res.ok) throw new Error(`Failed to fetch servers: ${res.statusText}`);
             const data = await res.json();
+
+
+
+            // Handle Legacy Backend (returns Array)
+            if (Array.isArray(data)) {
+                this._log('[Discover] Detected Legacy Array Format');
+                // Cache the first page if successful (Legacy)
+                if (offset === 0 && this.store) {
+                    await this.store.set('cached_discover_servers', data);
+                }
+                return { success: true, servers: data, hasMore: false };
+            }
+
+            // Handle New Backend (returns Object)
+            // Cache the first page if successful
+            if (data.success && offset === 0 && this.store) {
+                await this.store.set('cached_discover_servers', data.servers);
+            }
+
             return data;
         } catch (e) {
-            console.error('[Discover] Error fetching servers', e);
+            this._log('[Discover] Error fetching servers', e);
             return { servers: [], hasMore: false };
         }
     }
