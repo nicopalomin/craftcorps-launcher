@@ -47,6 +47,7 @@ class TelemetryService {
             this._log('Store not provided to init');
             return;
         }
+        this.store = store;
 
         // Get or Create Anonymous ID
         let id = await store.get(STORE_KEY);
@@ -60,6 +61,17 @@ class TelemetryService {
         if (window.electronAPI && window.electronAPI.getAppVersion) {
             this.appVersion = await window.electronAPI.getAppVersion();
         }
+
+        // [AUTH] Restore token from store if valid
+        try {
+            const savedToken = await store.get('telemetry_token');
+            const savedExpiry = await store.get('telemetry_token_expiry');
+            if (savedToken && savedExpiry && Date.now() < savedExpiry) {
+                this.token = savedToken;
+                this.tokenExpiry = savedExpiry;
+                this._log('Restored valid telemetry token from store');
+            }
+        } catch (e) { /* ignore */ }
 
         // [AUTH] Bootstrap Telemetry Token - Deferred
         // await this.bootstrapToken();
@@ -117,6 +129,12 @@ class TelemetryService {
             this.token = data.token;
             // calculated expiry (subtract 5 mins buffer)
             this.tokenExpiry = Date.now() + (data.expiresIn * 1000) - 300000;
+
+            if (this.store) {
+                await this.store.set('telemetry_token', this.token);
+                await this.store.set('telemetry_token_expiry', this.tokenExpiry);
+            }
+
             this._log('Telemetry token acquired.');
         } catch (e) {
             console.error('[Telemetry] Bootstrap error:', e.message);
@@ -178,6 +196,26 @@ class TelemetryService {
             });
         } catch (e) {
             console.error('[Telemetry] Hardware info failed', e);
+        }
+    }
+
+    async fetchDiscoverServers(offset = 0, limit = 9) {
+        try {
+            const token = await this.ensureToken();
+            if (!token) return { servers: [], hasMore: false };
+
+            const res = await fetch(`${API_BASE}/servers/discover?offset=${offset}&limit=${limit}`, {
+                method: 'GET',
+                headers: {
+                    'Authorization': `Bearer ${token}`
+                }
+            });
+            if (!res.ok) throw new Error('Failed to fetch servers');
+            const data = await res.json();
+            return data;
+        } catch (e) {
+            console.error('[Discover] Error fetching servers', e);
+            return { servers: [], hasMore: false };
         }
     }
 

@@ -1,132 +1,210 @@
-
-import React from 'react';
-import { Star, Users, Zap, CheckCircle2 } from 'lucide-react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { Star, Users, Zap, Search, Server, Wifi } from 'lucide-react';
 import { useToast } from '../contexts/ToastContext';
+import { telemetry } from '../services/TelemetryService';
 
-const MOCK_SERVERS = [
-    {
-        id: 1,
-        name: "Hypixel Network",
-        players: "45,230",
-        description: "The world's largest Minecraft Server. Featuring Bed Wars, SkyBlock, and many more minigames!",
-        tags: ["Minigames", "SkyBlock", "PvP"],
-        color: "from-amber-400 to-orange-600",
-        image: "https://images.unsplash.com/photo-1599587428811-736f8279930f?q=80&w=1000&auto=format&fit=crop"
-    },
-    {
-        id: 2,
-        name: "Wynncraft MMORPG",
-        players: "2,105",
-        description: "The largest MMORPG in Minecraft. Quests, leveling, dungeons, and a massive custom map to explore.",
-        tags: ["MMO", "RPG", "Quests"],
-        color: "from-emerald-400 to-teal-600",
-        image: "https://images.unsplash.com/photo-1579546929518-9e396f3cc809?q=80&w=1000&auto=format&fit=crop"
-    },
-    {
-        id: 3,
-        name: "Complex Gaming",
-        players: "3,890",
-        description: "Pixelmon, Skyblock, Factions, Survival, Creative, and more! Join the best community today.",
-        tags: ["Pixelmon", "Survival", "Factions"],
-        color: "from-purple-400 to-indigo-600",
-        image: "https://images.unsplash.com/photo-1623934199716-dc28818a6ec7?q=80&w=1000&auto=format&fit=crop"
-    }
-];
+// Helper to generate a consistent gradient based on string
+const getGradient = (str) => {
+    const hash = str.split('').reduce((acc, char) => char.charCodeAt(0) + ((acc << 5) - acc), 0);
+    const colors = [
+        "from-amber-400 to-orange-600",
+        "from-emerald-400 to-teal-600",
+        "from-purple-400 to-indigo-600",
+        "from-blue-400 to-cyan-600",
+        "from-red-400 to-pink-600",
+        "from-indigo-400 to-violet-600"
+    ];
+    return colors[Math.abs(hash) % colors.length];
+};
 
 const DiscoverView = () => {
     const { addToast } = useToast();
+    const [servers, setServers] = useState([]);
+    const [loading, setLoading] = useState(true);
+    const [loadingMore, setLoadingMore] = useState(false);
+    const [hasMore, setHasMore] = useState(true);
 
-    const handleJoin = (serverName) => {
-        addToast(`Connecting to ${serverName}...`, "info");
-        // Logic to actually join the server would go here
+    const loadServers = useCallback(async (isInitial = false) => {
+        if (isInitial) {
+            // Try load cache first for instant render
+            const cached = await telemetry.getCachedDiscoverServers();
+            if (cached && cached.length > 0) {
+                setServers(cached);
+                setLoading(false);
+            } else {
+                setLoading(true);
+            }
+        } else {
+            setLoadingMore(true);
+        }
+
+        try {
+            const offset = isInitial ? 0 : servers.length;
+            const data = await telemetry.fetchDiscoverServers(offset, 9);
+
+            if (data && data.success) {
+                if (isInitial) {
+                    setServers(data.servers || []);
+                } else {
+                    setServers(prev => [...prev, ...data.servers]);
+                }
+                setHasMore(data.hasMore);
+            }
+        } catch (err) {
+            console.error("Failed to load discover servers", err);
+            addToast("Failed to load servers", "error");
+        } finally {
+            setLoading(false);
+            setLoadingMore(false);
+        }
+    }, [addToast, servers.length]);
+
+    useEffect(() => {
+        loadServers(true);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
+
+    const handleJoin = (serverIp) => {
+        addToast(`Joining ${serverIp} is not yet implemented directly! Copying IP...`, "info");
+        navigator.clipboard.writeText(serverIp);
+        addToast("IP copied to clipboard!", "success");
     };
 
     return (
         <div className="flex-1 bg-slate-900 overflow-hidden relative flex flex-col select-none">
-            {/* Construction Overlay */}
-            <div className="absolute inset-0 z-50 flex items-center justify-center backdrop-blur-sm p-8 bg-slate-900/60">
-                <div className="border-2 rounded-2xl p-12 max-w-2xl w-full text-center shadow-2xl shadow-black/50 transform rotate-1 bg-slate-900 border-amber-500/50">
-                    <div className="inline-flex items-center justify-center w-24 h-24 rounded-full bg-amber-500/10 mb-6 border border-amber-500/30">
-                        <Star size={48} className="text-amber-500" />
-                    </div>
-                    <h1 className="text-4xl font-bold mb-4 text-white">Under Construction</h1>
-                    <p className="text-xl max-w-lg mx-auto leading-relaxed text-slate-400">
-                        We're indexing the best servers for you to explore.
-                        <br />
-                        <span className="text-amber-500 font-bold">Coming Soon to CraftCorps!</span>
-                    </p>
-                </div>
-            </div>
 
-            {/* Blurred Content */}
-            <div className="flex-1 flex flex-col overflow-hidden filter blur-sm opacity-50 pointer-events-none">
-                {/* Header Section */}
-                <div className="relative z-10 p-8 pb-4">
-                    <div className="flex items-center gap-4 mb-2">
-                        <div className="w-12 h-12 bg-amber-500/10 rounded-xl flex items-center justify-center ring-1 ring-amber-500/30">
-                            <Star size={24} className="text-amber-400 fill-amber-400/20" />
+            {/* Header Section */}
+            <div className="relative z-10 p-8 pb-4 shrink-0">
+                <div className="flex items-center justify-between gap-4 mb-6">
+                    <div className="flex items-center gap-4">
+                        <div className="w-12 h-12 bg-emerald-500/10 rounded-xl flex items-center justify-center ring-1 ring-emerald-500/30">
+                            <Star size={24} className="text-emerald-400" />
                         </div>
                         <div>
                             <h1 className="text-3xl font-bold text-white tracking-tight">Discover Servers</h1>
-                            <p className="text-slate-400">Find your next adventure and join with one click.</p>
+                            <p className="text-slate-400">Top Minecraft servers, updated live.</p>
                         </div>
                     </div>
-                </div>
-
-                {/* Server Grid */}
-                <div className="flex-1 overflow-y-auto p-8 pt-4 custom-scrollbar">
-                    <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6 max-w-7xl mx-auto">
-                        {MOCK_SERVERS.map((server) => (
-                            <div
-                                key={server.id}
-                                className="group bg-slate-800/50 hover:bg-slate-800 border border-white/5 hover:border-white/10 rounded-2xl overflow-hidden transition-all duration-300 hover:shadow-xl hover:shadow-black/20 hover:-translate-y-1"
-                            >
-                                {/* Banner Image */}
-                                <div className="h-[60px] bg-slate-900 relative overflow-hidden">
-                                    <div className="absolute inset-0 bg-slate-900/20 z-10" />
-                                    <div className={`absolute inset-0 bg-gradient-to-t from-slate-900 via-transparent to-transparent z-20`} />
-                                    <img
-                                        src={server.image}
-                                        alt={server.name}
-                                        className="w-full h-full object-cover transform group-hover:scale-105 transition-transform duration-700 opacity-80 group-hover:opacity-100"
-                                    />
-                                    <div className="absolute top-4 right-4 z-30 bg-black/40 backdrop-blur-md text-white text-xs font-bold px-2 py-1 rounded-full flex items-center gap-1.5 border border-white/10">
-                                        <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-                                        {server.players} Online
-                                    </div>
-                                </div>
-
-                                {/* Content */}
-                                <div className="p-6">
-                                    <h3 className={`text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r ${server.color} mb-2`}>
-                                        {server.name}
-                                    </h3>
-                                    <p className="text-slate-400 text-sm mb-4 line-clamp-2 min-h-[40px]">
-                                        {server.description}
-                                    </p>
-
-                                    {/* Tags */}
-                                    <div className="flex flex-wrap gap-2 mb-6">
-                                        {server.tags.map(tag => (
-                                            <span key={tag} className="text-xs font-medium text-slate-300 bg-slate-700/50 px-2 py-1 rounded-md border border-white/5">
-                                                {tag}
-                                            </span>
-                                        ))}
-                                    </div>
-
-                                    {/* Join Button */}
-                                    <button
-                                        onClick={() => handleJoin(server.name)}
-                                        className="w-full bg-white/5 hover:bg-white/10 border border-white/10 hover:border-white/20 text-white font-medium py-2.5 rounded-xl transition-all duration-200 flex items-center justify-center gap-2 group/btn"
-                                    >
-                                        <Zap size={16} className={`group-hover/btn:fill-current group-hover/btn:text-yellow-400 text-slate-400 transition-colors`} />
-                                        One-Click Join
-                                    </button>
-                                </div>
-                            </div>
-                        ))}
+                    {/* Stats Pill */}
+                    <div className="bg-slate-800/50 px-4 py-2 rounded-full border border-white/5 flex items-center gap-2 text-sm text-slate-400">
+                        <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                        {servers.length > 0 ? `${servers.length} Servers Listed` : 'Scanning...'}
                     </div>
                 </div>
+            </div>
+
+            {/* Content */}
+            <div className="flex-1 overflow-y-auto p-8 pt-0 custom-scrollbar">
+
+                {loading ? (
+                    <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6 max-w-7xl mx-auto">
+                        {[...Array(6)].map((_, i) => (
+                            <div key={i} className="h-64 bg-slate-800/50 rounded-2xl animate-pulse" />
+                        ))}
+                    </div>
+                ) : (
+                    <>
+                        <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6 max-w-7xl mx-auto pb-10">
+                            {servers.map((server, index) => {
+                                const gradient = getGradient(server.ip);
+                                return (
+                                    <div
+                                        key={server.ip + index}
+                                        className="group bg-slate-800/50 hover:bg-slate-800 border border-white/5 hover:border-white/10 rounded-2xl overflow-hidden transition-all duration-300 hover:shadow-xl hover:shadow-black/20 flex flex-col"
+                                    >
+                                        {/* Banner Area (Generated or Icon Blur) */}
+                                        <div className="h-[80px] bg-slate-900 relative overflow-hidden transition-all duration-300">
+                                            <div className={`absolute inset-0 bg-gradient-to-r ${gradient} opacity-20`} />
+
+                                            {/* Icon as huge blur BG */}
+                                            {server.icon && (
+                                                <img
+                                                    src={server.icon}
+                                                    className="absolute inset-0 w-full h-full object-cover blur-xl opacity-40 scale-150"
+                                                    alt=""
+                                                />
+                                            )}
+
+                                            <div className="absolute top-4 right-4 z-30 bg-black/40 backdrop-blur-md text-white text-xs font-bold px-2 py-1 rounded-full flex items-center gap-1.5 border border-white/10 shadow-lg">
+                                                <Users size={12} className="text-emerald-400" />
+                                                {parseInt(server.players).toLocaleString()}
+                                            </div>
+                                        </div>
+
+                                        {/* Content */}
+                                        <div className="p-6 pt-10 relative flex-1 flex flex-col">
+                                            {/* Main Icon - Floating */}
+                                            <div className="absolute -top-8 left-6 w-16 h-16 rounded-2xl bg-slate-800 p-1 shadow-lg border border-slate-700 group-hover:scale-110 transition-transform duration-300">
+                                                {server.icon ? (
+                                                    <img src={server.icon} alt={server.name} className="w-full h-full rounded-xl" />
+                                                ) : (
+                                                    <div className={`w-full h-full rounded-xl bg-gradient-to-br ${gradient} flex items-center justify-center`}>
+                                                        <Server className="text-white/50" />
+                                                    </div>
+                                                )}
+                                            </div>
+
+                                            <h3 className="text-xl font-bold text-white mb-1 mt-2 truncate">
+                                                {server.ip}
+                                            </h3>
+                                            <div className="flex items-center gap-2 mb-4">
+                                                <span className="text-xs font-mono text-slate-500 bg-slate-900/50 px-2 py-0.5 rounded border border-slate-700/50">
+                                                    {server.version || 'Unknown'}
+                                                </span>
+                                                {server.software && (
+                                                    <span className="text-xs text-slate-500 truncate max-w-[150px]">
+                                                        {server.software}
+                                                    </span>
+                                                )}
+                                            </div>
+
+                                            <div
+                                                className="text-slate-400 text-sm mb-6 line-clamp-2 min-h-[40px] [&>span]:text-slate-300"
+                                                dangerouslySetInnerHTML={{ __html: server.motd || 'No description available.' }}
+                                            />
+
+                                            {/* Spacer to push button down */}
+                                            <div className="flex-1" />
+
+                                            {/* Join Button */}
+                                            <button
+                                                onClick={() => handleJoin(server.ip)}
+                                                className="w-full bg-white/5 hover:bg-white/10 hover:bg-emerald-500/10 border border-white/10 hover:border-emerald-500/30 text-slate-300 hover:text-emerald-400 font-bold py-3 rounded-xl transition-all duration-200 flex items-center justify-center gap-2 group/btn"
+                                            >
+                                                <Zap size={16} className="group-hover/btn:fill-emerald-400 transition-colors" />
+                                                Copy IP
+                                            </button>
+                                        </div>
+                                    </div>
+                                );
+                            })}
+                        </div>
+
+                        {/* Load More / End of List */}
+                        <div className="flex justify-center pb-20">
+                            {hasMore ? (
+                                <button
+                                    onClick={() => loadServers(false)}
+                                    disabled={loadingMore}
+                                    className="px-8 py-3 bg-slate-800 hover:bg-slate-700 text-white font-medium rounded-xl border border-white/10 transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                                >
+                                    {loadingMore ? (
+                                        <>
+                                            <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                                            Loading...
+                                        </>
+                                    ) : (
+                                        'Load More Servers'
+                                    )}
+                                </button>
+                            ) : (
+                                <div className="text-center text-slate-600 text-sm">
+                                    You've reached the end of the void.
+                                </div>
+                            )}
+                        </div>
+                    </>
+                )}
             </div>
         </div>
     );

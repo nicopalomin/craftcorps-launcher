@@ -406,8 +406,95 @@ const DISCOVER_SERVERS = [
 ];
 
 // Map of IP -> { data: ServerData, timestamp: number }
-const serverCache = new Map<string, { data: any, timestamp: number }>();
+let serverCache = new Map<string, { data: any, timestamp: number }>();
 const CACHE_TTL = 10 * 60 * 1000; // 10 minutes
+const CACHE_FILE = path.join(__dirname, '../server-cache.json');
+
+// Persistence Helpers
+const loadCacheFromDisk = () => {
+    try {
+        if (fs.existsSync(CACHE_FILE)) {
+            const raw = fs.readFileSync(CACHE_FILE, 'utf-8');
+            const parsed = JSON.parse(raw);
+            serverCache = new Map(parsed);
+            // logger.info(`[Discovery] Loaded ${serverCache.size} servers from disk cache`);
+        }
+    } catch (e) {
+        console.error('[Discovery] Failed to load disk cache', e);
+    }
+};
+
+const saveCacheToDisk = () => {
+    try {
+        const data = JSON.stringify(Array.from(serverCache.entries()));
+        fs.writeFileSync(CACHE_FILE, data);
+    } catch (e) {
+        console.error('[Discovery] Failed to save disk cache', e);
+    }
+};
+
+// Start by loading disk cache
+loadCacheFromDisk();
+
+// Helper to fetch a single server with strict timeout
+const fetchServerStatus = async (ip: string, timeoutMs: number = 1500) => {
+    try {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+
+        const response = await fetch(`https://api.mcsrvstat.us/3/${ip}`, {
+            headers: { 'User-Agent': 'CraftCorps-Launcher/1.0 (admin@craftcorps.net)' },
+            signal: controller.signal
+        });
+        clearTimeout(timeoutId);
+
+        if (!response.ok) return null;
+        const data = await response.json();
+        if (!data.online) return null;
+
+        return {
+            ip: ip,
+            name: ip,
+            icon: data.icon,
+            motd: data.motd?.html,
+            players: data.players?.online || 0,
+            maxPlayers: data.players?.max || 0,
+            version: data.version,
+            software: data.software
+        };
+    } catch (err) {
+        return null;
+    }
+};
+
+// Background Poller
+const updateServerCache = async () => {
+    // Process in larger chunks effectively
+    const chunkSize = 10;
+    let hasUpdates = false;
+
+    for (let i = 0; i < DISCOVER_SERVERS.length; i += chunkSize) {
+        const chunk = DISCOVER_SERVERS.slice(i, i + chunkSize);
+        await Promise.all(chunk.map(async (ip) => {
+            const data = await fetchServerStatus(ip, 2000); // 2s timeout for background jobs
+            if (data) {
+                serverCache.set(ip, { data, timestamp: Date.now() });
+                hasUpdates = true;
+            }
+        }));
+        // Small delay between chunks to be nice to API
+        await new Promise(r => setTimeout(r, 500));
+    }
+
+    if (hasUpdates) {
+        saveCacheToDisk();
+    }
+};
+
+// Start Polling (every 2 minutes)
+setInterval(updateServerCache, 2 * 60 * 1000);
+// Initial warm-up (delayed slightly to allow startup)
+setTimeout(updateServerCache, 2000);
 
 app.get('/api/servers/discover', requireTelemetryAuth, async (req, res) => {
     try {
@@ -419,57 +506,31 @@ app.get('/api/servers/discover', requireTelemetryAuth, async (req, res) => {
         const now = Date.now();
 
         const results = await Promise.all(targetServers.map(async (ip) => {
-            // Check valid cache
+            // 1. Check valid cache
             const cached = serverCache.get(ip);
-            if (cached && (now - cached.timestamp < CACHE_TTL)) {
+            // If we have data, use it. Even if old, it's better than waiting.
+            // The background job updates it eventually.
+            if (cached) {
                 return cached.data;
             }
 
-            // Fetch fresh
+            // 2. Fetch fresh (fallback for first load / cache miss)
+            // Only if we truly have nothing.
             try {
-                const controller = new AbortController();
-                const timeoutId = setTimeout(() => controller.abort(), 5000); // 5s timeout
-
-                try {
-                    const response = await fetch(`https://api.mcsrvstat.us/3/${ip}`, {
-                        headers: { 'User-Agent': 'CraftCorps-Launcher/1.0 (admin@craftcorps.net)' },
-                        signal: controller.signal
-                    });
-                    clearTimeout(timeoutId);
-
-                    if (!response.ok) return null;
-                    const data = await response.json();
-                    if (!data.online) return null;
-
-                    const serverData = {
-                        ip: ip,
-                        name: ip,
-                        icon: data.icon,
-                        motd: data.motd?.html,
-                        players: data.players?.online || 0,
-                        maxPlayers: data.players?.max || 0,
-                        version: data.version,
-                        software: data.software
-                    };
-
-                    // Update Cache
-                    serverCache.set(ip, { data: serverData, timestamp: now });
-                    return serverData;
-                } catch (fetchErr) {
-                    clearTimeout(timeoutId);
-                    throw fetchErr;
+                const data = await fetchServerStatus(ip, 1500);
+                if (data) {
+                    serverCache.set(ip, { data, timestamp: now });
+                    // We don't save to disk here to avoid IO spam, background job handles bulk save
+                    return data;
                 }
+                return null;
             } catch (err) {
-                logger.error(`Failed to fetch ${ip}:`, err);
-                // Return stale if available
-                if (cached) return cached.data;
                 return null;
             }
         }));
 
         const validServers = results.filter(s => s !== null);
 
-        // Return results (no total sorting, respecting the list order)
         res.json({
             success: true,
             servers: validServers,
