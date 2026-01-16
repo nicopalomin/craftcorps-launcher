@@ -7,6 +7,14 @@ const SettingsView = ({ ram, setRam, javaPath, setJavaPath, hideOnLaunch, setHid
     const { t, i18n } = useTranslation();
     const { addToast } = useToast();
     const [isUploadingLogs, setIsUploadingLogs] = React.useState(false);
+    const [deviceId, setDeviceId] = React.useState(null);
+
+    React.useEffect(() => {
+        if (window.electronAPI?.getDeviceId) {
+            window.electronAPI.getDeviceId().then(setDeviceId).catch(err => console.error('Failed to get device ID:', err));
+        }
+    }, []);
+
     const languages = [
         { code: 'en', label: 'English' },
         { code: 'es', label: 'Español' },
@@ -273,6 +281,11 @@ const SettingsView = ({ ram, setRam, javaPath, setJavaPath, hideOnLaunch, setHid
                 </div>
                 {/* Version Info */}
                 <div className="text-center pt-8 pb-4">
+                    {deviceId && (
+                        <p className="text-slate-600 text-[10px] font-mono mb-1 select-text">
+                            {deviceId}
+                        </p>
+                    )}
                     <p className="text-slate-600 text-xs font-mono">
                         CraftCorps Launcher v{typeof __APP_VERSION__ !== 'undefined' ? __APP_VERSION__ : '1.0.0'}
                     </p>

@@ -91,9 +91,13 @@ class TelemetryService {
     }
 
     async fetchDiscoverServers(offset = 0, limit = 9) {
-        // ... (Keep existing discover logic, it's specific to the UI view of servers, not strictly telemetry)
-        // Ideally this moves to a 'GameService' or similar.
-        // For now, leaving it as-is but minimizing telemetry impact.
+        if (window.electronAPI && window.electronAPI.getDiscoverServers) {
+            try {
+                return await window.electronAPI.getDiscoverServers({ offset, limit });
+            } catch (e) {
+                console.error('[Telemetry] Failed to fetch servers via IPC', e);
+            }
+        }
         return { servers: [], hasMore: false };
     }
 

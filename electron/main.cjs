@@ -194,6 +194,9 @@ app.whenReady().then(async () => {
     setupAppHandlers(getMainWindow, store);
     setupAuthHandlers(getMainWindow);
 
+    const { setupDiscoveryHandlers } = require('./handlers/discoveryHandler.cjs');
+    setupDiscoveryHandlers();
+
     // --- Lazy Handlers (Performance) ---
 
     /**

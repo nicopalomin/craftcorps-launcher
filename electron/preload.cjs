@@ -102,6 +102,9 @@ contextBridge.exposeInMainWorld('electronAPI', {
     importInstanceDialog: () => ipcRenderer.invoke('import-instance-dialog'),
     performImportInstance: (path) => ipcRenderer.invoke('perform-import-instance', path),
 
+    // Discovery
+    getDiscoverServers: (params) => ipcRenderer.invoke('get-discover-servers', params),
+
     // Auto Update
     checkForUpdates: () => ipcRenderer.invoke('check-for-updates'),
     downloadUpdate: () => ipcRenderer.invoke('download-update'),
