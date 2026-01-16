@@ -17,6 +17,81 @@ const getGradient = (str) => {
     return colors[Math.abs(hash) % colors.length];
 };
 
+const ServerCard = React.memo(({ server, index, handleJoin, getGradient }) => {
+    const gradient = getGradient(server.ip);
+    return (
+        <div
+            className="group bg-slate-800/50 hover:bg-slate-800 border border-white/5 hover:border-white/10 rounded-2xl overflow-hidden transition-all duration-300 hover:shadow-xl hover:shadow-black/20 flex flex-col transform-gpu will-change-transform"
+        >
+            {/* Banner Area (Generated or Icon Blur) */}
+            <div className="h-[80px] bg-slate-900 relative overflow-hidden transition-all duration-300">
+                <div className={`absolute inset-0 bg-gradient-to-r ${gradient} opacity-20`} />
+
+                {/* Icon as huge blur BG */}
+                {server.icon && (
+                    <img
+                        src={server.icon}
+                        loading="lazy"
+                        decoding="async"
+                        className="absolute inset-0 w-full h-full object-cover blur-xl opacity-40 scale-150 transform-gpu"
+                        alt=""
+                    />
+                )}
+
+                <div className="absolute top-4 right-4 z-30 bg-black/40 backdrop-blur-md text-white text-xs font-bold px-2 py-1 rounded-full flex items-center gap-1.5 border border-white/10 shadow-lg">
+                    <Users size={12} className="text-emerald-400" />
+                    {parseInt(server.players).toLocaleString()}
+                </div>
+            </div>
+
+            {/* Content */}
+            <div className="p-6 pt-10 relative flex-1 flex flex-col">
+                {/* Main Icon - Floating */}
+                <div className="absolute -top-8 left-6 w-16 h-16 rounded-2xl bg-slate-800 p-1 shadow-lg border border-slate-700 group-hover:scale-110 transition-transform duration-300 transform-gpu">
+                    {server.icon ? (
+                        <img src={server.icon} alt={server.name} loading="lazy" decoding="async" className="w-full h-full rounded-xl" />
+                    ) : (
+                        <div className={`w-full h-full rounded-xl bg-gradient-to-br ${gradient} flex items-center justify-center`}>
+                            <Server className="text-white/50" />
+                        </div>
+                    )}
+                </div>
+
+                <h3 className="text-xl font-bold text-white mb-1 mt-2 truncate">
+                    {server.ip}
+                </h3>
+                <div className="flex items-center gap-2 mb-4">
+                    <span className="text-xs font-mono text-slate-500 bg-slate-900/50 px-2 py-0.5 rounded border border-slate-700/50">
+                        {server.version || 'Unknown'}
+                    </span>
+                    {server.software && (
+                        <span className="text-xs text-slate-500 truncate max-w-[150px]">
+                            {server.software}
+                        </span>
+                    )}
+                </div>
+
+                <div
+                    className="text-slate-400 text-sm mb-6 line-clamp-2 min-h-[40px] [&>span]:text-slate-300"
+                    dangerouslySetInnerHTML={{ __html: server.motd || 'No description available.' }}
+                />
+
+                {/* Spacer to push button down */}
+                <div className="flex-1" />
+
+                {/* Join Button */}
+                <button
+                    onClick={() => handleJoin(server.ip)}
+                    className="w-full bg-white/5 hover:bg-white/10 hover:bg-emerald-500/10 border border-white/10 hover:border-emerald-500/30 text-slate-300 hover:text-emerald-400 font-bold py-3 rounded-xl transition-all duration-200 flex items-center justify-center gap-2 group/btn"
+                >
+                    <Zap size={16} className="group-hover/btn:fill-emerald-400 transition-colors" />
+                    Copy IP
+                </button>
+            </div>
+        </div>
+    );
+});
+
 const DiscoverView = () => {
     const { addToast } = useToast();
     const [servers, setServers] = useState([]);
@@ -80,11 +155,11 @@ const DiscoverView = () => {
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
-    const handleJoin = (serverIp) => {
+    const handleJoin = useCallback((serverIp) => {
         addToast(`Joining ${serverIp} is not yet implemented directly! Copying IP...`, "info");
         navigator.clipboard.writeText(serverIp);
         addToast("IP copied to clipboard!", "success");
-    };
+    }, [addToast]);
 
     return (
         <div className="flex-1 bg-slate-900 overflow-hidden relative flex flex-col select-none">
@@ -121,79 +196,15 @@ const DiscoverView = () => {
                 ) : (
                     <>
                         <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6 max-w-7xl mx-auto pb-10">
-                            {servers.map((server, index) => {
-                                const gradient = getGradient(server.ip);
-                                return (
-                                    <div
-                                        key={server.ip + index}
-                                        className="group bg-slate-800/50 hover:bg-slate-800 border border-white/5 hover:border-white/10 rounded-2xl overflow-hidden transition-all duration-300 hover:shadow-xl hover:shadow-black/20 flex flex-col"
-                                    >
-                                        {/* Banner Area (Generated or Icon Blur) */}
-                                        <div className="h-[80px] bg-slate-900 relative overflow-hidden transition-all duration-300">
-                                            <div className={`absolute inset-0 bg-gradient-to-r ${gradient} opacity-20`} />
-
-                                            {/* Icon as huge blur BG */}
-                                            {server.icon && (
-                                                <img
-                                                    src={server.icon}
-                                                    className="absolute inset-0 w-full h-full object-cover blur-xl opacity-40 scale-150"
-                                                    alt=""
-                                                />
-                                            )}
-
-                                            <div className="absolute top-4 right-4 z-30 bg-black/40 backdrop-blur-md text-white text-xs font-bold px-2 py-1 rounded-full flex items-center gap-1.5 border border-white/10 shadow-lg">
-                                                <Users size={12} className="text-emerald-400" />
-                                                {parseInt(server.players).toLocaleString()}
-                                            </div>
-                                        </div>
-
-                                        {/* Content */}
-                                        <div className="p-6 pt-10 relative flex-1 flex flex-col">
-                                            {/* Main Icon - Floating */}
-                                            <div className="absolute -top-8 left-6 w-16 h-16 rounded-2xl bg-slate-800 p-1 shadow-lg border border-slate-700 group-hover:scale-110 transition-transform duration-300">
-                                                {server.icon ? (
-                                                    <img src={server.icon} alt={server.name} className="w-full h-full rounded-xl" />
-                                                ) : (
-                                                    <div className={`w-full h-full rounded-xl bg-gradient-to-br ${gradient} flex items-center justify-center`}>
-                                                        <Server className="text-white/50" />
-                                                    </div>
-                                                )}
-                                            </div>
-
-                                            <h3 className="text-xl font-bold text-white mb-1 mt-2 truncate">
-                                                {server.ip}
-                                            </h3>
-                                            <div className="flex items-center gap-2 mb-4">
-                                                <span className="text-xs font-mono text-slate-500 bg-slate-900/50 px-2 py-0.5 rounded border border-slate-700/50">
-                                                    {server.version || 'Unknown'}
-                                                </span>
-                                                {server.software && (
-                                                    <span className="text-xs text-slate-500 truncate max-w-[150px]">
-                                                        {server.software}
-                                                    </span>
-                                                )}
-                                            </div>
-
-                                            <div
-                                                className="text-slate-400 text-sm mb-6 line-clamp-2 min-h-[40px] [&>span]:text-slate-300"
-                                                dangerouslySetInnerHTML={{ __html: server.motd || 'No description available.' }}
-                                            />
-
-                                            {/* Spacer to push button down */}
-                                            <div className="flex-1" />
-
-                                            {/* Join Button */}
-                                            <button
-                                                onClick={() => handleJoin(server.ip)}
-                                                className="w-full bg-white/5 hover:bg-white/10 hover:bg-emerald-500/10 border border-white/10 hover:border-emerald-500/30 text-slate-300 hover:text-emerald-400 font-bold py-3 rounded-xl transition-all duration-200 flex items-center justify-center gap-2 group/btn"
-                                            >
-                                                <Zap size={16} className="group-hover/btn:fill-emerald-400 transition-colors" />
-                                                Copy IP
-                                            </button>
-                                        </div>
-                                    </div>
-                                );
-                            })}
+                            {servers.map((server, index) => (
+                                <ServerCard
+                                    key={server.ip + index}
+                                    server={server}
+                                    index={index}
+                                    handleJoin={handleJoin}
+                                    getGradient={getGradient}
+                                />
+                            ))}
                         </div>
 
                         {/* Load More / End of List */}
