@@ -1,46 +1,27 @@
-const { v4: uuidv4 } = require('uuid');
-const os = require('os');
 const { app } = require('electron');
+const authService = require('./authService.cjs'); // [NEW]
 
-const STORE_KEY = 'telemetry_user_id';
 const API_BASE = 'https://telemetry.craftcorps.net/api';
 
 class TelemetryService {
     constructor() {
-        this.userId = null;
         this.sessionId = null;
         this.appVersion = app.getVersion();
         this.eventBuffer = [];
         this.flushInterval = null;
         this.store = null;
-        this.startupTime = Date.now() - (process.uptime() * 1000); // Approximate process start time
-        this.token = null;
-        this.tokenExpiry = null;
+        this.startupTime = Date.now() - (process.uptime() * 1000);
     }
 
     _log(message, data) {
-        // Non-blocking log
         setImmediate(() => console.log(`[Telemetry] ${message}`, data || ''));
     }
 
     async init(store) {
         this._log('Initializing telemetry service (Main Process)...');
-        if (!store) {
-            this._log('Store not provided to init');
-            return;
-        }
         this.store = store;
 
-        // Get or Create Anonymous ID
-        let id = store.get(STORE_KEY);
-        if (!id || typeof id !== 'string') {
-            id = uuidv4();
-            store.set(STORE_KEY, id);
-        }
-        this.userId = id;
-
-        // [AUTH] Bootstrap Telemetry Token - Deferred to first flush or heartbeat
-        // await this.bootstrapToken();
+        // Note: Auth Service should already be initialized by main.js
 
         // Check for pending offline events
         const pending = store.get('pending_telemetry_events_main');
@@ -60,47 +41,25 @@ class TelemetryService {
             this.track('APP_STARTUP_TIME', { durationMs: startupDuration });
         }
 
-        // Send immediate heartbeat (Starts Session) - Delayed for startup speed
+        // Send immediate heartbeat (Starts Session) - Delayed
         setTimeout(() => {
             this.sendHeartbeat();
         }, 15000);
     }
 
-    async bootstrapToken() {
-        try {
-            this._log('Bootstrapping telemetry token...');
-            const res = await fetch(`${API_BASE}/telemetry/bootstrap`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ clientId: this.userId })
-            });
+    // Auth is delegated to authService
 
-            if (!res.ok) throw new Error(`Bootstrap failed: ${res.status}`);
-
-            const data = await res.json();
-            this.token = data.token;
-            // calculated expiry (subtract 5 mins buffer)
-            this.tokenExpiry = Date.now() + (data.expiresIn * 1000) - 300000;
-            this._log('Telemetry token acquired.');
-        } catch (e) {
-            console.error('[Telemetry] Bootstrap error:', e.message);
-        }
-    }
-
-    async ensureToken() {
-        if (!this.token || (this.tokenExpiry && Date.now() > this.tokenExpiry)) {
-            await this.bootstrapToken();
-        }
-        return this.token;
+    get userId() {
+        return authService.getUserId();
     }
 
     async sendHeartbeat() {
-        if (!this.userId) return;
+        if (!this.userId) return; // Wait for Auth
         try {
-            const token = await this.ensureToken();
+            const token = await authService.getToken();
             if (!token) return;
 
-            const res = await fetch(`${API_BASE}/heartbeat`, {
+            const res = await fetch(`${API_BASE}/telemetry/heartbeat`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -123,14 +82,15 @@ class TelemetryService {
     async sendHardwareInfo() {
         if (!this.userId) return;
         try {
-            const token = await this.ensureToken(); // Optional: protect this too if needed, usually mostly stats
+            const token = await authService.getToken();
             if (!token) return;
 
+            const os = require('os');
             const ram = Math.round(os.totalmem() / (1024 * 1024 * 1024)) + ' GB';
             const cpu = os.cpus()[0]?.model || 'Unknown CPU';
             const osInfo = `${os.type()} ${os.release()} ${os.arch()}`;
 
-            await fetch(`${API_BASE}/hardware`, {
+            await fetch(`${API_BASE}/telemetry/hardware`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -151,8 +111,7 @@ class TelemetryService {
     }
 
     track(type, metadata = {}, immediate = false) {
-        if (!this.userId) return;
-
+        // Can track before auth, but flush will wait for auth
         // Constraint: Max buffer size
         if (this.eventBuffer.length > 100) {
             this.eventBuffer.shift();
@@ -184,16 +143,17 @@ class TelemetryService {
     }
 
     async flushEvents() {
-        if (this.eventBuffer.length === 0 || !this.userId) return;
+        if (this.eventBuffer.length === 0) return;
+        if (!this.userId) return; // Wait for auth
 
         const events = [...this.eventBuffer];
         this.eventBuffer = [];
 
         try {
-            const token = await this.ensureToken();
+            const token = await authService.getToken();
             if (!token) throw new Error('No auth token available');
 
-            await fetch(`${API_BASE}/telemetry`, {
+            await fetch(`${API_BASE}/telemetry/events`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -208,12 +168,15 @@ class TelemetryService {
         }
     }
 
-    // New Wrapper for Manual Log Upload (Legacy Endpoint)
+    getBackendUserId() {
+        return authService.getUserId();
+    }
+
     async sendManualCrashReport(logContent, sysInfoString) {
-        if (!this.userId) throw new Error('Telemetry not initialized');
+        if (!this.userId) throw new Error('Auth not initialized');
 
+        const { v4: uuidv4 } = require('uuid');
         const finalContent = sysInfoString + '\n' + logContent;
-
         const blob = new Blob([finalContent], { type: 'text/plain' });
         const formData = new FormData();
         formData.append('upload_file_minidump', blob, 'manual_log.txt');
@@ -227,7 +190,7 @@ class TelemetryService {
 
         const uploadUrl = 'https://telemetry.craftcorps.net/api/crash-report';
 
-        const token = await this.ensureToken();
+        const token = await authService.getToken();
         if (!token) throw new Error('No auth token available for crash report');
 
         const response = await fetch(uploadUrl, {

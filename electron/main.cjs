@@ -3,6 +3,7 @@ const { app, BrowserWindow, ipcMain, dialog, Tray, Menu } = require('electron');
 const path = require('path');
 const log = require('electron-log');
 const telemetryService = require('./services/telemetryService.cjs');
+const authService = require('./services/authService.cjs');
 const playTimeService = require('./services/playTimeService.cjs');
 
 // Set AppUserModelID for Windows Taskbar
@@ -73,8 +74,8 @@ async function createWindow() {
         const { default: Store } = await import('electron-store');
         store = new Store();
 
-        // const playTimeService = require('./services/playTimeService.cjs'); // Moved to top
-
+        // Initialize Authentication Service (Critical Path)
+        authService.init(store);
 
         // Defer Service Init (Telemetry & PlayTime) to avoid startup contention
         setTimeout(() => {
@@ -293,6 +294,17 @@ app.whenReady().then(async () => {
         return getNewInstancePath;
     });
 
+    // Lazy: Import Handlers
+    lazyHandle('import-instance-dialog', () => {
+        const { handleImportDialog } = require('./handlers/importHandler.cjs');
+        return handleImportDialog;
+    });
+
+    lazyHandle('perform-import-instance', () => {
+        const { handlePerformImport } = require('./handlers/importHandler.cjs');
+        return handlePerformImport;
+    });
+
     // Lazy: Updates (Self-Upgrading)
     // We handle this manually to ensure setupUpdateHandlers is called to register events
     ipcMain.handle('check-for-updates', async (event, ...args) => {
@@ -320,14 +332,14 @@ app.whenReady().then(async () => {
             const { setupJavaHandlers } = require('./handlers/javaHandler.cjs');
             // const { setupGameHandlers } = require('./handlers/gameHandler.cjs'); // REMOVED: Loaded via lazy 'launch-game'
             const { setupModHandlers } = require('./handlers/modHandler.cjs');
-            const { setupImportHandlers } = require('./handlers/importHandler.cjs');
+            // const { setupImportHandlers } = require('./handlers/importHandler.cjs'); // REMOVED: Loaded via lazy
             const { setupUpdateHandlers } = require('./handlers/updateHandler.cjs');
             const { subscribeToNewsletter } = require('./handlers/marketingHandler.cjs');
 
             setupJavaHandlers(getMainWindow);
             // setupGameHandlers(getMainWindow); // REMOVED
 
-            setupImportHandlers();
+            // setupImportHandlers(); // REMOVED
             setupUpdateHandlers(getMainWindow); // It's safe to call again (removes/re-adds)
             ipcMain.handle('subscribe-newsletter', subscribeToNewsletter);
 

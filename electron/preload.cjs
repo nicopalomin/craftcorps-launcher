@@ -20,6 +20,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
     storeGet: (key) => ipcRenderer.invoke('store-get', key),
     storeSet: (key, value) => ipcRenderer.invoke('store-set', key, value),
     getAppVersion: () => ipcRenderer.invoke('get-app-version'), // [NEW]
+    getDeviceId: () => ipcRenderer.invoke('get-device-id'), // [NEW]
     installJava: (version) => ipcRenderer.invoke('install-java', version),
     getAvailableJavas: () => ipcRenderer.invoke('get-available-javas'),
     cancelJavaInstall: () => ipcRenderer.invoke('cancel-java-install'),
@@ -110,4 +111,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
 
     // Marketing
     subscribeToNewsletter: (email) => ipcRenderer.invoke('subscribe-newsletter', email),
+
+    // Unified Telemetry
+    trackTelemetryEvent: (type, metadata) => ipcRenderer.invoke('track-telemetry-event', { type, metadata }),
+    getAuthUserId: () => ipcRenderer.invoke('get-auth-user-id'), // Returns authenticated backend user ID
 });

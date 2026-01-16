@@ -49,6 +49,24 @@ function setupAppHandlers(getMainWindow, store) {
         return app.getVersion();
     });
 
+    ipcMain.handle('get-device-id', async () => {
+        // Use node-machine-id for consistent device identification
+        try {
+            const { machineIdSync } = require('node-machine-id');
+            return machineIdSync({ original: true });
+        } catch (e) {
+            log.error('Failed to get machine ID:', e);
+            // Fallback to stored UUID if machine-id fails
+            let fallbackId = store.get('device_id_fallback');
+            if (!fallbackId) {
+                const crypto = require('crypto');
+                fallbackId = crypto.randomUUID();
+                store.set('device_id_fallback', fallbackId);
+            }
+            return fallbackId;
+        }
+    });
+
     // File Selection
     ipcMain.handle('select-file', async () => {
         const filters = process.platform === 'win32'
@@ -123,13 +141,25 @@ Date: ${new Date().toISOString()}
 
             // Use the Crash Report endpoint via Telemetry Service
             // This ensures it appears in the "Crash Reports" tab of the panel
-            await telemetryService.sendManualCrashReport(logContent, sysInfo);
+            await telemetryService.sendManualCrashReport(logContent, sysInfoString);
 
             return { success: true, message: 'Logs uploaded successfully to crash reporter.' };
         } catch (e) {
             log.error('Manual Log Upload Failed:', e);
             return { success: false, error: e.message };
         }
+    });
+
+    // Unified Telemetry IPC
+    const telemetryService = require('../services/telemetryService.cjs');
+    const authService = require('../services/authService.cjs'); // [NEW]
+
+    ipcMain.handle('track-telemetry-event', (event, { type, metadata }) => {
+        telemetryService.track(type, metadata);
+    });
+
+    ipcMain.handle('get-auth-user-id', () => {
+        return authService.getUserId();
     });
 }
 
