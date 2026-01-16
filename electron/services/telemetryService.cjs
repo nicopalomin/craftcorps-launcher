@@ -1,7 +1,7 @@
 const { app } = require('electron');
 const authService = require('./authService.cjs'); // [NEW]
 
-const API_BASE = 'https://telemetry.craftcorps.net/api';
+const API_BASE = 'https://telemetry.craftcorps.net';
 
 class TelemetryService {
     constructor() {
@@ -188,7 +188,7 @@ class TelemetryService {
         formData.append('_version', this.appVersion);
         formData.append('userId', this.userId);
 
-        const uploadUrl = 'https://telemetry.craftcorps.net/api/crash-report';
+        const uploadUrl = 'https://api.craftcorps.net/crashes/report';
 
         const token = await authService.getToken();
         if (!token) throw new Error('No auth token available for crash report');
