@@ -104,6 +104,9 @@ contextBridge.exposeInMainWorld('electronAPI', {
 
     // Discovery
     getDiscoverServers: (params) => ipcRenderer.invoke('get-discover-servers', params),
+    getDiscoverCategories: () => ipcRenderer.invoke('get-discover-categories'),
+    getDiscoverMetadata: () => ipcRenderer.invoke('get-discover-metadata'),
+    joinServer: (payload) => ipcRenderer.invoke('join-server', payload),
 
     // Auto Update
     checkForUpdates: () => ipcRenderer.invoke('check-for-updates'),

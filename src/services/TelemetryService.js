@@ -85,21 +85,7 @@ class TelemetryService {
     // Ideally, get cached discover servers stays. Fetching should probably happen in Main or use a public endpoint.
     // Let's keep existing cached/fetch logic but remove the heavy auth/telemetry lifting.
 
-    async getCachedDiscoverServers() {
-        if (!this.store) return [];
-        return (await this.store.get('cached_discover_servers')) || [];
-    }
-
-    async fetchDiscoverServers(offset = 0, limit = 9) {
-        if (window.electronAPI && window.electronAPI.getDiscoverServers) {
-            try {
-                return await window.electronAPI.getDiscoverServers({ offset, limit });
-            } catch (e) {
-                console.error('[Telemetry] Failed to fetch servers via IPC', e);
-            }
-        }
-        return { servers: [], hasMore: false };
-    }
+    // Discovery methods moved to DiscoveryService.js
 
     track(type, metadata = {}, immediate = false) {
         if (window.electronAPI && window.electronAPI.trackTelemetryEvent) {

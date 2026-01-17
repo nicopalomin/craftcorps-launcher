@@ -56,14 +56,10 @@ class TelemetryService {
     async sendHeartbeat() {
         if (!this.userId) return; // Wait for Auth
         try {
-            const token = await authService.getToken();
-            if (!token) return;
-
-            const res = await fetch(`${API_BASE}/telemetry/heartbeat`, {
+            const res = await authService.fetchAuthenticated(`${API_BASE}/telemetry/heartbeat`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${token}`
                 },
                 body: JSON.stringify({
                     sessionId: this.sessionId,
@@ -82,19 +78,15 @@ class TelemetryService {
     async sendHardwareInfo() {
         if (!this.userId) return;
         try {
-            const token = await authService.getToken();
-            if (!token) return;
-
             const os = require('os');
             const ram = Math.round(os.totalmem() / (1024 * 1024 * 1024)) + ' GB';
             const cpu = os.cpus()[0]?.model || 'Unknown CPU';
             const osInfo = `${os.type()} ${os.release()} ${os.arch()}`;
 
-            await fetch(`${API_BASE}/telemetry/hardware`, {
+            await authService.fetchAuthenticated(`${API_BASE}/telemetry/hardware`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${token}`
                 },
                 body: JSON.stringify({
                     userId: this.userId,
@@ -150,14 +142,10 @@ class TelemetryService {
         this.eventBuffer = [];
 
         try {
-            const token = await authService.getToken();
-            if (!token) throw new Error('No auth token available');
-
-            await fetch(`${API_BASE}/telemetry/events`, {
+            await authService.fetchAuthenticated(`${API_BASE}/telemetry/events`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${token}`
                 },
                 body: JSON.stringify({ events }),
             });
@@ -190,12 +178,9 @@ class TelemetryService {
 
         const uploadUrl = 'https://api.craftcorps.net/crashes/report';
 
-        const token = await authService.getToken();
-        if (!token) throw new Error('No auth token available for crash report');
-
-        const response = await fetch(uploadUrl, {
+        const response = await authService.fetchAuthenticated(uploadUrl, {
             method: 'POST',
-            headers: { 'Authorization': `Bearer ${token}` },
+            headers: {},
             body: formData
         });
 

@@ -12,6 +12,7 @@ import { useAppSettings } from './hooks/useAppSettings';
 import { useToast } from './contexts/ToastContext';
 import { useTranslation } from 'react-i18next';
 import { telemetry } from './services/TelemetryService';
+import { discovery } from './services/DiscoveryService';
 import { useAutoUpdate } from './hooks/useAutoUpdate';
 
 function App() {
@@ -28,6 +29,7 @@ function App() {
                     set: (key, val) => window.electronAPI?.storeSet?.(key, val)
                 };
 
+                discovery.init(storeWrapper);
                 telemetry.init(storeWrapper).then(() => {
                     telemetry.track('APP_OPEN');
                     // Defer hardware info to avoid startup slowdown

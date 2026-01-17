@@ -194,6 +194,35 @@ class AuthService {
             return null;
         }
     }
+    async fetchAuthenticated(url, options = {}, retried = false) {
+        const token = await this.getToken();
+        const headers = {
+            ...options.headers,
+            'Authorization': `Bearer ${token}`
+        };
+
+        const response = await fetch(url, { ...options, headers });
+
+        if (response.status === 401 && !retried) {
+            log.warn(`[AuthService] 401 at ${url}. Invalidating session and retrying.`);
+            this.invalidateSession();
+            return this.fetchAuthenticated(url, options, true);
+        }
+
+        return response;
+    }
+
+    invalidateSession() {
+        log.info('[AuthService] Invalidating session...');
+        this.token = null;
+        this.refreshToken = null;
+        this.userId = null;
+        if (this.store) {
+            this.store.delete(STORE_KEY_AUTH_TOKEN);
+            this.store.delete(STORE_KEY_REFRESH_TOKEN);
+            this.store.delete(STORE_KEY_USER_ID);
+        }
+    }
 }
 
 module.exports = new AuthService();
