@@ -82,7 +82,83 @@ class ForgeHandler {
             }
         }
 
-        // 3. Check if installed
+        // 3. Validation: Enforce Clean State for Legacy/Broken JSONs
+        let shouldForceReinstall = false;
+
+        if (fs.existsSync(versionJson)) {
+            try {
+                const content = JSON.parse(fs.readFileSync(versionJson, 'utf-8'));
+
+                // Criteria for "Broken":
+                // 1. Missing libraries (Legacy Forge 1.12.2 needs many libs, if < 10 it's likely just the installer shell)
+                // 2. Missing "assets" index
+                // 3. Inheritance present but we want to strip it (optional, handled by patch, but cleaner to start fresh)
+
+                const libCount = content.libraries ? content.libraries.length : 0;
+                const isLegacy = gameVersion === '1.12.2';
+
+                if (libCount < 10 || (isLegacy && libCount < 30) || !content.assets || (isLegacy && content.inheritsFrom)) {
+                    emit('log', { type: 'WARN', message: `Detected incomplete/legacy Forge JSON (Libs: ${libCount}). Forcing clean reinstall...` });
+                    shouldForceReinstall = true;
+                }
+
+                // Additional validation: Check if critical vanilla libraries are missing
+                if (!shouldForceReinstall && isLegacy) {
+                    const vanillaJsonPath = path.join(launchOptions.root, 'versions', gameVersion, `${gameVersion}.json`);
+                    if (fs.existsSync(vanillaJsonPath)) {
+                        const vanillaContent = JSON.parse(fs.readFileSync(vanillaJsonPath, 'utf-8'));
+                        const criticalLibs = ['jopt-simple', 'launchwrapper', 'log4j-api', 'log4j-core'];
+                        const missingCritical = criticalLibs.filter(lib => {
+                            return !content.libraries.some(l => l.name && l.name.includes(lib));
+                        });
+
+                        if (missingCritical.length > 0) {
+                            emit('log', { type: 'WARN', message: `Missing critical libraries: ${missingCritical.join(', ')}. Forcing clean reinstall...` });
+                            shouldForceReinstall = true;
+                        }
+                    }
+                }
+            } catch (e) {
+                emit('log', { type: 'WARN', message: `JSON Parse failed for ${versionJson}. Forcing clean reinstall...` });
+                shouldForceReinstall = true;
+            }
+        }
+
+        // FALLBACK: Complete clean reinstall if validation failed
+        if (shouldForceReinstall && fs.existsSync(specificVersionDir)) {
+            emit('log', { type: 'INFO', message: '🔧 FALLBACK: Removing corrupted Forge installation for clean reinstall...' });
+            try {
+                // Delete the entire version directory
+                const rimraf = (dir) => {
+                    if (fs.existsSync(dir)) {
+                        fs.readdirSync(dir).forEach(file => {
+                            const curPath = path.join(dir, file);
+                            if (fs.lstatSync(curPath).isDirectory()) {
+                                rimraf(curPath);
+                            } else {
+                                fs.unlinkSync(curPath);
+                            }
+                        });
+                        fs.rmdirSync(dir);
+                    }
+                };
+
+                rimraf(specificVersionDir);
+                emit('log', { type: 'INFO', message: `Deleted corrupted version directory: ${specificVersionDir}` });
+
+                // Also clean up the installer cache to force fresh download
+                const cacheDir = path.join(launchOptions.root, 'cache', 'installers');
+                const installerPath = path.join(cacheDir, `forge-${gameVersion}-${forgeVersion}-installer.jar`);
+                if (fs.existsSync(installerPath)) {
+                    fs.unlinkSync(installerPath);
+                    emit('log', { type: 'INFO', message: 'Deleted cached installer to force fresh download' });
+                }
+            } catch (e) {
+                emit('log', { type: 'ERROR', message: `Failed to clean corrupted installation: ${e.message}` });
+            }
+        }
+
+        // 4. Check if installed
         let needsInstall = !fs.existsSync(versionJson);
 
         if (needsInstall) {
@@ -183,6 +259,9 @@ class ForgeHandler {
 
             if (fs.existsSync(vanillaJson)) {
                 vanillaData = JSON.parse(fs.readFileSync(vanillaJson, 'utf-8'));
+                emit('log', { type: 'DEBUG', message: `Loaded Vanilla JSON from ${vanillaJson}. Libs: ${vanillaData.libraries ? vanillaData.libraries.length : 'MISSING'}` });
+            } else {
+                emit('log', { type: 'WARN', message: `Vanilla JSON NOT found at ${vanillaJson}` });
             }
 
             let changed = false;
@@ -203,14 +282,71 @@ class ForgeHandler {
                 changed = true;
             }
 
-            // Patch 3: Libraries
+            // Patch 3: Libraries & Inheritance
             if (vanillaData.libraries) {
                 if (!forgeData.libraries) forgeData.libraries = [];
-                const hasLwjgl = forgeData.libraries.some(l => l.name && l.name.includes('org.lwjgl'));
-                if (!hasLwjgl) {
-                    emit('log', { type: 'INFO', message: 'Patching Forge JSON with Vanilla libraries...' });
-                    forgeData.libraries = [...forgeData.libraries, ...vanillaData.libraries];
+
+                // Always attempt to merge missing vanilla libraries.
+                // This ensures that we have all dependencies (like jopt-simple, launchwrapper)
+                // even if a previous patch run was incomplete or if inheritance was removed.
+
+                // Intelligent Library Merge: For each Vanilla library, use Forge's version if valid,
+                // otherwise use Vanilla's version. This ensures all dependencies are present and valid.
+                emit('log', { type: 'DEBUG', message: `Library Counts - Forge: ${forgeData.libraries.length}, Vanilla: ${vanillaData.libraries.length}` });
+
+                let librariesChanged = false;
+                const forgeLibMap = new Map(forgeData.libraries.map(lib => [lib.name, lib]));
+
+                vanillaData.libraries.forEach(vanillaLib => {
+                    const forgeLib = forgeLibMap.get(vanillaLib.name);
+
+                    if (forgeLib) {
+                        // Forge has this library - check if it's valid
+                        const isValid = forgeLib.downloads && forgeLib.downloads.artifact && forgeLib.downloads.artifact.url;
+
+                        if (!isValid) {
+                            // Invalid Forge library - replace with Vanilla version
+                            emit('log', { type: 'WARN', message: `Replacing invalid Forge library '${vanillaLib.name}' with Vanilla version` });
+                            const index = forgeData.libraries.findIndex(l => l.name === vanillaLib.name);
+                            if (index !== -1) {
+                                forgeData.libraries[index] = vanillaLib;
+                                librariesChanged = true;
+                            }
+                        }
+                        // If valid, keep Forge's version (do nothing)
+                    } else {
+                        // Missing from Forge - add Vanilla version
+                        emit('log', { type: 'INFO', message: `Adding missing library '${vanillaLib.name}' from Vanilla` });
+                        forgeData.libraries.push(vanillaLib);
+                        librariesChanged = true;
+                    }
+                });
+
+                if (librariesChanged) {
+                    emit('log', { type: 'INFO', message: `Merged libraries. New total: ${forgeData.libraries.length}` });
                     changed = true;
+                }
+
+                if (forgeData.inheritsFrom) {
+                    delete forgeData.inheritsFrom;
+                    changed = true;
+
+                    // Ensure Vanilla Client JAR is in libraries (replacement for inheritance)
+                    const hasVanilla = forgeData.libraries.some(l => l.name === `com.mojang:minecraft:${gameVersion}`);
+                    if (!hasVanilla && vanillaData.downloads && vanillaData.downloads.client) {
+                        forgeData.libraries.push({
+                            name: `com.mojang:minecraft:${gameVersion}`,
+                            downloads: {
+                                artifact: {
+                                    url: vanillaData.downloads.client.url,
+                                    path: `versions/${gameVersion}/${gameVersion}.jar`,
+                                    size: vanillaData.downloads.client.size,
+                                    sha1: vanillaData.downloads.client.sha1
+                                }
+                            }
+                        });
+                        emit('log', { type: 'INFO', message: 'Removed inheritance and added Vanilla JAR as library.' });
+                    }
                 }
             }
 
@@ -288,8 +424,15 @@ class ForgeHandler {
                 }
             }
 
+            // DEBUG: Check for jopt-simple specifically
+            const hasJopt = forgeData.libraries.some(l => l.name && l.name.includes('jopt-simple'));
+            emit('log', { type: hasJopt ? 'INFO' : 'ERROR', message: `[DEBUG] Final Library Check - jopt-simple present: ${hasJopt}` });
+
             if (changed) {
+                emit('log', { type: 'INFO', message: `Saving patched Forge JSON to ${versionJson}` });
                 fs.writeFileSync(versionJson, JSON.stringify(forgeData, null, 2));
+            } else {
+                emit('log', { type: 'DEBUG', message: 'No changes needed for Forge JSON.' });
             }
 
             // JVM Args Injection logic
