@@ -2,7 +2,6 @@ import React, { useRef, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Sprout, Play, Edit3, HardDrive, Settings, Shirt, ShoppingBag, Gift, PanelLeftClose, PanelLeftOpen, Star } from 'lucide-react';
 import SidebarItem from './SidebarItem';
-import SneakyAd from '../common/SneakyAd';
 
 const Sidebar = ({ activeTab, onTabChange, theme }) => {
     const { t } = useTranslation();
@@ -15,16 +14,21 @@ const Sidebar = ({ activeTab, onTabChange, theme }) => {
     const [isCollapsed, setIsCollapsed] = React.useState(true);
     const [isResizing, setIsResizing] = React.useState(false);
     const sidebarRef = useRef(null);
+    const prevActiveTab = useRef(activeTab);
 
     // Save width to local storage whenever it changes
     useEffect(() => {
         localStorage.setItem('sidebarWidth', width);
     }, [width]);
 
-    // Clear manual toggle persistence since we are moving to hover behavior
-    // useEffect(() => {
-    //     localStorage.setItem('sidebarCollapsed', isCollapsed);
-    // }, [isCollapsed]);
+    // Auto-open sidebar when user navigates between pages (not on initial load/hydration)
+    useEffect(() => {
+        // Only open if both previous and current are defined (meaning it's actual navigation)
+        if (prevActiveTab.current && activeTab && prevActiveTab.current !== activeTab) {
+            setIsCollapsed(false);
+        }
+        prevActiveTab.current = activeTab;
+    }, [activeTab]);
 
     const effectiveWidth = isCollapsed ? 80 : width;
 
@@ -82,7 +86,6 @@ const Sidebar = ({ activeTab, onTabChange, theme }) => {
             ref={sidebarRef}
             className={`${getSidebarStyles()} border-r flex flex-col z-20 select-none relative group/sidebar ${isResizing ? 'transition-none' : 'transition-[width,background-color] duration-500 ease-out'} transform-gpu will-change-[width] overflow-hidden`}
             style={{ width: effectiveWidth }}
-            onMouseEnter={() => setIsCollapsed(false)}
             onMouseLeave={() => {
                 if (!isResizing) setIsCollapsed(true);
             }}
@@ -108,10 +111,10 @@ const Sidebar = ({ activeTab, onTabChange, theme }) => {
                         collapsed={isCollapsed}
                     />
                     <SidebarItem
-                        icon={Edit3}
-                        label={t('nav_edit_crops')}
-                        active={activeTab === 'instances'}
-                        onClick={() => onTabChange('instances')}
+                        icon={Star}
+                        label={t('nav_discover', { defaultValue: 'Discover' })}
+                        active={activeTab === 'discover'}
+                        onClick={() => onTabChange('discover')}
                         collapsed={isCollapsed}
                     />
                     <SidebarItem
@@ -122,26 +125,28 @@ const Sidebar = ({ activeTab, onTabChange, theme }) => {
                         collapsed={isCollapsed}
                     />
                     <SidebarItem
-                        icon={Star}
-                        label={t('nav_discover', { defaultValue: 'Discover' })}
-                        active={activeTab === 'discover'}
-                        onClick={() => onTabChange('discover')}
+                        icon={Edit3}
+                        label={t('nav_edit_crops')}
+                        active={activeTab === 'instances'}
+                        onClick={() => onTabChange('instances')}
                         collapsed={isCollapsed}
                     />
-                    <SidebarItem
-                        icon={ShoppingBag}
-                        label={t('nav_market', { defaultValue: 'Market' })}
-                        active={activeTab === 'market'}
-                        onClick={() => onTabChange('market')}
-                        collapsed={isCollapsed}
-                    />
-                    <SidebarItem
-                        icon={Gift}
-                        label="Beta Rewards"
-                        active={activeTab === 'rewards'}
-                        onClick={() => onTabChange('rewards')}
-                        collapsed={isCollapsed}
-                    />
+                    <div className={`pt-4 mt-4 border-t border-slate-800 ${isCollapsed ? 'border-transparent' : ''}`}>
+                        <SidebarItem
+                            icon={ShoppingBag}
+                            label={t('nav_market', { defaultValue: 'Market' })}
+                            active={activeTab === 'market'}
+                            onClick={() => onTabChange('market')}
+                            collapsed={isCollapsed}
+                        />
+                        <SidebarItem
+                            icon={Gift}
+                            label="Beta Rewards"
+                            active={activeTab === 'rewards'}
+                            onClick={() => onTabChange('rewards')}
+                            collapsed={isCollapsed}
+                        />
+                    </div>
                     <div className={`pt-4 mt-4 border-t border-slate-800 ${isCollapsed ? 'border-transparent' : ''}`}>
                         <SidebarItem
                             icon={Settings}
@@ -160,9 +165,8 @@ const Sidebar = ({ activeTab, onTabChange, theme }) => {
                     </div>
                 </nav>
 
-                {/* Ad Space (Preserved) */}
-                <div className={`mt-auto pt-4 border-t border-slate-800 relative flex flex-col overflow-hidden transition-all duration-500 ease-out ${(width < 200 || isCollapsed) ? 'opacity-0 pointer-events-none' : 'opacity-100'}`}>
-                    <SneakyAd />
+                {/* Version */}
+                <div className={`mt-auto pt-4 border-t border-slate-800 transition-all duration-500 ease-out ${isCollapsed ? 'opacity-0' : 'opacity-100'}`}>
                     <div className="text-[10px] text-slate-600 text-center pb-2 font-mono opacity-50 hover:opacity-100 transition-opacity">
                         v{typeof __APP_VERSION__ !== 'undefined' ? __APP_VERSION__ : '1.0.0'}
                     </div>

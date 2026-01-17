@@ -1,6 +1,5 @@
-
 import React from 'react';
-import { Crown, BadgeCheck, Copy } from 'lucide-react';
+import { Crown, BadgeCheck, Copy, Info } from 'lucide-react';
 import { getGradient, toInt } from './utils';
 
 const CompactServerRow = React.memo(({ server, onJoin, onCopy, rank }) => {
@@ -17,13 +16,25 @@ const CompactServerRow = React.memo(({ server, onJoin, onCopy, rank }) => {
 
     const StatusIcon = status.icon;
 
-    // Use content-visibility: auto to skip rendering off-screen (like virtual scrolling but automatic)
+    // Helper to format versions
+    const formatVersions = () => {
+        if (server.versions && server.versions.length > 0) {
+            // Sort just in case strings need numeric sort, but simple join is usually fine for display if backend sorts
+            // If many versions, show range
+            if (server.versions.length > 4) {
+                return `${server.versions[0]} - ${server.versions[server.versions.length - 1]}`;
+            }
+            return server.versions.join(', ');
+        }
+        return server.version || "Unknown";
+    };
+
     return (
         <div
-            className="group relative flex flex-col gap-2 p-4 rounded-xl bg-slate-800/20 hover:bg-slate-800/60 border border-transparent hover:border-white/5 transition-colors duration-200 overflow-hidden h-full"
+            className="group relative flex flex-col gap-2 p-4 rounded-xl bg-slate-800/20 hover:bg-slate-800/60 border border-transparent hover:border-white/5 transition-colors duration-200 h-full"
         >
             {/* Corner Flag */}
-            <div className={`absolute top-0 right-0 px-2.5 py-1 rounded-bl-xl border-b border-l text-[9px] font-bold uppercase tracking-widest flex items-center gap-1.5 ${status.color} z-10 shadow-sm`}>
+            <div className={`absolute top-0 right-0 px-2.5 py-1 rounded-bl-xl border-b border-l rounded-tr-xl text-[9px] font-bold uppercase tracking-widest flex items-center gap-1.5 ${status.color} z-10 shadow-sm`}>
                 {StatusIcon && <StatusIcon size={10} strokeWidth={3} />}
                 {status.label}
             </div>
@@ -47,14 +58,14 @@ const CompactServerRow = React.memo(({ server, onJoin, onCopy, rank }) => {
                         {server.version && (
                             <>
                                 <span className="w-0.5 h-2 bg-slate-700 rounded-full"></span>
-                                <span className="text-slate-500">{server.version}</span>
+                                <span className="text-slate-500 max-w-[100px] truncate">{server.version}</span>
                             </>
                         )}
                     </div>
                 </div>
             </div>
 
-            {/* MOTD - Simplified regex exec by relying on safe stripped content which likely doesn't change often */}
+            {/* MOTD */}
             <div
                 className="text-slate-500 text-xs leading-relaxed line-clamp-2 whitespace-normal h-8 w-full mt-1"
                 dangerouslySetInnerHTML={{ __html: (typeof server.motd === 'string' ? server.motd : JSON.stringify(server.motd || "")).replace(/<[^>]*>/g, '') || 'Join now to start your adventure.' }}
@@ -62,6 +73,36 @@ const CompactServerRow = React.memo(({ server, onJoin, onCopy, rank }) => {
 
             {/* Actions (Overlay) */}
             <div className="absolute bottom-3 right-3 flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-all translate-y-2 group-hover:translate-y-0 z-20">
+                {/* Info Tooltip */}
+                <div className="relative group/tooltip">
+                    <button
+                        className="p-1.5 bg-slate-900/90 text-slate-300 hover:text-white border border-white/10 hover:border-white/20 rounded-md backdrop-blur-md shadow-lg transition-colors cursor-help"
+                        title="Server Info"
+                    >
+                        <Info size={14} />
+                    </button>
+                    {/* Tooltip Content */}
+                    <div className="invisible group-hover/tooltip:visible opacity-0 group-hover/tooltip:opacity-100 transition-all absolute bottom-full right-0 mb-2 w-48 p-3 bg-slate-900 text-[10px] text-slate-300 rounded-xl border border-white/10 shadow-2xl z-50 flex flex-col gap-2 pointer-events-none">
+                        <div className="flex items-center justify-between border-b border-white/5 pb-1 mb-0.5">
+                            <span className="font-bold text-white uppercase tracking-wider">Server Info</span>
+                        </div>
+                        <div className="flex justify-between items-center">
+                            <span className="text-slate-500">Platform</span>
+                            <span className={`font-medium ${server.platform === 'Bedrock' ? 'text-green-400' : 'text-blue-400'}`}>
+                                {server.platform || 'Java'}
+                            </span>
+                        </div>
+                        <div className="flex justify-between items-center">
+                            <span className="text-slate-500">Versions</span>
+                            <span className="text-white bg-slate-800 px-1.5 py-0.5 rounded text-right leading-tight">
+                                {formatVersions()}
+                            </span>
+                        </div>
+                        {/* Little triangle pointer */}
+                        <div className="absolute -bottom-1 right-2 w-2 h-2 bg-slate-900 border-b border-l border-white/10 rotate-45 transform"></div>
+                    </div>
+                </div>
+
                 <button
                     onClick={() => onCopy(server.ip)}
                     className="p-1.5 bg-slate-900/90 text-slate-300 hover:text-white border border-white/10 hover:border-white/20 rounded-md backdrop-blur-md shadow-lg transition-colors"

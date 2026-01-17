@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { Crown, Zap, Copy } from 'lucide-react';
+import { Crown, Zap, Copy, Info } from 'lucide-react';
 import { getGradient, toInt } from './utils';
 import ServerBadge from './ServerBadge';
 
@@ -8,6 +8,17 @@ const HeroServerBanner = React.memo(({ server, onJoin, onCopy }) => {
     const gradient = getGradient(server.ip);
     const players = toInt(server.players);
     const isHot = players >= 1500;
+
+    // Helper to format versions
+    const formatVersions = () => {
+        if (server.versions && server.versions.length > 0) {
+            if (server.versions.length > 4) {
+                return `${server.versions[0]} - ${server.versions[server.versions.length - 1]}`;
+            }
+            return server.versions.join(', ');
+        }
+        return server.version || "Unknown";
+    };
 
     return (
         <div className="relative w-full h-[400px] rounded-3xl overflow-hidden group shrink-0 mb-8 border border-white/10 shadow-2xl shadow-black/50">
@@ -48,6 +59,7 @@ const HeroServerBanner = React.memo(({ server, onJoin, onCopy }) => {
                             <Zap size={18} fill="currentColor" />
                             Join Server
                         </button>
+
                         <button
                             onClick={() => onCopy(server.ip)}
                             className="bg-white/10 hover:bg-white/20 text-white font-medium px-4 py-3.5 rounded-xl backdrop-blur-md transition-colors border border-white/5"
@@ -55,6 +67,36 @@ const HeroServerBanner = React.memo(({ server, onJoin, onCopy }) => {
                         >
                             <Copy size={18} />
                         </button>
+
+                        {/* Info Tooltip */}
+                        <div className="relative group/tooltip">
+                            <button
+                                className="bg-white/10 hover:bg-white/20 text-white font-medium px-4 py-3.5 rounded-xl backdrop-blur-md transition-colors border border-white/5 cursor-help"
+                                title="Server Info"
+                            >
+                                <Info size={18} />
+                            </button>
+                            {/* Tooltip Content - positioned ABOVE */}
+                            <div className="invisible group-hover/tooltip:visible opacity-0 group-hover/tooltip:opacity-100 transition-all absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-48 p-3 bg-slate-900 text-[10px] text-slate-300 rounded-xl border border-white/10 shadow-2xl z-50 flex flex-col gap-2 pointer-events-none">
+                                <div className="flex items-center justify-between border-b border-white/5 pb-1 mb-0.5">
+                                    <span className="font-bold text-white uppercase tracking-wider">Server Info</span>
+                                </div>
+                                <div className="flex justify-between items-center">
+                                    <span className="text-slate-500">Platform</span>
+                                    <span className={`font-medium ${server.platform === 'Bedrock' ? 'text-green-400' : 'text-blue-400'}`}>
+                                        {server.platform || 'Java'}
+                                    </span>
+                                </div>
+                                <div className="flex justify-between items-center">
+                                    <span className="text-slate-500">Versions</span>
+                                    <span className="text-white bg-slate-800 px-1.5 py-0.5 rounded text-right leading-tight">
+                                        {formatVersions()}
+                                    </span>
+                                </div>
+                                {/* Little triangle pointer pointing down */}
+                                <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-2 h-2 bg-slate-900 border-b border-r border-white/10 rotate-45 transform"></div>
+                            </div>
+                        </div>
                     </div>
                 </div>
 

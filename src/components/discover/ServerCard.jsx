@@ -1,6 +1,5 @@
-
 import React from 'react';
-import { Users, Server, Crown, Wifi, Zap, ArrowRight, Copy, MoreHorizontal } from 'lucide-react';
+import { Users, Server, Crown, Wifi, Zap, ArrowRight, Copy, Info } from 'lucide-react';
 import { getGradient, toInt } from './utils';
 import ServerBadge from './ServerBadge';
 import Pill from './Pill';
@@ -26,9 +25,20 @@ const ServerCard = React.memo(({
     const iconSize = variant === "big" || variant === "featured" ? "w-16 h-16" : "w-14 h-14";
     const titleSize = variant === "big" || variant === "featured" ? "text-2xl" : "text-xl";
 
-    // “Alive” signals (cheap but effective)
+    // "Alive" signals (cheap but effective)
     const isHot = players >= 1500;
     const isLive = players > 0;
+
+    // Helper to format versions
+    const formatVersions = () => {
+        if (server.versions && server.versions.length > 0) {
+            if (server.versions.length > 4) {
+                return `${server.versions[0]} - ${server.versions[server.versions.length - 1]}`;
+            }
+            return server.versions.join(', ');
+        }
+        return server.version || "Unknown";
+    };
 
     return (
         <div
@@ -94,14 +104,35 @@ const ServerCard = React.memo(({
                         </div>
                     </div>
 
-                    {/* Overflow */}
-                    <button
-                        className="shrink-0 w-9 h-9 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-slate-300 flex items-center justify-center transition"
-                        title="More"
-                        onClick={() => onCopy(server.ip)}
-                    >
-                        <MoreHorizontal size={18} />
-                    </button>
+                    {/* Info Tooltip */}
+                    <div className="relative group/tooltip shrink-0">
+                        <button
+                            className="w-9 h-9 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-slate-300 flex items-center justify-center transition cursor-help"
+                            title="Server Info"
+                        >
+                            <Info size={18} />
+                        </button>
+                        {/* Tooltip Content */}
+                        <div className="invisible group-hover/tooltip:visible opacity-0 group-hover/tooltip:opacity-100 transition-all absolute top-full right-0 mt-2 w-48 p-3 bg-slate-900 text-[10px] text-slate-300 rounded-xl border border-white/10 shadow-2xl z-50 flex flex-col gap-2 pointer-events-none">
+                            <div className="flex items-center justify-between border-b border-white/5 pb-1 mb-0.5">
+                                <span className="font-bold text-white uppercase tracking-wider">Server Info</span>
+                            </div>
+                            <div className="flex justify-between items-center">
+                                <span className="text-slate-500">Platform</span>
+                                <span className={`font-medium ${server.platform === 'Bedrock' ? 'text-green-400' : 'text-blue-400'}`}>
+                                    {server.platform || 'Java'}
+                                </span>
+                            </div>
+                            <div className="flex justify-between items-center">
+                                <span className="text-slate-500">Versions</span>
+                                <span className="text-white bg-slate-800 px-1.5 py-0.5 rounded text-right leading-tight">
+                                    {formatVersions()}
+                                </span>
+                            </div>
+                            {/* Little triangle pointer */}
+                            <div className="absolute -top-1 right-2 w-2 h-2 bg-slate-900 border-t border-l border-white/10 rotate-45 transform"></div>
+                        </div>
+                    </div>
                 </div>
 
                 <div
