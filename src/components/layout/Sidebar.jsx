@@ -14,21 +14,15 @@ const Sidebar = ({ activeTab, onTabChange, theme }) => {
     const [isCollapsed, setIsCollapsed] = React.useState(true);
     const [isResizing, setIsResizing] = React.useState(false);
     const sidebarRef = useRef(null);
-    const prevActiveTab = useRef(activeTab);
+
+
+    // Timer ref for hover-to-open functionality
+    const hoverTimer = useRef(null);
 
     // Save width to local storage whenever it changes
     useEffect(() => {
         localStorage.setItem('sidebarWidth', width);
     }, [width]);
-
-    // Auto-open sidebar when user navigates between pages (not on initial load/hydration)
-    useEffect(() => {
-        // Only open if both previous and current are defined (meaning it's actual navigation)
-        if (prevActiveTab.current && activeTab && prevActiveTab.current !== activeTab) {
-            setIsCollapsed(false);
-        }
-        prevActiveTab.current = activeTab;
-    }, [activeTab]);
 
     const effectiveWidth = isCollapsed ? 80 : width;
 
@@ -75,6 +69,25 @@ const Sidebar = ({ activeTab, onTabChange, theme }) => {
         };
     }, [isResizing, resize, stopResizing]);
 
+    const handleMouseEnter = () => {
+        if (isCollapsed) {
+            hoverTimer.current = setTimeout(() => {
+                setIsCollapsed(false);
+                hoverTimer.current = null;
+            }, 750);
+        }
+    };
+
+    const handleMouseLeave = () => {
+        // Clear the open timer if the user leaves before 3s
+        if (hoverTimer.current) {
+            clearTimeout(hoverTimer.current);
+            hoverTimer.current = null;
+        }
+        // Collapse if leaving (and not resizing)
+        if (!isResizing) setIsCollapsed(true);
+    };
+
     const getSidebarStyles = () => {
         if (theme === 'midnight') return 'bg-[#050505] border-white/5'; // Match App background
         if (theme === 'white') return 'bg-white border-slate-200';
@@ -86,9 +99,8 @@ const Sidebar = ({ activeTab, onTabChange, theme }) => {
             ref={sidebarRef}
             className={`${getSidebarStyles()} border-r flex flex-col z-20 select-none relative group/sidebar ${isResizing ? 'transition-none' : 'transition-[width,background-color] duration-500 ease-out'} transform-gpu will-change-[width] overflow-hidden`}
             style={{ width: effectiveWidth }}
-            onMouseLeave={() => {
-                if (!isResizing) setIsCollapsed(true);
-            }}
+            onMouseEnter={handleMouseEnter}
+            onMouseLeave={handleMouseLeave}
         >
             <div className="flex flex-col h-full overflow-hidden p-4" style={{ width: width, minWidth: width }}>
                 {/* Logo area */}

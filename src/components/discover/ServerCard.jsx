@@ -1,5 +1,6 @@
+
 import React from 'react';
-import { Users, Server, Crown, Wifi, Zap, ArrowRight, Copy, Info } from 'lucide-react';
+import { Users, Server, Crown, Wifi, Zap, ArrowRight, Copy, Info, Loader2 } from 'lucide-react';
 import { getGradient, toInt } from './utils';
 import ServerBadge from './ServerBadge';
 import Pill from './Pill';
@@ -9,6 +10,9 @@ const ServerCard = React.memo(({
     variant = "standard", // standard | big | featured
     onJoin,
     onCopy,
+    isJoining = false,
+    isPlaying = false,
+    disabled = false
 }) => {
     const gradient = getGradient(server.ip);
     const players = toInt(server.players);
@@ -146,12 +150,39 @@ const ServerCard = React.memo(({
                 {/* Primary action = JOIN */}
                 <div className="flex items-center gap-3">
                     <button
-                        onClick={() => onJoin(server.ip)}
-                        className="flex-1 bg-emerald-500/15 hover:bg-emerald-500/22 border border-emerald-500/25 hover:border-emerald-500/40 text-emerald-200 font-bold py-3.5 rounded-xl transition-all duration-200 flex items-center justify-center gap-2"
+                        onClick={() => isPlaying ? onStop() : onJoin(server.ip, server)}
+                        disabled={isJoining || disabled}
+                        className={`flex-1 font-bold py-3.5 rounded-xl transition-all duration-200 flex items-center justify-center gap-2 disabled:opacity-70 disabled:cursor-not-allowed group/btn
+                            ${isPlaying
+                                ? 'bg-blue-500/15 hover:bg-red-500/20 border border-blue-500/25 hover:border-red-500/40 text-blue-200 hover:text-red-200'
+                                : 'bg-emerald-500/15 hover:bg-emerald-500/22 border border-emerald-500/25 hover:border-emerald-500/40 text-emerald-200'
+                            }`}
                     >
-                        <Zap size={16} className="opacity-95" />
-                        Join
-                        <ArrowRight size={16} className="opacity-80" />
+                        {isJoining ? (
+                            <>
+                                <Loader2 size={16} className="animate-spin" />
+                                Launching...
+                            </>
+                        ) : isPlaying ? (
+                            <>
+                                {/* Default Status */}
+                                <span className="group-hover/btn:hidden flex items-center gap-2">
+                                    <Zap size={16} className="opacity-95" />
+                                    Playing
+                                </span>
+                                {/* Hover Status */}
+                                <span className="hidden group-hover/btn:flex items-center gap-2">
+                                    <div className="w-3 h-3 bg-current rounded-sm" />
+                                    Stop
+                                </span>
+                            </>
+                        ) : (
+                            <>
+                                <Zap size={16} className="opacity-95" />
+                                Join
+                                <ArrowRight size={16} className="opacity-80" />
+                            </>
+                        )}
                     </button>
 
                     {/* Secondary = copy */}

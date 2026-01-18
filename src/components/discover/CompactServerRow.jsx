@@ -1,8 +1,9 @@
+
 import React from 'react';
-import { Crown, BadgeCheck, Copy, Info } from 'lucide-react';
+import { Crown, BadgeCheck, Copy, Info, Loader2 } from 'lucide-react';
 import { getGradient, toInt } from './utils';
 
-const CompactServerRow = React.memo(({ server, onJoin, onCopy, rank }) => {
+const CompactServerRow = React.memo(({ server, onJoin, onCopy, onStop, rank, isJoining = false, isPlaying = false, disabled = false }) => {
     const players = toInt(server.players);
 
     // Status Flag Logic
@@ -111,10 +112,29 @@ const CompactServerRow = React.memo(({ server, onJoin, onCopy, rank }) => {
                     <Copy size={14} />
                 </button>
                 <button
-                    onClick={() => onJoin(server.ip)}
-                    className="px-3 py-1.5 bg-emerald-600 text-white text-[10px] font-bold rounded-md shadow-lg shadow-emerald-900/20 hover:bg-emerald-500 transition-colors"
+                    onClick={() => isPlaying ? onStop() : onJoin(server.ip, server)}
+                    disabled={isJoining || disabled}
+                    className={`
+                        px-3 py-1.5 text-[10px] font-bold rounded-md shadow-lg transition-colors disabled:opacity-70 disabled:cursor-not-allowed flex items-center gap-1.5 group/btn
+                        ${isPlaying
+                            ? 'bg-blue-600 hover:bg-red-500 text-white shadow-blue-900/20 hover:shadow-red-900/20'
+                            : 'bg-emerald-600 hover:bg-emerald-500 text-white shadow-emerald-900/20'
+                        }
+                    `}
                 >
-                    Join
+                    {isJoining ? (
+                        <>
+                            <Loader2 size={10} className="animate-spin" />
+                            Launching
+                        </>
+                    ) : isPlaying ? (
+                        <>
+                            <span className="group-hover/btn:hidden">Playing</span>
+                            <span className="hidden group-hover/btn:inline">Stop</span>
+                        </>
+                    ) : (
+                        'Join'
+                    )}
                 </button>
             </div>
         </div>

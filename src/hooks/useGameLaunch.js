@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { telemetry } from '../services/TelemetryService';
+import AccountManager from '../utils/AccountManager';
 
 export const useGameLaunch = (selectedInstance, ram, activeAccount, updateLastPlayed, hideOnLaunch, javaPath, setJavaPath) => {
     const [launchStatus, setLaunchStatus] = useState('idle'); // idle, launching, running
@@ -51,8 +52,16 @@ export const useGameLaunch = (selectedInstance, ram, activeAccount, updateLastPl
         launchStatusRef.current = launchStatus;
     }, [launchStatus]);
 
-    const handlePlay = useCallback(() => {
+    const handlePlay = useCallback((instanceOverride = null, serverOverride = null) => {
         if (launchStatus !== 'idle') return;
+
+        const instance = instanceOverride || selectedInstance;
+        const server = serverOverride || (instance?.autoConnect ? instance?.serverAddress : null);
+
+        if (!instance) {
+            console.error('No instance to launch');
+            return;
+        }
 
         setLaunchStatus('launching');
         launchStatusRef.current = 'launching'; // Sync ref
@@ -69,14 +78,14 @@ export const useGameLaunch = (selectedInstance, ram, activeAccount, updateLastPl
         }
 
         if (window.electronAPI && window.electronAPI.log) {
-            window.electronAPI.log('info', `[UI] User clicked Play for instance: ${selectedInstance?.name} (Version: ${selectedInstance?.version})`);
+            window.electronAPI.log('info', `[UI] User clicked Play for instance: ${instance?.name} (Version: ${instance?.version})`);
         } else {
             console.log('[UI] User clicked Play');
         }
 
         telemetry.track('GAME_LAUNCH', {
-            version: selectedInstance?.version,
-            loader: selectedInstance?.loader,
+            version: instance?.version,
+            loader: instance?.loader,
             ram: ram,
             javaVersion: requiredJavaVersion
         }, true);
@@ -176,25 +185,22 @@ export const useGameLaunch = (selectedInstance, ram, activeAccount, updateLastPl
                 }
             });
 
-            window.electronAPI.launchGame({
-                version: selectedInstance.version,
-                maxMem: ram * 1024,
-                username: activeAccount.name,
-                uuid: activeAccount.uuid,
-                accessToken: activeAccount.accessToken,
-                userType: activeAccount.type,
-                xuid: activeAccount.xuid,
-                useDefaultPath: !selectedInstance.path,
-                gameDir: selectedInstance.path || null,
-                server: selectedInstance.autoConnect ? selectedInstance.serverAddress : null,
-                javaPath: javaPath,
-                loader: selectedInstance.loader,
-                loaderVersion: selectedInstance.loaderVersion
-            });
+            // Use AccountManager to build launch options for consistency
+            (async () => {
+                const launchOptions = await AccountManager.buildLaunchOptions(
+                    instance,
+                    ram,
+                    server,
+                    javaPath
+                );
 
-            if (window.electronAPI.log) {
-                window.electronAPI.log('info', `[UI] Launch command sent to backend.RAM: ${ram} GB, User: ${activeAccount?.name}, Java: ${javaPath} `);
-            }
+                window.electronAPI.launchGame(launchOptions);
+
+                if (window.electronAPI.log) {
+                    window.electronAPI.log('info', `[UI] Launch command sent to backend. RAM: ${ram} GB, User: ${launchOptions.username}, Java: ${javaPath}`);
+                }
+            })();
+
             // Check for crash
             window.electronAPI.onGameCrashDetected((data) => {
                 // data = { code, crashReport }
@@ -208,7 +214,7 @@ export const useGameLaunch = (selectedInstance, ram, activeAccount, updateLastPl
         } else {
             setLogs([{ time: "Now", type: "ERROR", message: "Electron API not found. Cannot launch native process." }]);
         }
-    }, [launchStatus, selectedInstance, ram, activeAccount, updateLastPlayed, hideOnLaunch, javaPath]);
+    }, [launchStatus, selectedInstance, ram, activeAccount, updateLastPlayed, hideOnLaunch, javaPath, requiredJavaVersion]);
 
     const handleStop = useCallback(() => {
         launchStatusRef.current = 'idle'; // Update ref immediately to prevent race conditions with onGameExit

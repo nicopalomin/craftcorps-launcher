@@ -114,7 +114,7 @@ const AppContent = ({
                     />
                 </div>
             )}
-            {activeTab === 'discover' && <DiscoverView />}
+            {activeTab === 'discover' && <DiscoverView selectedInstance={selectedInstance} activeAccount={activeAccount} />}
             {activeTab === 'market' && <MarketView />}
             {activeTab === 'rewards' && <BetaRewardsView theme={theme} selectedInstance={selectedInstance} />}
         </div>

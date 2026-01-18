@@ -1,10 +1,10 @@
 
 import React from 'react';
-import { Crown, Zap, Copy, Info } from 'lucide-react';
+import { Crown, Zap, Copy, Info, Loader2 } from 'lucide-react';
 import { getGradient, toInt } from './utils';
 import ServerBadge from './ServerBadge';
 
-const HeroServerBanner = React.memo(({ server, onJoin, onCopy }) => {
+const HeroServerBanner = React.memo(({ server, onJoin, onCopy, onStop, isJoining = false, isPlaying = false, disabled = false }) => {
     const gradient = getGradient(server.ip);
     const players = toInt(server.players);
     const isHot = players >= 1500;
@@ -53,11 +53,40 @@ const HeroServerBanner = React.memo(({ server, onJoin, onCopy }) => {
 
                     <div className="flex items-center gap-3">
                         <button
-                            onClick={() => onJoin(server.ip)}
-                            className="bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold px-8 py-3.5 rounded-xl transition-all hover:scale-105 active:scale-95 flex items-center gap-2"
+                            onClick={() => isPlaying ? onStop() : onJoin(server.ip, server)}
+                            disabled={isJoining || disabled}
+                            className={`
+                                font-bold px-8 py-3.5 rounded-xl transition-all hover:scale-105 active:scale-95 flex items-center gap-2 disabled:opacity-70 disabled:cursor-not-allowed disabled:hover:scale-100 group/btn
+                                ${isPlaying
+                                    ? 'bg-blue-500 text-white hover:bg-red-500 hover:text-white border-blue-400'
+                                    : 'bg-emerald-500 hover:bg-emerald-400 text-slate-950'
+                                }
+                            `}
                         >
-                            <Zap size={18} fill="currentColor" />
-                            Join Server
+                            {isJoining ? (
+                                <>
+                                    <Loader2 size={18} className="animate-spin" />
+                                    Launching...
+                                </>
+                            ) : isPlaying ? (
+                                <>
+                                    {/* Default State: Playing */}
+                                    <span className="group-hover/btn:hidden flex items-center gap-2">
+                                        <Zap size={18} fill="currentColor" />
+                                        Currently Playing
+                                    </span>
+                                    {/* Hover State: Stop */}
+                                    <span className="hidden group-hover/btn:flex items-center gap-2">
+                                        <div className="w-4 h-4 bg-white rounded-sm" /> {/* Stop Icon */}
+                                        Stop Game
+                                    </span>
+                                </>
+                            ) : (
+                                <>
+                                    <Zap size={18} fill="currentColor" />
+                                    Join Server
+                                </>
+                            )}
                         </button>
 
                         <button

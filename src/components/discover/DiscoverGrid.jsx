@@ -15,7 +15,11 @@ const DiscoverGrid = React.memo(({
     loadingMore,
     loadServers,
     handleJoin,
-    handleCopy
+    handleCopy,
+    joiningServers = new Set(),
+    playingServerIp = null,
+    isBusy = false,
+    handleStop // [NEW]
 }) => {
     return (
         <div className="flex-1 overflow-y-auto p-8 pt-0 custom-scrollbar relative z-0">
@@ -37,6 +41,10 @@ const DiscoverGrid = React.memo(({
                             server={sections.hero}
                             onJoin={handleJoin}
                             onCopy={handleCopy}
+                            onStop={handleStop} // [NEW]
+                            isJoining={joiningServers.has(sections.hero.ip)}
+                            isPlaying={playingServerIp === sections.hero.ip}
+                            disabled={isBusy}
                         />
                     )}
 
@@ -50,6 +58,10 @@ const DiscoverGrid = React.memo(({
                                     variant="big"
                                     onJoin={handleJoin}
                                     onCopy={handleCopy}
+                                    onStop={handleStop} // [NEW]
+                                    isJoining={joiningServers.has(server.ip)}
+                                    isPlaying={playingServerIp === server.ip}
+                                    disabled={isBusy}
                                 />
                             ))}
                         </div>
@@ -71,6 +83,10 @@ const DiscoverGrid = React.memo(({
                                         rank={idx + 4}
                                         onJoin={handleJoin}
                                         onCopy={handleCopy}
+                                        onStop={handleStop} // [NEW]
+                                        isJoining={joiningServers.has(server.ip)}
+                                        isPlaying={playingServerIp === server.ip}
+                                        disabled={isBusy}
                                     />
                                 ))}
                             </div>
@@ -92,6 +108,10 @@ const DiscoverGrid = React.memo(({
                                         server={server}
                                         onJoin={handleJoin}
                                         onCopy={handleCopy}
+                                        onStop={handleStop} // [NEW]
+                                        isJoining={joiningServers.has(server.ip)}
+                                        isPlaying={playingServerIp === server.ip}
+                                        disabled={isBusy}
                                     />
                                 ))}
                             </div>
@@ -135,6 +155,10 @@ const DiscoverGrid = React.memo(({
                                         rank={idx + (sections.trending?.length || 0) + 4}
                                         onJoin={handleJoin}
                                         onCopy={handleCopy}
+                                        onStop={handleStop} // [NEW]
+                                        isJoining={joiningServers.has(server.ip)}
+                                        isPlaying={playingServerIp === server.ip}
+                                        disabled={isBusy}
                                     />
                                 ))}
                             </div>

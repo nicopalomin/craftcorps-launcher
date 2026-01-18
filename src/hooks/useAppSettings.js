@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useToast } from '../contexts/ToastContext';
 
@@ -29,15 +29,22 @@ export const useAppSettings = () => {
         }
     };
 
+    // Use ref to track current path for event listener without re-running effect
+    const javaPathRef = useRef(javaPath);
+    useEffect(() => { javaPathRef.current = javaPath; }, [javaPath]);
+
     useEffect(() => {
         const init = async () => {
             await refreshJavas();
             if (window.electronAPI) {
                 window.electronAPI.onJavaPathUpdated((newPath) => {
-                    console.log("Received Java Path Update:", newPath);
-                    setJavaPath(newPath);
-                    addToast(t('toast_java_updated', { defaultValue: "Java path updated automatically" }), 'info');
-                    refreshJavas();
+                    // Only toast if path actually changed
+                    if (newPath && newPath !== javaPathRef.current) {
+                        console.log("Received Java Path Update:", newPath);
+                        setJavaPath(newPath);
+                        addToast(t('toast_java_updated', { defaultValue: "Java path updated automatically" }), 'info');
+                        refreshJavas();
+                    }
                 });
             }
         };

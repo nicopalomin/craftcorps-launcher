@@ -40,6 +40,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
     onGameExit: (callback) => ipcRenderer.on('game-exit', (_event, value) => callback(value)),
     onLaunchError: (callback) => ipcRenderer.on('launch-error', (_event, value) => callback(value)),
     onGameCrashDetected: (callback) => ipcRenderer.on('game-crash-detected', (_event, value) => callback(value)),
+    removeGameExitListener: () => ipcRenderer.removeAllListeners('game-exit'),
     uploadLogsManually: () => ipcRenderer.invoke('upload-logs-manually'),
     removeLogListeners: () => {
         ipcRenderer.removeAllListeners('game-log');
@@ -107,6 +108,19 @@ contextBridge.exposeInMainWorld('electronAPI', {
     getDiscoverCategories: () => ipcRenderer.invoke('get-discover-categories'),
     getDiscoverMetadata: () => ipcRenderer.invoke('get-discover-metadata'),
     joinServer: (payload) => ipcRenderer.invoke('join-server', payload),
+    smartJoinServer: (payload) => ipcRenderer.invoke('smart-join-server', payload),
+    on: (channel, callback) => {
+        const validChannels = ['smart-join-progress'];
+        if (validChannels.includes(channel)) {
+            ipcRenderer.on(channel, (_event, ...args) => callback(...args));
+        }
+    },
+    removeListener: (channel, callback) => {
+        const validChannels = ['smart-join-progress'];
+        if (validChannels.includes(channel)) {
+            ipcRenderer.removeListener(channel, callback);
+        }
+    },
 
     // Auto Update
     checkForUpdates: () => ipcRenderer.invoke('check-for-updates'),

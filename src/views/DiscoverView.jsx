@@ -4,7 +4,7 @@ import { useDiscover } from "../hooks/useDiscover";
 import DiscoverHeader from "../components/discover/DiscoverHeader";
 import DiscoverGrid from "../components/discover/DiscoverGrid";
 
-const DiscoverView = () => {
+const DiscoverView = ({ selectedInstance, activeAccount }) => {
     const {
         servers,
         loading,
@@ -18,8 +18,12 @@ const DiscoverView = () => {
         sections,
         loadServers,
         handleJoin,
-        handleCopy
-    } = useDiscover();
+        handleCopy,
+        joiningServers,
+        playingServerIp,
+        isBusy,
+        handleStop
+    } = useDiscover(selectedInstance, activeAccount);
 
     return (
         <div className="flex-1 bg-slate-900 overflow-hidden relative flex flex-col select-none">
@@ -39,6 +43,10 @@ const DiscoverView = () => {
                 loadServers={loadServers}
                 handleJoin={handleJoin}
                 handleCopy={handleCopy}
+                handleStop={handleStop}
+                joiningServers={joiningServers}
+                playingServerIp={playingServerIp}
+                isBusy={isBusy}
             />
         </div>
     );
