@@ -241,7 +241,7 @@ export const useDiscover = (selectedInstance, activeAccount) => {
                 window.electronAPI.launchGame(launchOptions);
 
                 // Show "Launching..." for 5 seconds more before showing "Currently Playing"
-                await new Promise(r => setTimeout(r, 5000));
+                await new Promise(r => setTimeout(r, 15000));
 
                 // Only set playing if launch is still considered active (no error occurred)
                 if (isLaunchingRef.current) {

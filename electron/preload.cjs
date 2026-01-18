@@ -10,8 +10,9 @@ contextBridge.exposeInMainWorld('electronAPI', {
     show: () => ipcRenderer.send('window-show'),
 
 
-    microsoftLogin: () => ipcRenderer.invoke('microsoft-login'),
+    microsoftLogin: (consent) => ipcRenderer.invoke('microsoft-login', consent),
     microsoftRefresh: (refreshToken) => ipcRenderer.invoke('refresh-microsoft-token', refreshToken),
+    linkProfile: (payload) => ipcRenderer.invoke('link-profile', payload),
     selectFile: () => ipcRenderer.invoke('select-file'),
     openLogsFolder: () => ipcRenderer.invoke('open-logs-folder'),
     openPath: (path) => ipcRenderer.invoke('open-path', path),

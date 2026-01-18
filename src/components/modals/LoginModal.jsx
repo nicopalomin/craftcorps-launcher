@@ -34,12 +34,18 @@ const LoginModal = ({ isOpen, onClose, onAddAccount, isAutoRefreshing }) => {
         setErrorMsg("Coming soon, we're waiting approval from mojang");
         //
 
+        console.log('[LoginModal] Starting Microsoft Login...');
         setIsLoading(true);
         setErrorMsg(null);
         try {
             if (window.electronAPI) {
-                const result = await window.electronAPI.microsoftLogin();
+                const consent = {
+                    type: 'TOS_AND_PRIVACY',
+                    version: '2026-1-18'
+                };
+                const result = await window.electronAPI.microsoftLogin(consent);
                 if (result.success) {
+                    console.log(`[LoginModal] Microsoft Auth Success: ${result.account.name}`);
                     onAddAccount({
                         ...result.account,
                         avatarColor: 'bg-emerald-600', // Success color
@@ -85,21 +91,67 @@ const LoginModal = ({ isOpen, onClose, onAddAccount, isAutoRefreshing }) => {
 
     };
 
-    const handleOfflineLogin = () => {
+    const handleOfflineLogin = async () => {
         if (!offlineName.trim()) return;
+        console.log(`[LoginModal] Starting Offline Login: ${offlineName}`);
+        setIsLoading(true);
+        setErrorMsg(null);
 
         // Generate valid Offline UUID
         const uuid = getOfflineUUID(offlineName);
-
-        onAddAccount({
+        const profile = {
+            uuid: uuid,
             name: offlineName,
-            type: 'Offline',
-            avatarColor: 'bg-slate-600',
-            uuid: uuid
-        });
-        setOfflineName('');
-        setActiveMethod('selection');
-        onClose();
+            authType: 'CRACKED'
+        };
+
+        // Consent should be passed if we want to be strict, matching microsoftLogin logic
+        const consent = {
+            type: 'TOS_AND_PRIVACY',
+            version: '2026-1-18'
+        };
+
+        try {
+            if (window.electronAPI?.linkProfile) {
+                console.log('[LoginModal] Linking Offline Profile with consent:', profile, consent);
+                // We use linkProfile for offline accounts too, to register them with the backend user
+                const result = await window.electronAPI.linkProfile({
+                    profile,
+                    consent
+                });
+
+                // Even if link fails (e.g. backend offline), we might want to let them play offline?
+                // But USER requirement says "check locally... let user start game if consent endpoint accepts".
+                // So strict mode: if link/consent fails, no play? 
+                // "right before generating the device fingerprint ping the consent endpoint... if consent endpoint accepts... let user start"
+
+                if (!result.success) {
+                    // If backend rejects consent or link, we stop?
+                    // User said "User must agree to terms... check locally... let user start... if consent endpoint accepts"
+                    // This implies we rely on backend for validation now.
+                    throw new Error(result.error?.message || result.error || "Failed to register offline profile");
+                }
+                console.log('[LoginModal] Offline Profile Linked Successfully');
+            }
+
+            console.log('[LoginModal] Adding account to local state:', offlineName);
+            // Proceed to add account to local state
+            onAddAccount({
+                name: offlineName,
+                type: 'Offline',
+                avatarColor: 'bg-slate-600',
+                uuid: uuid
+            });
+            setOfflineName('');
+            setActiveMethod('selection');
+            onClose();
+        } catch (e) {
+            console.error("Offline Login error:", e);
+            setErrorMsg(e.message || "Failed to add offline account");
+            telemetry.track('AUTH_OFFLINE_FAILURE', { error: e.message });
+        } finally {
+            setIsLoading(false);
+        }
     };
 
     return (
