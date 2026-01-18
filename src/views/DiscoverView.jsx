@@ -1,10 +1,28 @@
 
-import React from "react";
+import React, { useState, useEffect } from "react";
+import { useTranslation } from "react-i18next";
+import { Info, Globe, ShieldAlert, Check, ChevronRight } from "lucide-react";
 import { useDiscover } from "../hooks/useDiscover";
 import DiscoverHeader from "../components/discover/DiscoverHeader";
 import DiscoverGrid from "../components/discover/DiscoverGrid";
 
 const DiscoverView = ({ selectedInstance, activeAccount }) => {
+    const { t } = useTranslation();
+    const [showDisclaimer, setShowDisclaimer] = useState(false);
+    const [agreed, setAgreed] = useState(false);
+
+    useEffect(() => {
+        const dismissed = localStorage.getItem('discover_welcome_v1');
+        setShowDisclaimer(true);
+        if (!dismissed) {
+        }
+    }, []);
+
+    const dismissDisclaimer = () => {
+        localStorage.setItem('discover_welcome_v1', 'true');
+        setShowDisclaimer(false);
+    };
+
     const {
         servers,
         loading,
@@ -34,6 +52,56 @@ const DiscoverView = ({ selectedInstance, activeAccount }) => {
                 setActiveFilters={setActiveFilters}
                 metadata={metadata}
             />
+
+            {showDisclaimer && (
+                <div className="absolute inset-0 z-50 bg-slate-900/30 backdrop-blur-[2px] flex items-center justify-center p-6 animate-in fade-in duration-300">
+                    <div className="max-w-lg w-full bg-slate-900 border border-slate-800 rounded-2xl shadow-2xl p-8 relative overflow-hidden">
+                        {/* Decorative Background */}
+                        <div className="absolute top-0 right-0 w-64 h-64 bg-emerald-500/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2 pointer-events-none" />
+                        <div className="absolute bottom-0 left-0 w-48 h-48 bg-blue-500/10 rounded-full blur-3xl translate-y-1/2 -translate-x-1/2 pointer-events-none" />
+
+                        <div className="relative z-10 flex flex-col items-center text-center">
+                            <div className="bg-emerald-500/10 p-4 rounded-2xl mb-6 ring-1 ring-emerald-500/20">
+                                <Globe size={48} className="text-emerald-500" strokeWidth={1.5} />
+                            </div>
+
+                            <h2 className="text-2xl font-bold text-white mb-3">
+                                {t('discover_welcome_title')}
+                            </h2>
+
+                            <p className="text-slate-400 mb-8 leading-relaxed">
+                                {t('discover_welcome_desc')}
+                            </p>
+
+                            <div className="bg-slate-950/50 rounded-xl p-4 border border-slate-800 w-full mb-6 text-left group cursor-pointer" onClick={() => setAgreed(!agreed)}>
+                                <div className="flex gap-3">
+                                    <div className={`mt-0.5 w-5 h-5 rounded-md border flex-shrink-0 flex items-center justify-center transition-all duration-200 ${agreed ? 'bg-emerald-500 border-emerald-500 text-white shadow-[0_0_10px_rgba(16,185,129,0.3)]' : 'bg-slate-900 border-slate-700 group-hover:border-slate-500'}`}>
+                                        <Check size={14} strokeWidth={3} className={`transition-all duration-200 ${agreed ? 'scale-100 opacity-100' : 'scale-50 opacity-0'}`} />
+                                    </div>
+                                    <div className="flex flex-col gap-1">
+                                        <div className="text-sm text-slate-300 font-medium select-none">
+                                            {t('discover_disclaimer_agreement')}
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <button
+                                onClick={dismissDisclaimer}
+                                disabled={!agreed}
+                                className={`w-full py-3.5 px-6 rounded-xl font-bold flex items-center justify-center gap-2 transition-all duration-200 ${agreed
+                                    ? 'bg-emerald-600 hover:bg-emerald-500 text-white shadow-lg shadow-emerald-900/20 translate-y-0'
+                                    : 'bg-slate-800 text-slate-500 cursor-not-allowed translate-y-0'
+                                    }`}
+                            >
+                                {t('discover_btn_start')}
+                                <ChevronRight size={18} className={agreed ? 'opacity-100 translate-x-0 transition-transform' : 'opacity-0 -translate-x-2'} />
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
             <DiscoverGrid
                 loading={loading}
                 servers={servers}

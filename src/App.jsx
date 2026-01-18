@@ -209,6 +209,10 @@ function App() {
             case 'wardrobe': stateText = 'Changing Skin'; break;
             case 'settings': stateText = 'Configuring Settings'; break;
             case 'mods': stateText = 'Browsing Mods'; break;
+            case 'discover':
+                stateText = 'Browsing Servers...';
+                detailsText = 'Discovering';
+                break;
             default: stateText = 'Idling';
         }
 

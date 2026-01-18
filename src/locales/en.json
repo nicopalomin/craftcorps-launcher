@@ -132,5 +132,11 @@
     "time_hours_ago_one": "{{count}} hour ago",
     "time_hours_ago_other": "{{count}} hours ago",
     "time_days_ago_one": "{{count}} day ago",
-    "time_days_ago_other": "{{count}} days ago"
+    "time_days_ago_other": "{{count}} days ago",
+    "auth_tos_agreement": "By registering to your account you agree to our <1>ToS</1> and <2>Privacy Policy</2>",
+    "auth_tos_hover_hint": "Please agree to the Terms of Service to continue",
+    "discover_welcome_title": "Welcome to Server Discovery",
+    "discover_welcome_desc": "Connect with the Minecraft community by exploring thousands of verified and community-submitted servers. Find your next adventure, PvP battle, or creative haven.",
+    "discover_disclaimer_agreement": "I acknowledge that CraftCorps is not responsible for the content or reliability of 3rd party servers.",
+    "discover_btn_start": "Start Exploring"
 }

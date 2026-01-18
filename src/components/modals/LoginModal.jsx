@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import { useTranslation } from 'react-i18next';
-import { User, X, Loader2, ShieldCheck, ChevronRight, WifiOff, Info } from 'lucide-react';
+import { useTranslation, Trans } from 'react-i18next';
+import { User, X, Loader2, ShieldCheck, ChevronRight, WifiOff, Info, Check } from 'lucide-react';
 import { telemetry } from '../../services/TelemetryService';
 
 import { getOfflineUUID } from '../../utils/uuid';
@@ -8,6 +8,7 @@ import { getOfflineUUID } from '../../utils/uuid';
 const LoginModal = ({ isOpen, onClose, onAddAccount, isAutoRefreshing }) => {
     const { t } = useTranslation();
     const [activeMethod, setActiveMethod] = useState('selection'); // selection | offline
+    const [tosAgreed, setTosAgreed] = useState(false);
     const [offlineName, setOfflineName] = useState('');
     const [validationMsg, setValidationMsg] = useState('');
     const [isLoading, setIsLoading] = useState(false);
@@ -19,6 +20,7 @@ const LoginModal = ({ isOpen, onClose, onAddAccount, isAutoRefreshing }) => {
             setOfflineName('');
             setValidationMsg('');
             setErrorMsg(null);
+            setTosAgreed(false);
             // Don't reset activeMethod here if we want to remember tab? 
             // Usually reset to selection is safer.
             setActiveMethod('selection');
@@ -135,21 +137,29 @@ const LoginModal = ({ isOpen, onClose, onAddAccount, isAutoRefreshing }) => {
                                 </div>
                             )}
 
-                            <button
-                                onClick={handleMicrosoftLogin}
-                                className="w-full bg-[#0078D4] hover:bg-[#006cbd] text-white p-4 rounded-xl flex items-center justify-between group transition-all"
-                            >
-                                <div className="flex items-center gap-3">
-                                    <div className="bg-white/10 p-2 rounded-lg">
-                                        <ShieldCheck size={20} />
+                            <div className="relative group w-full">
+                                <button
+                                    onClick={handleMicrosoftLogin}
+                                    disabled={!tosAgreed}
+                                    className={`w-full p-4 rounded-xl flex items-center justify-between group/btn transition-all ${tosAgreed ? 'bg-[#0078D4] hover:bg-[#006cbd] text-white' : 'bg-slate-800 text-slate-500 cursor-not-allowed border border-slate-700 pointer-events-none'}`}
+                                >
+                                    <div className="flex items-center gap-3">
+                                        <div className="bg-white/10 p-2 rounded-lg">
+                                            <ShieldCheck size={20} />
+                                        </div>
+                                        <div className="text-left">
+                                            <div className="font-bold text-sm">{t('auth_microsoft')}</div>
+                                            <div className="text-xs text-white/70">{t('auth_recommended')}</div>
+                                        </div>
                                     </div>
-                                    <div className="text-left">
-                                        <div className="font-bold text-sm">{t('auth_microsoft')}</div>
-                                        <div className="text-xs text-white/70">{t('auth_recommended')}</div>
+                                    <ChevronRight size={16} className={`transition-opacity ${tosAgreed ? 'opacity-0 group-hover/btn:opacity-100' : 'opacity-0'}`} />
+                                </button>
+                                {!tosAgreed && (
+                                    <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-3 py-1.5 bg-slate-900 border border-slate-700 text-slate-300 text-xs rounded-lg shadow-xl opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-20">
+                                        {t('auth_tos_hover_hint')}
                                     </div>
-                                </div>
-                                <ChevronRight size={16} className="opacity-0 group-hover:opacity-100 transition-opacity" />
-                            </button>
+                                )}
+                            </div>
 
                             <div className="relative py-2">
                                 <div className="absolute inset-0 flex items-center">
@@ -203,13 +213,20 @@ const LoginModal = ({ isOpen, onClose, onAddAccount, isAutoRefreshing }) => {
                                             className={`flex-1 bg-slate-900 border rounded-lg px-3 py-2 text-sm text-white focus:outline-none placeholder:text-slate-600 ${validationMsg ? 'border-red-500/50 focus:border-red-500' : 'border-slate-700 focus:border-emerald-500/50'}`}
                                             onKeyDown={(e) => e.key === 'Enter' && offlineName.length >= 3 && handleOfflineLogin()}
                                         />
-                                        <button
-                                            onClick={handleOfflineLogin}
-                                            disabled={offlineName.length < 3}
-                                            className="bg-slate-800 hover:bg-slate-700 disabled:opacity-50 disabled:cursor-not-allowed text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors"
-                                        >
-                                            {t('auth_btn_add')}
-                                        </button>
+                                        <div className="relative group">
+                                            <button
+                                                onClick={handleOfflineLogin}
+                                                disabled={offlineName.length < 3 || !tosAgreed}
+                                                className={`bg-slate-800 hover:bg-slate-700 disabled:opacity-50 disabled:cursor-not-allowed text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors ${!tosAgreed ? 'pointer-events-none' : ''}`}
+                                            >
+                                                {t('auth_btn_add')}
+                                            </button>
+                                            {!tosAgreed && (
+                                                <div className="absolute bottom-full right-0 mb-2 px-3 py-1.5 bg-slate-900 border border-slate-700 text-slate-300 text-xs rounded-lg shadow-xl opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-20">
+                                                    {t('auth_tos_hover_hint')}
+                                                </div>
+                                            )}
+                                        </div>
                                     </div>
                                     {validationMsg && (
                                         <span className="text-xs text-red-400 pl-1 animate-in fade-in slide-in-from-top-1">
@@ -224,6 +241,25 @@ const LoginModal = ({ isOpen, onClose, onAddAccount, isAutoRefreshing }) => {
                                     >
                                         Purchase Minecraft From Here
                                     </a>
+                                </div>
+                            </div>
+                            <div className="w-full border-t border-slate-800/50 my-2" />
+
+                            <div
+                                className="flex items-center gap-3 px-1 cursor-pointer group select-none"
+                                onClick={() => setTosAgreed(!tosAgreed)}
+                            >
+                                <div className={`w-5 h-5 rounded-md border flex items-center justify-center transition-all duration-200 ${tosAgreed ? 'bg-emerald-500 border-emerald-500 text-white shadow-[0_0_10px_rgba(16,185,129,0.3)]' : 'bg-slate-950 border-slate-700 group-hover:border-slate-500'}`}>
+                                    <Check size={14} strokeWidth={3} className={`transition-all duration-200 ${tosAgreed ? 'scale-100 opacity-100' : 'scale-50 opacity-0'}`} />
+                                </div>
+                                <div className="text-xs text-slate-400 group-hover:text-slate-300 transition-colors">
+                                    <Trans
+                                        i18nKey="auth_tos_agreement"
+                                        components={{
+                                            1: <a href="https://craftcorps.net/legal/terms" target="_blank" rel="noreferrer" className="text-emerald-500 hover:text-emerald-400 hover:underline transition-colors font-medium decoration-emerald-500/30" onClick={(e) => e.stopPropagation()}>ToS</a>,
+                                            2: <a href="https://craftcorps.net/legal/privacy" target="_blank" rel="noreferrer" className="text-emerald-500 hover:text-emerald-400 hover:underline transition-colors font-medium decoration-emerald-500/30" onClick={(e) => e.stopPropagation()}>Privacy Policy</a>
+                                        }}
+                                    />
                                 </div>
                             </div>
                         </div>
