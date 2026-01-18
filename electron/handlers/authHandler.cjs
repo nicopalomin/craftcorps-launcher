@@ -43,12 +43,18 @@ function setupAuthHandlers(getMainWindow) {
     });
 
     ipcMain.handle('link-profile', async (event, { profile, consent }) => {
-        // Always record consent if linking profile, using default if needed
-        const consentToRecord = consent || DEFAULT_CONSENT;
-        if (consentToRecord) {
-            await authService.recordConsent(consentToRecord);
+        try {
+            // Always record consent if linking profile, using default if needed
+            const consentToRecord = consent || DEFAULT_CONSENT;
+            if (consentToRecord) {
+                await authService.recordConsent(consentToRecord);
+            }
+            const result = await authService.linkProfile(profile);
+            return { success: result };
+        } catch (error) {
+            console.error('[AuthHandler] Link profile failed:', error);
+            return { success: false, error: error.message || error };
         }
-        return await authService.linkProfile(profile);
     });
 
     ipcMain.handle('refresh-microsoft-token', async (event, refreshToken) => {
