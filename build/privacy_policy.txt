@@ -1,44 +1,173 @@
-PRIVACY POLICY AND END USER LICENSE AGREEMENT (EULA) for CraftCorps Launcher
+END USER LICENSE AGREEMENT (EULA) AND TERMS OF SERVICE for CraftCorps Launcher
 
-Last Updated: January 6, 2026
+Last Updated: January 18, 2026
 
 IMPORTANT: PLEASE READ THIS AGREEMENT CAREFULLY. BY INSTALLING, COPYING, OR USING THE SOFTWARE, YOU AGREE TO BE BOUND BY THE TERMS OF THIS AGREEMENT. IF YOU DO NOT AGREE, DO NOT INSTALL OR USE THE SOFTWARE.
 
-1. DATA COLLECTION AND PRIVACY
-   We respect your privacy and are committed to protecting your personal data in compliance with GDPR, KVKK, and other applicable laws.
+================================================================================
+1. ACCEPTANCE OF TERMS
+================================================================================
+By installing or using CraftCorps Launcher ("the Software"), you agree to be bound by this End User License Agreement ("EULA"), our Privacy Policy, and our Terms of Service. If you do not agree to these terms, you must immediately cease using the Software and uninstall it.
 
-   1.1. ANONYMOUS TELEMETRY
-   This application collects anonymous usage statistics to help us improve the software.
-   - What we collect:
-     - Anonymous User ID (randomly generated UUID).
-     - Hardware Specifications: OS version, RAM amount, CPU/GPU model.
-     - Usage Events: App open, Game launch success/failure, Crash reports (Exit Codes).
-   - What we DO NOT collect:
-     - Personally Identifiable Information (Names, Emails, Addresses).
-     - IP Addresses (we do not log or store user IP addresses).
-     - Chat logs or in-game behavior.
+================================================================================
+2. LICENSE GRANT
+================================================================================
+Subject to your compliance with these terms, CraftCorps grants you a personal, non-exclusive, non-transferable, revocable license to use the Software for personal, non-commercial purposes.
 
-   1.2. CRASH REPORTING
-   In the event of a crash, the launcher may automatically send a crash report containing:
-   - Error logs and stack traces.
-   - System information relevant to the crash.
-   - No personal files or passwords are included.
+2.1. PERMITTED USES
+- Install and use the Software on devices you own or control.
+- Use the Software to manage and launch Minecraft instances.
+- Download and install mods, resource packs, and other Minecraft content.
 
-   1.3. MICROSOFT & MODRINTH ACCOUNTS
-   - Authentication is handled directly via Microsoft's servers. We receive an access token but never see your password.
-   - Mod downloads connect directly to Modrinth. Their privacy policy applies to those connections.
+2.2. RESTRICTIONS
+You may NOT:
+- Decompile, reverse engineer, or disassemble the Software except as permitted by law.
+- Use the Software to create competing products or services.
+- Use the Software to violate the Minecraft EULA or any third-party terms of service.
+- Distribute, sell, rent, lease, or sublicense the Software.
+- Remove or modify any proprietary notices or labels on the Software.
+- Use the Software for any illegal, harmful, or malicious purposes.
 
-2. SOFTWARE LICENSE
-   Subject to your compliance with these terms, we grant you a personal, non-exclusive, non-transferable license to use the Software.
+================================================================================
+3. INTELLECTUAL PROPERTY
+================================================================================
+The Software is licensed, not sold. CraftCorps and its licensors retain all rights, title, and interest in and to the Software, including all intellectual property rights. This license does not grant you any rights to trademarks, service marks, or logos.
 
-   - You may not decompile, reverse engineer, or disassemble the Software to create malicious tools.
-   - You may not use the Software to violate the Minecraft EULA or Terms of Service.
+================================================================================
+4. THIRD-PARTY SERVICES
+================================================================================
+4.1. MINECRAFT
+This Software is not affiliated with, endorsed by, or sponsored by Mojang Studios or Microsoft. You must own a valid Minecraft license to play on premium servers. The Minecraft EULA applies to all Minecraft gameplay.
 
-3. "AS IS" WARRANTY
-   THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED. THE AUTHORS OR COPYRIGHT HOLDERS SHALL NOT BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY.
+4.2. MODRINTH & OTHER SERVICES
+The Software integrates with third-party services including Modrinth for mod downloads. Your use of these services is subject to their respective terms of service and privacy policies.
 
-4. USER RIGHTS (GDPR/KVKK)
-   - You have the right to request deletion of your anonymous telemetry data by contacting us with your User ID (found in Settings/Logs).
-   - You may opt-out of telemetry at any time via the Application Settings.
+4.3. COMMUNITY SERVERS
+CraftCorps is not responsible for the content, availability, security, or practices of third-party Minecraft servers. You access community servers at your own risk.
 
-By clicking "I Agree", you acknowledge that you have read and accepted these terms.
+================================================================================
+5. PRIVACY POLICY
+================================================================================
+We respect your privacy and are committed to protecting your personal data in compliance with GDPR, KVKK, CCPA, and other applicable privacy laws.
+
+5.1. ANONYMOUS TELEMETRY
+This application collects anonymous usage statistics to help us improve the Software.
+
+What we COLLECT:
+- Anonymous User ID (randomly generated UUID, not linked to personal identity)
+- Hardware Specifications: OS version, RAM amount, CPU/GPU model
+- Usage Events: App open, game launch success/failure, feature usage
+- Performance Metrics: Load times, error rates
+- Crash Reports: Error logs and stack traces (no personal files)
+
+What we DO NOT collect:
+- Personally Identifiable Information (Names, Emails, Addresses, Phone Numbers)
+- IP Addresses (we do not log or store user IP addresses)
+- Chat logs, messages, or in-game behavior
+- Passwords or authentication credentials
+- File contents or personal documents
+- Browsing history or activity outside the Software
+
+5.2. MICROSOFT AUTHENTICATION
+- Authentication is handled directly via Microsoft's OAuth servers
+- We receive only an access token; we never see or store your password
+- Your Microsoft account data is subject to Microsoft's Privacy Policy
+
+5.3. DATA STORAGE AND SECURITY
+- Telemetry data is transmitted over encrypted connections (HTTPS)
+- Data is stored securely on servers with industry-standard security measures
+- We retain anonymous telemetry data for up to 12 months for analysis purposes
+
+5.4. YOUR PRIVACY RIGHTS (GDPR/KVKK/CCPA)
+You have the right to:
+- Access your data: Request a copy of your anonymous telemetry data
+- Delete your data: Request deletion by contacting us with your User ID (found in Settings)
+- Opt-out: Disable telemetry collection at any time via Application Settings
+- Data portability: Request your data in a machine-readable format
+
+To exercise these rights, contact us at: support@craftcorps.net
+
+================================================================================
+6. USER CONDUCT
+================================================================================
+You agree to use the Software responsibly and in compliance with all applicable laws. You will NOT:
+- Use the Software to cheat, hack, or exploit Minecraft servers
+- Distribute malware, viruses, or harmful code through the Software
+- Harass, threaten, or harm other users
+- Violate any third-party intellectual property rights
+- Attempt to gain unauthorized access to our systems or other users' accounts
+
+================================================================================
+7. UPDATES AND MODIFICATIONS
+================================================================================
+7.1. AUTOMATIC UPDATES
+The Software may automatically download and install updates. These updates may include bug fixes, security patches, and new features. You can disable automatic updates in Settings, but this may affect functionality and security.
+
+7.2. CHANGES TO TERMS
+We reserve the right to modify these terms at any time. Continued use of the Software after changes constitutes acceptance of the new terms. Material changes will be communicated through the Software or our website.
+
+================================================================================
+8. DISCLAIMER OF WARRANTIES
+================================================================================
+THE SOFTWARE IS PROVIDED "AS IS" AND "AS AVAILABLE" WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE, AND NON-INFRINGEMENT.
+
+WE DO NOT WARRANT THAT:
+- The Software will be error-free or uninterrupted
+- Defects will be corrected
+- The Software is free of viruses or harmful components
+- Results obtained from the Software will be accurate or reliable
+
+================================================================================
+9. LIMITATION OF LIABILITY
+================================================================================
+TO THE MAXIMUM EXTENT PERMITTED BY LAW, CRAFTCORPS AND ITS AFFILIATES, OFFICERS, EMPLOYEES, AND LICENSORS SHALL NOT BE LIABLE FOR ANY INDIRECT, INCIDENTAL, SPECIAL, CONSEQUENTIAL, OR PUNITIVE DAMAGES, INCLUDING BUT NOT LIMITED TO LOSS OF PROFITS, DATA, USE, OR GOODWILL, ARISING OUT OF OR RELATED TO YOUR USE OF THE SOFTWARE.
+
+IN NO EVENT SHALL OUR TOTAL LIABILITY EXCEED THE AMOUNT YOU PAID FOR THE SOFTWARE (WHICH IS ZERO FOR FREE SOFTWARE).
+
+Some jurisdictions do not allow the exclusion of certain warranties or limitations of liability, so the above limitations may not apply to you.
+
+================================================================================
+10. INDEMNIFICATION
+================================================================================
+You agree to indemnify, defend, and hold harmless CraftCorps and its affiliates from any claims, damages, losses, liabilities, and expenses (including legal fees) arising from your use of the Software or violation of these terms.
+
+================================================================================
+11. TERMINATION
+================================================================================
+This license is effective until terminated. Your rights under this license will terminate automatically without notice if you fail to comply with any term. Upon termination, you must cease all use of the Software and destroy all copies.
+
+We reserve the right to terminate or suspend your access to the Software at any time, with or without cause, with or without notice.
+
+================================================================================
+12. GOVERNING LAW AND DISPUTES
+================================================================================
+This Agreement shall be governed by and construed in accordance with the laws of [Your Jurisdiction], without regard to its conflict of law provisions.
+
+Any disputes arising from this Agreement shall be resolved through binding arbitration in accordance with the rules of [Arbitration Body], except where prohibited by law.
+
+================================================================================
+13. MISCELLANEOUS
+================================================================================
+13.1. ENTIRE AGREEMENT
+This Agreement constitutes the entire agreement between you and CraftCorps regarding the Software and supersedes all prior agreements.
+
+13.2. SEVERABILITY
+If any provision of this Agreement is found to be unenforceable, the remaining provisions will remain in full force and effect.
+
+13.3. NO WAIVER
+Our failure to enforce any right or provision shall not constitute a waiver of such right or provision.
+
+13.4. ASSIGNMENT
+You may not assign or transfer this Agreement without our prior written consent. We may assign this Agreement without restriction.
+
+13.5. CONTACT INFORMATION
+For questions about this Agreement, contact us at:
+Email: support@craftcorps.net
+Website: https://craftcorps.net
+
+================================================================================
+14. ACKNOWLEDGMENT
+================================================================================
+BY CLICKING "I AGREE" OR BY INSTALLING/USING THE SOFTWARE, YOU ACKNOWLEDGE THAT YOU HAVE READ THIS AGREEMENT, UNDERSTAND IT, AND AGREE TO BE BOUND BY ITS TERMS AND CONDITIONS.
+
+If you do not agree to these terms, click "Cancel" and do not install or use the Software.

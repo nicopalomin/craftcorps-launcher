@@ -65,7 +65,7 @@
       "createStartMenuShortcut": true,
       "artifactName": "CraftCorps Setup ${version}.exe",
       "include": "build/installer.nsh",
-      "license": "build/privacy_policy.txt"
+      "license": "build/license.txt"
     }
   },
   "dependencies": {
