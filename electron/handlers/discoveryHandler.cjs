@@ -10,12 +10,14 @@ const API_BASE = 'https://api.craftcorps.net';
 /**
  * Fetch discover servers from the backend
  */
-async function getDiscoverServers(event, { offset = 0, limit = 9, category = 'all', version, language, query }) {
+async function getDiscoverServers(event, { offset = 0, limit = 9, category = 'all', version, language, query, isOfflineAccount }) {
     try {
         let url = `${API_BASE}/servers/discover?offset=${offset}&limit=${limit}&category=${category}`;
         if (version) url += `&version=${encodeURIComponent(version)}`;
         if (language) url += `&language=${encodeURIComponent(language)}`;
         if (query) url += `&query=${encodeURIComponent(query)}`;
+        if (isOfflineAccount) url += `&offlineMode=true`;
+
 
         log.info(`[Discovery] Fetching servers from ${url}`);
 

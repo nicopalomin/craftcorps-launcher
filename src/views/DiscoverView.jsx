@@ -13,8 +13,8 @@ const DiscoverView = ({ selectedInstance, activeAccount }) => {
 
     useEffect(() => {
         const dismissed = localStorage.getItem('discover_welcome_v1');
-        setShowDisclaimer(true);
         if (!dismissed) {
+            setShowDisclaimer(true);
         }
     }, []);
 

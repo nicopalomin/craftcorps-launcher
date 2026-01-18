@@ -42,6 +42,8 @@ export const useDiscover = (selectedInstance, activeAccount) => {
                 if (cached && cached.length > 0) {
                     setServers(cached);
                     setLoading(false);
+                    console.log("Using cached servers");
+                    return;
                 } else {
                     setLoading(true);
                 }
@@ -52,8 +54,9 @@ export const useDiscover = (selectedInstance, activeAccount) => {
             try {
                 const offset = isInitial ? 0 : servers.length;
                 const { category, version, language } = activeFilters;
+                const isOfflineAccount = activeAccount?.type === 'Offline';
 
-                const data = await discovery.fetchServers(offset, 36, category, version, language, query);
+                const data = await discovery.fetchServers(offset, 36, category, version, language, query, isOfflineAccount);
 
                 if (data && (data.success || Array.isArray(data.servers) || Array.isArray(data))) {
                     const newServers = data.servers || (Array.isArray(data) ? data : []);
@@ -118,13 +121,29 @@ export const useDiscover = (selectedInstance, activeAccount) => {
         };
     }, [log]);
 
-    // Debounce search/filter
+    // Initial Load (Mount only)
     useEffect(() => {
+        // If we have no servers (even from cache), trigger load.
+        // If we have servers from cache (via useState init), we do NOT fetch.
+        if (servers.length === 0) {
+            loadServers(true);
+        }
+    }, []);
+
+    // Debounce search/filter (Updates only)
+    const isMounted = useRef(false);
+    useEffect(() => {
+        if (!isMounted.current) {
+            isMounted.current = true;
+            return;
+        }
+
         const timer = setTimeout(() => {
             loadServers(true);
         }, 600);
         return () => clearTimeout(timer);
-    }, [query, activeFilters, loadServers]);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [query, activeFilters]);
 
     // Derived Sections
     const sections = useMemo(() => {

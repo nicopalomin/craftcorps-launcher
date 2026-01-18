@@ -80,7 +80,7 @@ const ProgressBar = ({ current, milestones, theme, label, icon: Icon, action }) 
 
                             {/* Tooltip for Reward (Mock) */}
                             <div className={`absolute bottom-full mb-3 opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap px-3 py-2 rounded-lg text-xs font-medium pointer-events-none transform translate-y-2 group-hover:translate-y-0 duration-200 ${theme === 'white' ? 'bg-slate-800 text-white shadow-xl' : 'bg-white text-slate-900 shadow-xl'}`}>
-                                {isUnlocked ? "Reward Unlocked!" : "Reach this milestone to unlock a reward!"}
+                                {isUnlocked ? "Eligible for Reward" : "Reach this milestone to be eligible for a reward!"}
                                 <div className={`absolute left-1/2 -translate-x-1/2 top-100 w-2 h-2 rotate-45 ${theme === 'white' ? 'bg-slate-800' : 'bg-white'} `}></div>
                             </div>
                         </div>
@@ -94,7 +94,7 @@ const ProgressBar = ({ current, milestones, theme, label, icon: Icon, action }) 
                     {label.includes('Play') ? (
                         "Play time is automatically recorded while you play using CraftCorps."
                     ) : (
-                        "Invite friends to join the beta and earn exclusive cosmetics!"
+                        "Invite friends to join the beta and be eligible for exclusive cosmetic rewards!"
                     )}
                 </p>
                 {action && (
@@ -137,10 +137,17 @@ const BetaRewardsView = ({ theme, selectedInstance }) => {
 
             <div className="min-h-full w-full flex flex-col items-center justify-center py-12">
                 <div className="w-full max-w-4xl px-6 z-10 flex flex-col items-center">
+                    <div className={`w-full max-w-2xl mb-4 p-4 rounded-xl border flex items-center gap-4 ${theme === 'white' ? 'bg-amber-50 border-amber-200 text-amber-800' : 'bg-amber-900/20 border-amber-500/20 text-amber-200'}`}>
+                        <AlertTriangle className="shrink-0" size={24} />
+                        <p className="text-sm font-medium">
+                            Beta Rewards are currently in development and your progress might not count towards it at this time. We do not promise any rewards at this time.
+                        </p>
+                    </div>
+
                     <div className={`w-full max-w-2xl mb-12 p-4 rounded-xl border flex items-center gap-4 ${theme === 'white' ? 'bg-amber-50 border-amber-200 text-amber-800' : 'bg-amber-900/20 border-amber-500/20 text-amber-200'}`}>
                         <AlertTriangle className="shrink-0" size={24} />
                         <p className="text-sm font-medium">
-                            Beta Rewards are currently in development and your progress might not count towards it at this time.
+                            Progress shown here represents participation only. Cosmetic rewards, if offered, are discretionary, subject to change, and not guaranteed.
                         </p>
                     </div>
 
@@ -150,7 +157,7 @@ const BetaRewardsView = ({ theme, selectedInstance }) => {
                         </div>
                         <h1 className={`text-5xl font-black tracking-tight mb-4 bg-clip-text text-transparent bg-gradient-to-r ${theme === 'white' ? 'from-slate-900 to-slate-700' : 'from-white to-slate-400'}`}>Beta Rewards</h1>
                         <p className={`text-xl max-w-2xl mx-auto ${theme === 'white' ? 'text-slate-600' : 'text-slate-400'}`}>
-                            Thank you for being an early supporter! Unlock exclusive cosmetic rewards by playing and inviting friends.
+                            Thank you for being an early supporter! Play and invite friends to be eligible for exclusive cosmetic rewards.
                         </p>
                     </div>
 
@@ -185,7 +192,7 @@ const BetaRewardsView = ({ theme, selectedInstance }) => {
                     />
 
                     <div className="w-full max-w-4xl mt-16 px-2">
-                        <h3 className={`text-2xl font-bold mb-6 ${theme === 'white' ? 'text-slate-800' : 'text-slate-200'}`}>Cosmetics Unlocked</h3>
+                        <h3 className={`text-2xl font-bold mb-6 ${theme === 'white' ? 'text-slate-800' : 'text-slate-200'}`}>Eligible Rewards</h3>
 
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                             {/* Mock Cards */}

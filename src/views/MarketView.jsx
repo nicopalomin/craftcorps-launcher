@@ -65,7 +65,7 @@ const MarketView = () => {
                 </h1>
 
                 <p className="text-xl text-emerald-400/90 font-medium mb-12 max-w-2xl">
-                    Built by Developers, for Server Owners.
+                    Built by Server Owners, for Server Owners.
                 </p>
 
                 <div className="bg-slate-900/60 backdrop-blur-md border border-white/5 rounded-3xl p-8 max-w-lg w-full shadow-2xl relative overflow-hidden group hover:border-emerald-500/30 transition-all duration-500">
@@ -124,7 +124,7 @@ const MarketView = () => {
                                                 window.electronAPI.openPath('https://kit.com/privacy');
                                             }}
                                         >
-                                            Read Policy.
+                                            Read Kit's Privacy Policy.
                                         </button>
                                     </span>
                                 </label>
@@ -136,7 +136,7 @@ const MarketView = () => {
                                 </div>
                                 <div className="text-center">
                                     <div className="font-bold text-lg text-emerald-300">You're on the list!</div>
-                                    <div className="text-sm text-emerald-500/80 mt-1">We'll let you know when the market opens.</div>
+                                    <div className="text-sm text-emerald-500/80 mt-1">We'll let you know about the market feature updates!</div>
                                 </div>
                             </div>
                         )}
