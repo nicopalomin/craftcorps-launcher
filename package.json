@@ -49,13 +49,15 @@
         ]
       },
       "category": "public.app-category.games",
-      "icon": "public/icon.png"
+      "icon": "public/icon.png",
+      "artifactName": "CraftCorps Setup ${version}.${ext}"
     },
     "compression": "maximum",
     "linux": {
       "target": "AppImage",
       "icon": "public/icon.png",
-      "category": "Game"
+      "category": "Game",
+      "artifactName": "CraftCorps Setup ${version}.${ext}"
     },
     "nsis": {
       "oneClick": false,
