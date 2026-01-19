@@ -44,6 +44,9 @@ const ServerCard = React.memo(({
         return server.version || "Unknown";
     };
 
+    const [imgError, setImgError] = React.useState(false);
+    const iconSrc = server.icon || `https://api.mcsrvstat.us/icon/${server.ip}`;
+
     return (
         <div
             className={`group bg-slate-800/40 hover:bg-slate-800 border border-white/5 hover:border-white/10 overflow-hidden transition-colors transition-shadow duration-300 hover:shadow-xl hover:shadow-black/20 flex flex-col ${base}`}
@@ -51,13 +54,15 @@ const ServerCard = React.memo(({
             {/* Banner */}
             <div className={`${bannerH} bg-slate-900 relative overflow-hidden`}>
                 <div className={`absolute inset-0 bg-gradient-to-r ${gradient} opacity-20`} />
-                {server.icon ? (
+                {!imgError && (
                     <img
-                        src={server.icon}
+                        src={iconSrc}
+                        decoding="async"
                         className="absolute inset-0 w-full h-full object-cover blur-xl opacity-35 scale-150"
                         alt=""
+                        onError={() => setImgError(true)}
                     />
-                ) : null}
+                )}
 
                 {/* Status Banners */}
                 <ServerBadge server={server} isHot={isHot} />
@@ -77,8 +82,14 @@ const ServerCard = React.memo(({
                 <div
                     className={`absolute -top-8 left-6 ${iconSize} rounded-2xl bg-slate-800 p-1 shadow-lg border border-slate-700 group-hover:scale-105 transition-transform duration-300`}
                 >
-                    {server.icon ? (
-                        <img src={server.icon} alt={server.name} className="w-full h-full rounded-xl" />
+                    {!imgError ? (
+                        <img
+                            src={iconSrc}
+                            alt={server.name}
+                            decoding="async"
+                            className="w-full h-full rounded-xl"
+                            onError={() => setImgError(true)}
+                        />
                     ) : (
                         <div
                             className={`w-full h-full rounded-xl bg-gradient-to-br ${gradient} flex items-center justify-center`}
@@ -142,7 +153,7 @@ const ServerCard = React.memo(({
                 <div
                     className={`text-slate-300/80 text-sm mb-6 line-clamp-2 min-h-[40px] [&>span]:text-slate-200 ${variant === "featured" ? "line-clamp-3" : ""
                         }`}
-                    dangerouslySetInnerHTML={{ __html: (typeof server.motd === 'string' ? server.motd : String(server.motd || "")) || "No description available." }}
+                    dangerouslySetInnerHTML={{ __html: (typeof server.motd === 'string' ? server.motd : (server.motd ? String(server.motd) : "")) || "No description available." }}
                 />
 
                 <div className="flex-1" />

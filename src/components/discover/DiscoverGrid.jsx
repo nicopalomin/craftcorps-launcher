@@ -135,19 +135,11 @@ const DiscoverGrid = React.memo(({
                                 icon={sections.hero ? Server : Search}
                                 title={sections.hero ? "Explore All" : `Found ${servers.length} Servers`}
                                 subtitle={sections.hero ? "Discover hidden gems in the void." : "Results matching your criteria"}
-                                right={
-                                    hasMore ? (
-                                        <button
-                                            onClick={() => loadServers(false)}
-                                            disabled={loadingMore}
-                                            className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 text-sm font-medium rounded-lg border border-white/5 transition-colors disabled:opacity-50"
-                                        >
-                                            {loadingMore ? "Loading..." : "Load More"}
-                                        </button>
-                                    ) : null
-                                }
                             />
-                            <div className="grid grid-cols-1 lg:grid-cols-2 gap-x-6 gap-y-3">
+                            <div
+                                className="grid grid-cols-1 lg:grid-cols-2 gap-x-6 gap-y-3"
+                                style={{ contentVisibility: 'auto', containIntrinsicSize: '100px' }}
+                            >
                                 {sections.list.map((server, idx) => (
                                     <CompactServerRow
                                         key={`list-${server.ip}`}
@@ -162,6 +154,17 @@ const DiscoverGrid = React.memo(({
                                     />
                                 ))}
                             </div>
+                            {hasMore && (
+                                <div className="flex justify-center pt-8">
+                                    <button
+                                        onClick={() => loadServers(false)}
+                                        disabled={loadingMore}
+                                        className="px-6 py-3 bg-slate-800 hover:bg-slate-700 text-slate-300 font-medium rounded-xl border border-white/5 transition-colors disabled:opacity-50"
+                                    >
+                                        {loadingMore ? "Loading More..." : "Load More Servers"}
+                                    </button>
+                                </div>
+                            )}
                         </div>
                     )}
 

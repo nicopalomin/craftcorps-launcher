@@ -25,7 +25,7 @@ const HeroServerBanner = React.memo(({ server, onJoin, onCopy, onStop, isJoining
             {/* Backgrounds */}
             <div className={`absolute inset-0 bg-gradient-to-br ${gradient} opacity-20`} />
             {server.icon && (
-                <img src={server.icon} className="absolute inset-0 w-full h-full object-cover blur-3xl opacity-30 scale-110" alt="" />
+                <img src={server.icon} className="absolute inset-0 w-full h-full object-cover blur-2xl opacity-30 scale-110" alt="" />
             )}
             <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/60 to-transparent" />
 

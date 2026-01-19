@@ -30,6 +30,9 @@ const CompactServerRow = React.memo(({ server, onJoin, onCopy, onStop, rank, isJ
         return server.version || "Unknown";
     };
 
+    const [imgError, setImgError] = React.useState(false);
+    const iconSrc = server.icon || `https://api.mcsrvstat.us/icon/${server.ip}`;
+
     return (
         <div
             className="group relative flex flex-col gap-2 p-4 rounded-xl bg-slate-800/20 hover:bg-slate-800/60 border border-transparent hover:border-white/5 transition-colors duration-200 h-full"
@@ -45,8 +48,15 @@ const CompactServerRow = React.memo(({ server, onJoin, onCopy, onStop, rank, isJ
                 <span className="text-slate-500 font-mono text-xs opacity-50 w-5 text-center shrink-0">#{rank}</span>
 
                 <div className="w-10 h-10 rounded-lg bg-slate-800 shrink-0 overflow-hidden border border-white/5 shadow-md group-hover:shadow-lg transition-shadow">
-                    {server.icon ? (
-                        <img src={server.icon} alt="" className="w-full h-full object-cover" />
+                    {!imgError ? (
+                        <img
+                            src={iconSrc}
+                            alt=""
+                            loading="lazy"
+                            decoding="async"
+                            className="w-full h-full object-cover"
+                            onError={() => setImgError(true)}
+                        />
                     ) : (
                         <div className={`w-full h-full bg-gradient-to-br ${getGradient(server.ip)}`} />
                     )}
@@ -69,7 +79,7 @@ const CompactServerRow = React.memo(({ server, onJoin, onCopy, onStop, rank, isJ
             {/* MOTD */}
             <div
                 className="text-slate-500 text-xs leading-relaxed line-clamp-2 whitespace-normal h-8 w-full mt-1"
-                dangerouslySetInnerHTML={{ __html: (typeof server.motd === 'string' ? server.motd : JSON.stringify(server.motd || "")).replace(/<[^>]*>/g, '') || 'Join now to start your adventure.' }}
+                dangerouslySetInnerHTML={{ __html: (typeof server.motd === 'string' ? server.motd : (server.motd ? JSON.stringify(server.motd) : "")).replace(/<[^>]*>/g, '') || 'Join now to start your adventure.' }}
             />
 
             {/* Actions (Overlay) */}

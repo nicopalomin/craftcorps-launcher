@@ -29,12 +29,24 @@ export const useDiscover = (selectedInstance, activeAccount) => {
         }
     }, []);
 
+    // State for request deduplication
+    const loadingRef = useRef(false);
+    const requestIdRef = useRef(0);
+
     // Load Servers
     const loadServers = useCallback(
         async (isInitial = false) => {
-            log(`loadServers called. isInitial=${isInitial}`);
+            // Dedupe initial loads if already in progress
+            if (isInitial && loadingRef.current) {
+                log(`Skipping redundant initial load`);
+                return;
+            }
+
+            const currentId = ++requestIdRef.current;
+            log(`loadServers called. isInitial=${isInitial} reqId=${currentId}`);
 
             if (isInitial) {
+                loadingRef.current = true;
                 // If clean, check MEMORY cache (instant tab switch)
                 const isClean = !query && activeFilters.category === 'all' && !activeFilters.version && !activeFilters.language;
                 const cached = isClean ? discovery.getMemoryCache() : null;
@@ -42,6 +54,7 @@ export const useDiscover = (selectedInstance, activeAccount) => {
                 if (cached && cached.length > 0) {
                     setServers(cached);
                     setLoading(false);
+                    loadingRef.current = false;
                     console.log("Using cached servers");
                     return;
                 } else {
@@ -58,6 +71,12 @@ export const useDiscover = (selectedInstance, activeAccount) => {
 
                 const data = await discovery.fetchServers(offset, 36, category, version, language, query, isOfflineAccount);
 
+                // Ignore if a newer request started
+                if (currentId !== requestIdRef.current) {
+                    log(`Ignoring stale response for reqId=${currentId}`);
+                    return;
+                }
+
                 if (data && (data.success || Array.isArray(data.servers) || Array.isArray(data))) {
                     const newServers = data.servers || (Array.isArray(data) ? data : []);
                     if (isInitial) setServers(newServers);
@@ -66,14 +85,20 @@ export const useDiscover = (selectedInstance, activeAccount) => {
                     setHasMore(data.hasMore === undefined ? false : data.hasMore);
                 }
             } catch (err) {
+                // Ignore if stale
+                if (currentId !== requestIdRef.current) return;
+
                 log("Failed to load discover servers", err);
                 addToast("Failed to load servers", "error");
             } finally {
-                setLoading(false);
-                setLoadingMore(false);
+                if (currentId === requestIdRef.current) {
+                    setLoading(false);
+                    setLoadingMore(false);
+                    if (isInitial) loadingRef.current = false;
+                }
             }
         },
-        [addToast, servers.length, activeFilters, query, log]
+        [addToast, servers.length, activeFilters, query, log, activeAccount]
     );
 
     // Initial Metadata Fetch
