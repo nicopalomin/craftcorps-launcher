@@ -141,7 +141,7 @@ Date: ${new Date().toISOString()}
 
             // Use the Crash Report endpoint via Telemetry Service
             // This ensures it appears in the "Crash Reports" tab of the panel
-            await telemetryService.sendManualCrashReport(logContent, sysInfoString);
+            await telemetryService.sendManualCrashReport(logContent, sysInfo);
 
             return { success: true, message: 'Logs uploaded successfully to crash reporter.' };
         } catch (e) {
