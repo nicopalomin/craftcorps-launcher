@@ -232,6 +232,26 @@ app.whenReady().then(async () => {
         return getAvailableJavas;
     });
 
+    lazyHandle('install-java', () => {
+        const { handleInstallJava } = require('./handlers/javaHandler.cjs');
+        return handleInstallJava(getMainWindow);
+    });
+
+    lazyHandle('cancel-java-install', () => {
+        const { handleCancelJavaInstall } = require('./handlers/javaHandler.cjs');
+        return handleCancelJavaInstall;
+    });
+
+    lazyHandle('pause-java-install', () => {
+        const { handlePauseJavaInstall } = require('./handlers/javaHandler.cjs');
+        return handlePauseJavaInstall;
+    });
+
+    lazyHandle('resume-java-install', () => {
+        const { handleResumeJavaInstall } = require('./handlers/javaHandler.cjs');
+        return handleResumeJavaInstall;
+    });
+
     // Lazy: Instances
     lazyHandle('get-instances', () => {
         const { getInstances } = require('./handlers/gameHandler.cjs');
