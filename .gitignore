@@ -41,3 +41,4 @@ crashDumps
 *.dmp
 DEPLOY_TO_R2.md
 /.agent
+/marketing-assets

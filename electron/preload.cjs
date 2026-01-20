@@ -35,7 +35,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
     launchGame: (options) => ipcRenderer.send('launch-game', options),
     getNewInstancePath: (name) => ipcRenderer.invoke('get-new-instance-path', name),
     deleteInstanceFolder: (path) => ipcRenderer.invoke('delete-instance-folder', path),
-    stopGame: () => ipcRenderer.send('stop-game'),
+    stopGame: (gameDir) => ipcRenderer.send('stop-game', gameDir),
+    focusGame: (gameDir) => ipcRenderer.send('focus-game', gameDir),
     onGameLog: (callback) => ipcRenderer.on('game-log', (_event, value) => callback(value)),
     onGameProgress: (callback) => ipcRenderer.on('game-progress', (_event, value) => callback(value)),
     onGameExit: (callback) => ipcRenderer.on('game-exit', (_event, value) => callback(value)),
@@ -96,6 +97,9 @@ contextBridge.exposeInMainWorld('electronAPI', {
 
     // Instances
     getInstances: () => ipcRenderer.invoke('get-instances'),
+    getRunningInstances: () => ipcRenderer.invoke('get-running-instances'),
+    onRunningInstancesChanged: (callback) => ipcRenderer.on('running-instances-changed', (_event, value) => callback(value)),
+    removeRunningInstancesListener: () => ipcRenderer.removeAllListeners('running-instances-changed'),
     getInstanceByPath: (path) => ipcRenderer.invoke('get-instance-by-path', path),
     saveInstance: (data) => ipcRenderer.invoke('save-instance', data),
     getInstancePlayTime: (instanceId) => ipcRenderer.invoke('get-instance-playtime', instanceId), // [NEW]
@@ -133,7 +137,18 @@ contextBridge.exposeInMainWorld('electronAPI', {
     // Marketing
     subscribeToNewsletter: (email) => ipcRenderer.invoke('subscribe-newsletter', email),
 
+    // Skin
+    getMinecraftSkin: (username) => ipcRenderer.invoke('get-minecraft-skin', username),
+    uploadMinecraftSkin: (token, filePath, variant) => ipcRenderer.invoke('upload-minecraft-skin', { token, filePath, variant }),
+    readSkinFile: (filePath) => ipcRenderer.invoke('read-skin-file', filePath),
+
+    // Dialogs
+    showOpenDialog: (options) => ipcRenderer.invoke('show-open-dialog', options),
+
     // Unified Telemetry
     trackTelemetryEvent: (type, metadata) => ipcRenderer.invoke('track-telemetry-event', { type, metadata }),
     getAuthUserId: () => ipcRenderer.invoke('get-auth-user-id'), // Returns authenticated backend user ID
+
+    // Internal Tools
+    captureMarketingShot: () => ipcRenderer.invoke('capture-marketing-shot'),
 });

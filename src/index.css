@@ -1,3 +1,4 @@
+@import url('https://fonts.cdnfonts.com/css/minecraft-4');
 @import "tailwindcss";
 
 /* Force redirect Tailwind variables to our theme variables */
@@ -119,6 +120,7 @@
     0% {
       background-position: -1000px 0;
     }
+
     100% {
       background-position: 1000px 0;
     }
@@ -128,6 +130,17 @@
     animation: shimmer 2s infinite linear;
     background: linear-gradient(to right, var(--color-bg-card) 4%, var(--color-bg-element) 25%, var(--color-bg-card) 36%);
     background-size: 1000px 100%;
+  }
+
+  /* Cape rendering */
+  .founder-cape-glow {
+    filter: drop-shadow(0 0 8px rgba(251, 191, 36, 0.6)) drop-shadow(0 0 4px rgba(251, 191, 36, 0.4));
+  }
+
+  .pixelated {
+    image-rendering: pixelated;
+    image-rendering: -moz-crisp-edges;
+    image-rendering: crisp-edges;
   }
 }
 
