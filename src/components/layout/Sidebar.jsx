@@ -1,6 +1,6 @@
 import React, { useRef, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Sprout, Play, Edit3, HardDrive, Settings, Shirt, ShoppingBag, Gift, PanelLeftClose, PanelLeftOpen, Star } from 'lucide-react';
+import { Sprout, Play, Edit3, HardDrive, Settings, Shirt, ShoppingBag, Gift, PanelLeftClose, PanelLeftOpen, Star, User } from 'lucide-react';
 import SidebarItem from './SidebarItem';
 
 const Sidebar = ({ activeTab, onTabChange, theme }) => {
@@ -144,6 +144,13 @@ const Sidebar = ({ activeTab, onTabChange, theme }) => {
                         collapsed={isCollapsed}
                     />
                     <div className={`pt-4 mt-4 border-t border-slate-800 ${isCollapsed ? 'border-transparent' : ''}`}>
+                        <SidebarItem
+                            icon={User}
+                            label={t('nav_profile', { defaultValue: 'Profile' })}
+                            active={activeTab === 'profile'}
+                            onClick={() => onTabChange('profile')}
+                            collapsed={isCollapsed}
+                        />
                         <SidebarItem
                             icon={ShoppingBag}
                             label={t('nav_market', { defaultValue: 'Market' })}

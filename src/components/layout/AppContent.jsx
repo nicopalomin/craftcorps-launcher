@@ -8,6 +8,7 @@ import ModsView from '../../views/ModsView';
 import MarketView from '../../views/MarketView';
 import BetaRewardsView from '../../views/BetaRewardsView';
 import DiscoverView from '../../views/DiscoverView';
+import ProfileView from '../../views/ProfileView';
 import { SKINS } from '../../data/mockData';
 import { useToast } from '../../contexts/ToastContext';
 
@@ -115,6 +116,7 @@ const AppContent = ({
                 </div>
             )}
             {activeTab === 'discover' && <DiscoverView selectedInstance={selectedInstance} activeAccount={activeAccount} />}
+            {activeTab === 'profile' && <ProfileView activeAccount={activeAccount} accounts={accounts} instances={instances} theme={theme} />}
             {activeTab === 'market' && <MarketView />}
             {activeTab === 'rewards' && <BetaRewardsView theme={theme} selectedInstance={selectedInstance} />}
         </div>
