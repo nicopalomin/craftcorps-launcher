@@ -4,23 +4,20 @@ const fs = require('fs');
 const path = require('path');
 const GameLauncher = require('../GameLauncher.cjs');
 
-const launcher = new GameLauncher();
+// Track multiple active launchers
+// Key: launchId (string), Value: { gameDir, launcher, options }
+const activeLaunchers = new Map();
 
-function isGameRunning() {
-    return !!launcher.process;
+function isGameRunning(gameDir) {
+    if (gameDir) return Array.from(activeLaunchers.values()).some(d => d.gameDir === gameDir);
+    return activeLaunchers.size > 0;
 }
 
-const playTimeService = require('../services/playTimeService.cjs'); // [NEW]
+const playTimeService = require('../services/playTimeService.cjs');
 
-
-let currentGameDir = null; // [NEW]
-
-function setupGameHandlers(getMainWindow) { // [UPDATED] - Added store
+function setupGameHandlers(getMainWindow) {
     const { setActivity } = require('../discordRpc.cjs');
     const JavaManager = require('../JavaManager.cjs');
-
-    // launcher used to be here
-    let lastCrashReport = null;
 
     const safeSend = (channel, ...args) => {
         const win = getMainWindow();
@@ -29,7 +26,17 @@ function setupGameHandlers(getMainWindow) { // [UPDATED] - Added store
         }
     };
 
-    // Clear existing handlers to allow safe re-registration/lazy-loading overrides
+    const emitRunningInstances = () => {
+        const instances = Array.from(activeLaunchers.values()).map((data) => ({
+            gameDir: data.gameDir,
+            name: data.options.name || path.basename(data.gameDir), // Use name from options or folder name
+            version: data.options.version,
+            icon: data.options.icon // Pass icon if available
+        }));
+        safeSend('running-instances-changed', instances);
+    };
+
+    // Clear existing handlers
     ipcMain.removeAllListeners('launch-game');
     ipcMain.removeAllListeners('stop-game');
     ipcMain.removeHandler('delete-instance-folder');
@@ -37,84 +44,96 @@ function setupGameHandlers(getMainWindow) { // [UPDATED] - Added store
     ipcMain.removeHandler('get-instance-by-path');
     ipcMain.removeHandler('save-instance');
     ipcMain.removeHandler('get-new-instance-path');
-
-    // --- Launcher Events ---
-    launcher.on('log', (data) => {
-        const { type, message } = data;
-        // Log to file (Launcher/Sys logs only)
-        if (type === 'ERROR') log.error(`[MCLC] ${message}`);
-        else if (type === 'WARN') log.warn(`[MCLC] ${message}`);
-        else if (type === 'DEBUG') console.log(`[DEBUG] ${message}`); // Log debugs to terminal
-        else log.info(`[MCLC] ${message}`);
-
-        // Detect Crash Report path
-        // Pattern: "Crash report saved to: #@!@# C:\Path\To\crash-reports\crash-....txt"
-        if (message.includes('Crash report saved to:')) {
-            const match = message.match(/Crash report saved to:\s*(?:#@!@#)?\s*(.*)/);
-            if (match && match[1]) {
-                lastCrashReport = match[1].trim();
-                log.info(`[Main] Detected crash report: ${lastCrashReport}`);
-            }
-        }
-
-        // Forward to frontend
-        safeSend('game-log', data);
-    });
-
-    launcher.on('game-output', (text) => {
-        safeSend('game-log', { type: 'INFO', message: text });
-    });
-
-    launcher.on('progress', (data) => {
-        safeSend('game-progress', data);
-    });
-
-    launcher.on('launch-error', (error) => {
-        log.error(`[Main] Launch Error: ${error.summary}`);
-        safeSend('launch-error', error);
-        playTimeService.stopSession(currentGameDir); // [NEW] Stop session on error
-        currentGameDir = null;
-    });
-
-    launcher.on('exit', (code) => {
-        log.info(`[Main] Game exited with code ${code}`);
-        safeSend('game-exit', code);
-
-        // [NEW] Stop Tracking Play Time
-        if (currentGameDir) {
-            playTimeService.stopSession(currentGameDir);
-            currentGameDir = null;
-        }
-
-        setActivity({
-            details: 'In Launcher',
-            state: 'Idling',
-            startTimestamp: Date.now(),
-            largeImageKey: 'icon',
-            largeImageText: 'CraftCorps Launcher',
-            instance: false,
-        });
-
-        if (code !== 0 && code !== -1 && code !== null) {
-            log.error(`[Main] Game crashed with exit code ${code}`);
-            safeSend('game-crash-detected', { code, crashReport: lastCrashReport });
-        }
-
-        // Reset for next run
-        lastCrashReport = null;
-    });
+    ipcMain.removeHandler('get-running-instances');
 
     // --- IPC Handlers ---
 
+    ipcMain.handle('get-running-instances', getRunningInstances);
+
     ipcMain.on('launch-game', async (event, options) => {
-        lastCrashReport = null; // Reset on new launch
-        currentGameDir = options.gameDir; // [NEW] Track current game dir
-        log.info(`[Launch] Received Request. GameDir: ${options.gameDir}, JavaPath: ${options.javaPath}, Version: ${options.version}`);
+        const gameDir = options.gameDir;
+        const launchId = randomUUID();
 
-        // [NEW] Start Tracking Play Time
-        playTimeService.startSession(options.gameDir);
+        const launcher = new GameLauncher();
+        activeLaunchers.set(launchId, { gameDir, launcher, options });
+        emitRunningInstances();
 
-        // 1. Determine Required Java Version
+        // Local state for this instance
+        let lastCrashReport = null;
+
+        log.info(`[Launch] Received Request. ID: ${launchId}, GameDir: ${gameDir}, JavaPath: ${options.javaPath}, Version: ${options.version}`);
+
+        // Start Tracking Play Time
+        // Note: multiple instances of same game will overlap updates, acceptable for now.
+        playTimeService.startSession(gameDir);
+
+        // --- Instance Listeners ---
+        launcher.on('log', (data) => {
+            const { type, message } = data;
+            // Log to backend file
+            if (type === 'ERROR') log.error(`[MCLC][${path.basename(gameDir)}] ${message}`);
+            else if (type === 'WARN') log.warn(`[MCLC][${path.basename(gameDir)}] ${message}`);
+            else if (type === 'DEBUG') console.log(`[DEBUG][${path.basename(gameDir)}] ${message}`);
+            else log.info(`[MCLC][${path.basename(gameDir)}] ${message}`);
+
+            // Detect Crash Report
+            if (message.includes('Crash report saved to:')) {
+                const match = message.match(/Crash report saved to:\s*(?:#@!@#)?\s*(.*)/);
+                if (match && match[1]) {
+                    lastCrashReport = match[1].trim();
+                    log.info(`[Main] Detected crash report for ${path.basename(gameDir)}: ${lastCrashReport}`);
+                }
+            }
+
+            // Forward to frontend with gameDir
+            safeSend('game-log', { ...data, gameDir, launchId });
+        });
+
+        launcher.on('game-output', (text) => {
+            safeSend('game-log', { type: 'INFO', message: text, gameDir, launchId });
+        });
+
+        launcher.on('progress', (data) => {
+            safeSend('game-progress', { ...data, gameDir, launchId });
+        });
+
+        launcher.on('launch-error', (error) => {
+            log.error(`[Main] Launch Error (${path.basename(gameDir)}): ${error.summary}`);
+            safeSend('launch-error', { ...error, gameDir, launchId });
+            playTimeService.stopSession(gameDir);
+            activeLaunchers.delete(launchId);
+            emitRunningInstances();
+        });
+
+        launcher.on('exit', (code) => {
+            log.info(`[Main] Game (${path.basename(gameDir)}) exited with code ${code}`);
+            safeSend('game-exit', { code, gameDir, launchId });
+
+            // Stop Tracking Play Time
+            playTimeService.stopSession(gameDir);
+            activeLaunchers.delete(launchId);
+            emitRunningInstances();
+
+            // Update Discord RPC if no other games are running
+            if (activeLaunchers.size === 0) {
+                setActivity({
+                    details: 'In Launcher',
+                    state: 'Idling',
+                    startTimestamp: Date.now(),
+                    largeImageKey: 'icon',
+                    largeImageText: 'CraftCorps Launcher',
+                    instance: false,
+                });
+            }
+
+            if (code !== 0 && code !== -1 && code !== null) {
+                log.error(`[Main] Game crashed with exit code ${code}`);
+                safeSend('game-crash-detected', { code, crashReport: lastCrashReport, gameDir, launchId });
+            }
+        });
+
+
+        // --- Java Validation Logic (Scoped to this launch) ---
         let v = 17;
         if (options.version) {
             const parts = options.version.split('.');
@@ -132,30 +151,19 @@ function setupGameHandlers(getMainWindow) { // [UPDATED] - Added store
                 }
             }
         }
-        log.info(`[Launch] Version ${options.version} requires Java ${v}`);
 
-        // 2. Validate Provided Path matches requirements
         let javaValid = false;
         if (options.javaPath && typeof options.javaPath === 'string') {
             try {
                 if (fs.existsSync(options.javaPath)) {
                     const lower = path.basename(options.javaPath).toLowerCase();
                     if (lower.includes('java')) {
-                        // Fix javaw -> java on Windows
                         if (process.platform === 'win32' && lower === 'javaw.exe') {
                             options.javaPath = options.javaPath.replace(/javaw\.exe$/i, 'java.exe');
-                            log.info(`[Launch] Swapped javaw.exe to java.exe: ${options.javaPath}`);
                         }
-
-                        // Check Version
-                        log.info(`[Launch] Checking version of provided Java: ${options.javaPath}`);
                         const actualVersion = JavaManager.getVersionFromBinary(options.javaPath);
-                        log.info(`[Launch] Detected Java Version: ${actualVersion} (Required: ${v})`);
-
                         if (actualVersion === v || (v !== 8 && actualVersion >= v)) {
                             javaValid = true;
-                        } else {
-                            log.warn(`[Launch] Java path ${options.javaPath} is version ${actualVersion}, but ${v} is required (Strict check for Java 8).`);
                         }
                     }
                 }
@@ -164,10 +172,8 @@ function setupGameHandlers(getMainWindow) { // [UPDATED] - Added store
             }
         }
 
-        // 3. Auto-Detect / Install if invalid provided path
         if (!javaValid) {
-            log.warn(`[Launch] Java invalid or missing. Attempting auto-detection for Java ${v}...`);
-
+            log.warn(`[Launch] Java invalid/missing. Auto-detecting Java ${v}...`);
             const allJavas = await JavaManager.scanForJavas();
             let selectedJava = null;
 
@@ -175,51 +181,36 @@ function setupGameHandlers(getMainWindow) { // [UPDATED] - Added store
                 selectedJava = allJavas.find(j => j.version === 8);
             } else {
                 const candidates = allJavas.filter(j => j.version >= v);
-                candidates.sort((a, b) => a.version - b.version); // Pick smallest valid version (e.g. 17 for 17, not 21, unless only 21 exists)
-
-                // Prefer exact match if possible? 
-                // Actually picking smallest valid is good (e.g. don't use 21 for 1.18 if 17 is available)
+                candidates.sort((a, b) => a.version - b.version);
                 if (candidates.length > 0) selectedJava = candidates[0];
             }
 
-            // Check managed store specifically if scan failed
             if (!selectedJava) {
                 const managed = await JavaManager.checkJava(v);
-                // checkJava returns path string, verify it again just in case?
-                // checkJava does internal version check so it is safe.
                 if (managed) {
-                    // get version again to be sure? checkJava returns path.
                     const ver = JavaManager.getVersionFromBinary(managed);
-
-                    // Validate the fallback version matches requirements
                     if (ver === v || (v !== 8 && ver >= v)) {
                         selectedJava = { path: managed, version: ver };
-                    } else {
-                        log.warn(`[Launch] Fallback Java found at ${managed} is version ${ver}, but ${v} is required. Ignoring.`);
                     }
                 }
             }
 
             if (selectedJava) {
-                log.info(`[Launch] Auto-detected: ${selectedJava.path} (v${selectedJava.version})`);
                 options.javaPath = selectedJava.path;
                 safeSend('game-log', { type: 'INFO', message: `Auto-selected Java ${selectedJava.version}: ${selectedJava.path}` });
                 safeSend('java-path-updated', selectedJava.path);
             } else {
-                log.warn(`[Launch] No suitable Java ${v} found.`);
-
-                // Prompt user or try to install?
-                // Returning specific error code for frontend to prompt install
                 safeSend('launch-error', {
                     summary: `Java ${v} is missing.`,
                     advice: `Please install Java ${v} (JDK ${v}) to play this version.`
                 });
-                playTimeService.stopSession(currentGameDir); // [NEW] Stop session
-                currentGameDir = null;
-                return; // Stop launch
+                playTimeService.stopSession(gameDir);
+                activeLaunchers.delete(launchId);
+                return;
             }
         }
 
+        // Set Discord RPC Activity for this launch
         setActivity({
             details: 'In Game',
             state: options.version ? `Playing Minecraft ${options.version}` : 'Playing Minecraft',
@@ -229,14 +220,29 @@ function setupGameHandlers(getMainWindow) { // [UPDATED] - Added store
             instance: true,
         });
 
+        // GO!
         launcher.launch(options);
     });
 
-    ipcMain.on('stop-game', () => {
-        launcher.kill();
+    ipcMain.on('stop-game', (event, gameDir) => {
+        if (gameDir) {
+            log.info(`[Main] Stopping games for ${gameDir}`);
+            // Stop ALL instances matching gameDir
+            for (const [id, data] of activeLaunchers) {
+                if (data.gameDir === gameDir && data.launcher) {
+                    data.launcher.kill();
+                }
+            }
+        } else {
+            // Stop ALL (Legacy behavior or 'Stop All' button)
+            log.info(`[Main] Stopping ALL games (${activeLaunchers.size} active)`);
+            for (const [id, data] of activeLaunchers) {
+                if (data && data.launcher) {
+                    data.launcher.kill();
+                }
+            }
+        }
     });
-
-
 
     ipcMain.handle('delete-instance-folder', deleteInstanceFolder);
 
@@ -257,6 +263,8 @@ function setupGameHandlers(getMainWindow) { // [UPDATED] - Added store
     ipcMain.handle('save-instance', saveInstance);
 
     ipcMain.handle('get-new-instance-path', getNewInstancePath);
+
+    ipcMain.on('focus-game', handleFocusGame);
 
 }
 
@@ -421,4 +429,51 @@ const getNewInstancePath = async (event, name) => {
     }
 };
 
-module.exports = { setupGameHandlers, getInstances, getInstanceByPath, saveInstance, deleteInstanceFolder, getNewInstancePath, isGameRunning };
+const getRunningInstances = async () => {
+    return Array.from(activeLaunchers.values()).map((data) => ({
+        gameDir: data.gameDir,
+        name: data.options.name || path.basename(data.gameDir),
+        version: data.options.version,
+        icon: data.options.icon
+    }));
+};
+
+const handleFocusGame = (event, gameDir) => {
+    if (!gameDir) return;
+
+    // Find first match
+    // Key is launchId, Value is object
+    let match = null;
+    for (const data of activeLaunchers.values()) {
+        if (data.gameDir === gameDir) {
+            match = data;
+            break;
+        }
+    }
+
+    if (match && match.launcher && match.launcher.process && match.launcher.process.pid) {
+        const pid = match.launcher.process.pid;
+        log.info(`[Main] Focusing game PID: ${pid}`);
+
+        // Windows-specific focus
+        if (process.platform === 'win32') {
+            const { exec } = require('child_process');
+            const cmd = `powershell -command "(New-Object -ComObject WScript.Shell).AppActivate(${pid})"`;
+            exec(cmd, (err) => {
+                if (err) log.error(`[Main] Failed to focus game: ${err.message}`);
+            });
+        }
+    }
+};
+
+module.exports = {
+    setupGameHandlers,
+    getInstances,
+    getInstanceByPath,
+    saveInstance,
+    deleteInstanceFolder,
+    getNewInstancePath,
+    isGameRunning,
+    getRunningInstances,
+    handleFocusGame
+};

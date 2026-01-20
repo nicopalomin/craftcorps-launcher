@@ -43,6 +43,29 @@ function App() {
         return () => clearTimeout(initTimer);
     }, []);
 
+
+
+    // Marketing Shot Listener (Shift + S)
+    useEffect(() => {
+        const handleKeyDown = (e) => {
+            // Only trigger if Shift+S is pressed and no input is focused
+            if (e.shiftKey && (e.key === 'S' || e.key === 's')) {
+                const tag = document.activeElement?.tagName?.toLowerCase();
+                if (tag === 'input' || tag === 'textarea') return;
+
+                console.log('Triggering marketing shot...');
+                if (window.electronAPI?.captureMarketingShot) {
+                    window.electronAPI.captureMarketingShot().then(() => {
+                        addToast('Screenshot Saved!', 'success');
+                    });
+                }
+            }
+        };
+
+        window.addEventListener('keydown', handleKeyDown);
+        return () => window.removeEventListener('keydown', handleKeyDown);
+    }, [addToast]);
+
     // Track Page Views
     useEffect(() => {
         telemetry.trackPage(activeTab);
@@ -234,6 +257,14 @@ function App() {
         }
     };
 
+    const handleSelectRunningInstance = (gameDir) => {
+        const inst = instances?.find(i => i.path === gameDir);
+        if (inst) {
+            setSelectedInstance(inst);
+            setActiveTab('home');
+        }
+    };
+
     return (
         <div className={`flex h-screen font-sans selection:bg-emerald-500/30 ${getThemeBackground()}`}>
             {/* Sidebar */}
@@ -241,6 +272,7 @@ function App() {
                 activeTab={activeTab}
                 onTabChange={setActiveTab}
                 theme={theme}
+                onSelectRunningInstance={handleSelectRunningInstance}
             />
 
             {/* Main Content Area */}
@@ -253,6 +285,7 @@ function App() {
                     updateStatus={updateStatus}
                     updateInfo={updateInfo}
                     onOpenUpdateModal={() => setShowUpdateModal(true)}
+                    onSelectRunningInstance={handleSelectRunningInstance}
                 />
 
                 <AppContent

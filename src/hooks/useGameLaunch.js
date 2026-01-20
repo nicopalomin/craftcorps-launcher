@@ -15,6 +15,37 @@ export const useGameLaunch = (selectedInstance, ram, activeAccount, updateLastPl
     const [errorModal, setErrorModal] = useState(null); // { summary, advice }
     const [crashModal, setCrashModal] = useState(null); // { code, crashReport }
 
+    const [runningInstances, setRunningInstances] = useState(new Set());
+
+    // Sync Running Instances
+    useEffect(() => {
+        if (!window.electronAPI) return;
+
+        const handleRunningUpdate = (instances) => {
+            const paths = new Set(instances.map(i => i.gameDir));
+            setRunningInstances(paths);
+        };
+
+        window.electronAPI.getRunningInstances().then(handleRunningUpdate);
+        window.electronAPI.onRunningInstancesChanged(handleRunningUpdate);
+
+        return () => window.electronAPI.removeRunningInstancesListener?.();
+    }, []);
+
+    // Sync Launch Status with Selection & Running State
+    useEffect(() => {
+        if (!selectedInstance) return;
+
+        if (runningInstances.has(selectedInstance.path)) {
+            setLaunchStatus('running');
+        } else {
+            // If we were 'running' but now it's not in the list, go to idle.
+            // If we are 'launching', DO NOT reset to idle, wait for event failure or success.
+            setLaunchStatus(prev => prev === 'running' ? 'idle' : prev);
+        }
+    }, [selectedInstance, runningInstances]);
+
+
     // Determine Java Version based on selected instance
     useEffect(() => {
         if (selectedInstance?.version) {
@@ -52,20 +83,160 @@ export const useGameLaunch = (selectedInstance, ram, activeAccount, updateLastPl
         launchStatusRef.current = launchStatus;
     }, [launchStatus]);
 
-    const handlePlay = useCallback((instanceOverride = null, serverOverride = null) => {
-        if (launchStatus !== 'idle') return;
+    // --- Game Event Listeners (Active Tab) ---
+    useEffect(() => {
+        if (!window.electronAPI || !selectedInstance) return;
 
+        // Cleanup previous if any (though `useEffect` handles it)
+        // Note: removeLogListeners might affect other components if any, but we assume single-view.
+        window.electronAPI.removeLogListeners();
+
+        const handleLaunchError = (err) => {
+            if (err.gameDir && err.gameDir !== selectedInstance.path) return;
+
+            console.error("Launch Error received:", err);
+            // setLaunchStatus('idle'); // Force idle on error even if other instances might be running? 
+            // Actually if we have 2 instances and 1 fails, we might still be running.
+            // But this hook tracks the "Action" often.
+            // For now, let's just show the error.
+            if (runningInstances.has(selectedInstance.path)) {
+                setLaunchStatus('running');
+            } else {
+                setLaunchStatus('idle');
+            }
+
+            setLaunchFeedback('error');
+
+            const isJavaError = (err.summary && err.summary.toLowerCase().includes('java')) ||
+                (err.advice && err.advice.toLowerCase().includes('java'));
+
+            if (isJavaError) {
+                setShowJavaModal(true);
+                setErrorModal(null);
+                telemetry.track('JAVA_MISSING', { error: err.summary });
+            } else {
+                setErrorModal(err);
+                telemetry.track('LAUNCH_ERROR', { error: err.summary, code: err.code || 'unknown' });
+            }
+
+            const timeStr = new Date().toLocaleTimeString();
+            setLogs(prev => [...prev, { time: timeStr, type: "ERROR", message: err.summary }]);
+            if (err.advice) {
+                setLogs(prev => [...prev, { time: timeStr, type: "WARN", message: `Advice: ${err.advice} ` }]);
+            }
+        };
+
+        const handleGameLog = (log) => {
+            if (log.gameDir && log.gameDir !== selectedInstance.path) return;
+
+            const now = new Date();
+            const timeStr = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}:${now.getSeconds().toString().padStart(2, '0')} `;
+            setLogs(prev => [...prev, { ...log, time: timeStr }]);
+
+            if (log.message.includes('Downloading assets')) {
+                // Handled by progress event
+            } else if (log.message.includes('Starting MCLC')) {
+                setLaunchStep("Preparing version manifest...");
+            } else if (log.message.includes('Game process started')) {
+                setLaunchStep("Game started!");
+                setLaunchProgress(100);
+
+                // [TELEMETRY] Track Duration
+                if (launchStartTimeRef.current > 0) {
+                    const duration = Date.now() - launchStartTimeRef.current;
+                    telemetry.track('GAME_LAUNCH_DURATION', { durationMs: duration });
+                    launchStartTimeRef.current = 0; // Reset
+                }
+
+                if (hideOnLaunch && window.electronAPI) {
+                    window.electronAPI.hide();
+                }
+
+                // Status update handled by runningInstances sync usually, but immediate feedback is good
+                setTimeout(() => {
+                    // setLaunchStatus('running'); 
+                }, 500);
+            } else {
+                if (log.message && log.message.length < 50 && !log.message.includes('DEBUG')) {
+                    setLaunchStep(log.message);
+                }
+            }
+        };
+
+        const handleGameProgress = (data) => {
+            if (data.gameDir && data.gameDir !== selectedInstance.path) return;
+            setLaunchProgress(data.percent);
+            setLaunchStep(`Downloading ${data.type} (${data.percent}%)`);
+        };
+
+        const handleGameExit = (data) => {
+            let code = data;
+            let gameDir = null;
+            if (typeof data === 'object' && data !== null) {
+                code = data.code;
+                gameDir = data.gameDir;
+            }
+
+            if (gameDir && gameDir !== selectedInstance.path) return;
+
+            // setLaunchStatus('idle'); // Handled by runningInstances mostly
+            setLaunchStep("Game exited.");
+            const exitMsg = `Process exited with code ${code} `;
+            setLogs(prev => [...prev, { time: "Now", type: "INFO", message: exitMsg }]);
+
+            if (window.electronAPI) {
+                window.electronAPI.show();
+            }
+
+            if (launchStatusRef.current === 'launching' && code !== 0 && code !== -1) {
+                setLaunchFeedback((prev) => prev === 'error' ? 'error' : 'error');
+                setLaunchStep("Launch Failed.");
+
+                if (code !== 1) {
+                    setShowConsole(true);
+                }
+                setTimeout(() => setLaunchFeedback(null), 3000);
+            }
+        };
+
+        const handleCrash = (data) => {
+            if (data.gameDir && data.gameDir !== selectedInstance.path) return;
+            setCrashModal(data);
+            telemetry.track('GAME_CRASH', {
+                code: data.code,
+                hasReport: !!data.crashReport
+            });
+        };
+
+        window.electronAPI.onLaunchError(handleLaunchError);
+        window.electronAPI.onGameLog(handleGameLog);
+        window.electronAPI.onGameProgress(handleGameProgress);
+        window.electronAPI.onGameExit(handleGameExit);
+        window.electronAPI.onGameCrashDetected(handleCrash);
+
+        return () => {
+            // Cleanup if needed, but removeLogListeners kills all.
+            // We rely on new effect execution to re-bind.
+            // window.electronAPI.removeLogListeners(); 
+        };
+    }, [selectedInstance, runningInstances, hideOnLaunch]); // Re-bind if selection changes or hideOnLaunch changes
+
+
+    const handlePlay = useCallback((instanceOverride = null, serverOverride = null, accountOverride = null) => {
         const instance = instanceOverride || selectedInstance;
         const server = serverOverride || (instance?.autoConnect ? instance?.serverAddress : null);
+        const accountToUse = accountOverride || activeAccount;
 
         if (!instance) {
             console.error('No instance to launch');
             return;
         }
 
+        // Allow multiple launches - no check against runningInstances
+
         setLaunchStatus('launching');
-        launchStatusRef.current = 'launching'; // Sync ref
-        launchStartTimeRef.current = Date.now(); // [TELEMETRY] Start timer
+        launchStatusRef.current = 'launching';
+        launchStartTimeRef.current = Date.now();
         setLaunchProgress(0);
         setLaunchStep("Initializing...");
         setLaunchFeedback(null);
@@ -78,9 +249,7 @@ export const useGameLaunch = (selectedInstance, ram, activeAccount, updateLastPl
         }
 
         if (window.electronAPI && window.electronAPI.log) {
-            window.electronAPI.log('info', `[UI] User clicked Play for instance: ${instance?.name} (Version: ${instance?.version})`);
-        } else {
-            console.log('[UI] User clicked Play');
+            window.electronAPI.log('info', `[UI] Launching instance: ${instance?.name} (Version: ${instance?.version}) with ${accountToUse?.name}`);
         }
 
         telemetry.track('GAME_LAUNCH', {
@@ -90,138 +259,38 @@ export const useGameLaunch = (selectedInstance, ram, activeAccount, updateLastPl
             javaVersion: requiredJavaVersion
         }, true);
 
-        if (window.electronAPI) {
-            window.electronAPI.removeLogListeners();
-            window.electronAPI.log('info', '[UI] Registering game event listeners...');
+        // Listeners are already active via useEffect
 
-            window.electronAPI.onLaunchError((err) => {
-                console.error("Launch Error received:", err);
+        // Use AccountManager to build launch options for consistency
+        (async () => {
+            if (!window.electronAPI) {
+                setLogs([{ time: "Now", type: "ERROR", message: "Electron API not found. Cannot launch native process." }]);
                 setLaunchStatus('idle');
-                setLaunchFeedback('error');
+                return;
+            }
 
-                // Check if error is related to Java
-                const isJavaError = (err.summary && err.summary.toLowerCase().includes('java')) ||
-                    (err.advice && err.advice.toLowerCase().includes('java'));
+            const launchOptions = await AccountManager.buildLaunchOptions(
+                instance,
+                ram,
+                server,
+                javaPath,
+                accountToUse // Passing the specific account
+            );
 
-                if (isJavaError) {
-                    setShowJavaModal(true);
-                    setErrorModal(null); // specific modal handles it
-                    telemetry.track('JAVA_MISSING', { error: err.summary });
-                } else {
-                    setErrorModal(err);
-                    telemetry.track('LAUNCH_ERROR', { error: err.summary, code: err.code || 'unknown' });
-                }
+            // Attach gameDir for backend identification
+            launchOptions.gameDir = instance.path;
 
-                const timeStr = new Date().toLocaleTimeString();
-                setLogs(prev => [...prev, { time: timeStr, type: "ERROR", message: err.summary }]);
-                if (err.advice) {
-                    setLogs(prev => [...prev, { time: timeStr, type: "WARN", message: `Advice: ${err.advice} ` }]);
-                }
-            });
+            window.electronAPI.launchGame(launchOptions);
+            window.electronAPI.log('info', `[UI] Launch command sent to backend. RAM: ${ram} GB, User: ${launchOptions.username}, Java: ${javaPath}`);
+        })();
 
-            window.electronAPI.onGameLog((log) => {
-                const now = new Date();
-                const timeStr = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}:${now.getSeconds().toString().padStart(2, '0')} `;
-                setLogs(prev => [...prev, { ...log, time: timeStr }]);
-
-                if (log.message.includes('Downloading assets')) {
-                    // Handled by progress event
-                } else if (log.message.includes('Starting MCLC')) {
-                    setLaunchStep("Preparing version manifest...");
-                } else if (log.message.includes('Game process started')) {
-                    setLaunchStep("Game started!");
-                    setLaunchProgress(100);
-
-                    // [TELEMETRY] Track Duration
-                    if (launchStartTimeRef.current > 0) {
-                        const duration = Date.now() - launchStartTimeRef.current;
-                        telemetry.track('GAME_LAUNCH_DURATION', { durationMs: duration });
-                        launchStartTimeRef.current = 0; // Reset
-                    }
-
-                    if (hideOnLaunch && window.electronAPI) {
-                        window.electronAPI.hide();
-                    }
-
-                    setTimeout(() => {
-                        setLaunchStatus('running');
-                    }, 500);
-                } else {
-                    if (log.message && log.message.length < 50 && !log.message.includes('DEBUG')) {
-                        setLaunchStep(log.message);
-                    }
-                }
-            });
-
-            window.electronAPI.onGameProgress((data) => {
-                setLaunchProgress(data.percent);
-                setLaunchStep(`Downloading ${data.type} (${data.percent}%)`);
-            });
-
-            window.electronAPI.onGameExit((code) => {
-                setLaunchStatus('idle');
-                setLaunchStep("Game exited.");
-                const exitMsg = `Process exited with code ${code} `;
-                setLogs(prev => [...prev, { time: "Now", type: "INFO", message: exitMsg }]);
-
-                if (window.electronAPI) {
-                    window.electronAPI.show();
-                }
-
-                if (launchStatusRef.current === 'launching' && code !== 0 && code !== -1) {
-                    // Only generic fail if we didn't already get a specific error modal
-                    setLaunchFeedback((prev) => prev === 'error' ? 'error' : 'error');
-                    setLaunchStep("Launch Failed.");
-
-                    // Show console if we don't have a specific modal
-                    // We can check errorModal state but inside callback it's stale.
-                    // Rely on user seeing "Launch Failed" and clicking logs if no modal appeared.
-                    // Actually, if code=1 and no errorModal, it might be the generic one.
-
-                    if (code !== 1) {
-                        setShowConsole(true);
-                    }
-                    setTimeout(() => setLaunchFeedback(null), 3000);
-                }
-            });
-
-            // Use AccountManager to build launch options for consistency
-            (async () => {
-                const launchOptions = await AccountManager.buildLaunchOptions(
-                    instance,
-                    ram,
-                    server,
-                    javaPath
-                );
-
-                window.electronAPI.launchGame(launchOptions);
-
-                if (window.electronAPI.log) {
-                    window.electronAPI.log('info', `[UI] Launch command sent to backend. RAM: ${ram} GB, User: ${launchOptions.username}, Java: ${javaPath}`);
-                }
-            })();
-
-            // Check for crash
-            window.electronAPI.onGameCrashDetected((data) => {
-                // data = { code, crashReport }
-                setCrashModal(data);
-                telemetry.track('GAME_CRASH', {
-                    code: data.code,
-                    hasReport: !!data.crashReport
-                });
-            });
-
-        } else {
-            setLogs([{ time: "Now", type: "ERROR", message: "Electron API not found. Cannot launch native process." }]);
-        }
-    }, [launchStatus, selectedInstance, ram, activeAccount, updateLastPlayed, hideOnLaunch, javaPath, requiredJavaVersion]);
+    }, [selectedInstance, ram, activeAccount, updateLastPlayed, hideOnLaunch, javaPath, requiredJavaVersion]);
 
     const handleStop = useCallback(() => {
-        launchStatusRef.current = 'idle'; // Update ref immediately to prevent race conditions with onGameExit
+        launchStatusRef.current = 'idle'; // Update ref immediately
 
         if (launchStatus === 'launching') {
             setLaunchFeedback('cancelled');
-            // Clear the cancelled message after a short delay
             setTimeout(() => {
                 setLaunchFeedback(prev => prev === 'cancelled' ? null : prev);
             }, 2000);
@@ -229,13 +298,14 @@ export const useGameLaunch = (selectedInstance, ram, activeAccount, updateLastPl
 
         try {
             if (window.electronAPI) {
-                window.electronAPI.stopGame();
+                // Pass the specific instance path to stop only this game
+                window.electronAPI.stopGame(selectedInstance?.path);
             }
         } catch (error) {
             console.error("Error stopping game:", error);
         }
         setLaunchStatus('idle');
-    }, [launchStatus]);
+    }, [launchStatus, selectedInstance]);
 
     const handleJavaInstallComplete = (newPath) => {
         if (setJavaPath) {
@@ -266,3 +336,5 @@ export const useGameLaunch = (selectedInstance, ram, activeAccount, updateLastPl
         setCrashModal
     };
 };
+
+

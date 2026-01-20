@@ -12,6 +12,10 @@ if (process.platform === 'win32') {
 }
 app.setName('CraftCorps Launcher');
 
+if (process.argv.includes('--marketing-shot')) {
+    app.commandLine.appendSwitch('force-device-scale-factor', '2');
+}
+
 const gotTheLock = app.requestSingleInstanceLock();
 
 if (!gotTheLock) {
@@ -178,6 +182,12 @@ async function createWindow() {
 const getMainWindow = () => mainWindow;
 
 app.whenReady().then(async () => {
+    if (process.argv.includes('--marketing-shot')) {
+        const { runMarketingShot } = require('./marketing.cjs');
+        await runMarketingShot(app);
+        return;
+    }
+
     console.time('[MAIN] registerHandlers');
     await createWindow();
 
@@ -302,6 +312,17 @@ app.whenReady().then(async () => {
         ipcMain.emit('launch-game', event, ...args);
     });
 
+    // Lazy: Game Running Status
+    lazyHandle('get-running-instances', () => {
+        const { getRunningInstances } = require('./handlers/gameHandler.cjs');
+        return getRunningInstances;
+    });
+
+    ipcMain.on('focus-game', (event, ...args) => {
+        const { handleFocusGame } = require('./handlers/gameHandler.cjs');
+        handleFocusGame(event, ...args);
+    });
+
     lazyHandle('save-instance', () => {
         const { saveInstance } = require('./handlers/gameHandler.cjs');
         return saveInstance;
@@ -338,6 +359,71 @@ app.whenReady().then(async () => {
         return checkForUpdates(event, ...args);
     });
 
+    ipcMain.handle('subscribe-newsletter', async (event, email) => {
+        const { subscribeToNewsletter } = require('./handlers/marketingHandler.cjs');
+        return subscribeToNewsletter(event, email);
+    });
+
+    lazyHandle('get-minecraft-skin', () => {
+        const { handleGetMinecraftSkin } = require('./handlers/skinHandler.cjs');
+        return handleGetMinecraftSkin;
+    });
+
+    lazyHandle('upload-minecraft-skin', () => {
+        const { handleUploadMinecraftSkin } = require('./handlers/skinHandler.cjs');
+        return handleUploadMinecraftSkin;
+    });
+
+    lazyHandle('read-skin-file', () => {
+        const { handleReadSkin } = require('./handlers/skinHandler.cjs');
+        return handleReadSkin;
+    });
+
+    ipcMain.handle('show-open-dialog', async (event, options) => {
+        const { dialog } = require('electron');
+        return await dialog.showOpenDialog(BrowserWindow.fromWebContents(event.sender), options);
+    });
+
+    // Screenshot Tool (Shift+S) - Register immediately
+    ipcMain.handle('capture-marketing-shot', async (event) => {
+        const fs = require('fs');
+        const win = getMainWindow();
+        if (!win) return false;
+
+        const marketingDir = path.join(app.getPath('userData'), 'marketing-shots');
+        if (!fs.existsSync(marketingDir)) fs.mkdirSync(marketingDir, { recursive: true });
+
+        const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+        const rawPath = path.join(marketingDir, `shot-${timestamp}-raw.png`);
+        const optimizedPath = path.join(marketingDir, `shot-${timestamp}.webp`);
+
+        try {
+            const img = await win.webContents.capturePage();
+            const buffer = img.toPNG();
+            fs.writeFileSync(rawPath, buffer);
+
+            // Try optimize with Sharp if available
+            try {
+                const sharp = require('sharp');
+                await sharp(buffer)
+                    .webp({ quality: 80, effort: 6 })
+                    .toFile(optimizedPath);
+
+                // Clean up raw if successful
+                fs.unlinkSync(rawPath);
+                require('electron').shell.showItemInFolder(optimizedPath);
+                return true;
+            } catch (e) {
+                console.error('Sharp optimization failed, keeping raw PNG:', e);
+                require('electron').shell.showItemInFolder(rawPath);
+                return true;
+            }
+        } catch (e) {
+            console.error('Screenshot failed:', e);
+            return false;
+        }
+    });
+
     console.timeEnd('[MAIN] registerHandlers');
     console.timeEnd('[MAIN] boot');
 
@@ -364,7 +450,6 @@ app.whenReady().then(async () => {
 
             // setupImportHandlers(); // REMOVED
             setupUpdateHandlers(getMainWindow); // It's safe to call again (removes/re-adds)
-            ipcMain.handle('subscribe-newsletter', subscribeToNewsletter);
 
             // Discord is already initted at top
 

@@ -1,6 +1,7 @@
 import React from 'react';
 import { Terminal, Maximize2, Minimize2, X, RefreshCw } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
+import ActiveInstances from '../common/ActiveInstances';
 
 function TitleBar({
     launchStatus,
@@ -9,7 +10,8 @@ function TitleBar({
     onOpenConsole,
     updateStatus,
     updateInfo,
-    onOpenUpdateModal
+    onOpenUpdateModal,
+    onSelectRunningInstance
 }) {
     const { t } = useTranslation();
 
@@ -59,6 +61,9 @@ function TitleBar({
                         </div>
                     </div>
                 )}
+
+                {/* Active Instances Indicator */}
+                <ActiveInstances onInstanceClick={onSelectRunningInstance} />
             </div>
             <div className="flex items-center gap-4 no-drag">
                 {launchStatus !== 'idle' && (

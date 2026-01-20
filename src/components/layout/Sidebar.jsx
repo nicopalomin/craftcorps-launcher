@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { Sprout, Play, Edit3, HardDrive, Settings, Shirt, ShoppingBag, Gift, PanelLeftClose, PanelLeftOpen, Star, User } from 'lucide-react';
 import SidebarItem from './SidebarItem';
 
-const Sidebar = ({ activeTab, onTabChange, theme }) => {
+const Sidebar = ({ activeTab, onTabChange, theme, onSelectRunningInstance }) => {
     const { t } = useTranslation();
     // Initialize from local storage or default to 256
     const [width, setWidth] = React.useState(() => {

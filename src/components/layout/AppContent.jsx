@@ -35,12 +35,12 @@ const AppContent = ({
     }, [activeTab, hasOpenedMods]);
 
     // Wrapper for Play to check refreshing
-    const onPlayWrapper = () => {
+    const onPlayWrapper = (...args) => {
         if (isRefreshing) {
             addToast("Please wait for account refresh to finish.", "error");
             return;
         }
-        handlePlay();
+        handlePlay(...args);
     };
 
     return (
@@ -88,7 +88,7 @@ const AppContent = ({
                     onReorder={reorderInstances}
                 />
             )}
-            {activeTab === 'wardrobe' && <WardrobeView skins={SKINS} theme={theme} />}
+            {activeTab === 'wardrobe' && <WardrobeView skins={SKINS} theme={theme} activeAccount={activeAccount} />}
             {activeTab === 'settings' && (
                 <SettingsView
                     ram={ram} setRam={setRam}

@@ -62,8 +62,13 @@ class AccountManager {
      * @param {string} javaPath - Java executable path
      * @returns {Promise<Object>} Launch options ready for electronAPI.launchGame()
      */
-    static async buildLaunchOptions(instance, ram = 4, server = null, javaPath = '', explicitAccount = null) {
-        const account = explicitAccount || await this.getActiveAccount();
+    static async buildLaunchOptions(instance, ram, serverAddress = null, javaPath = null, accountOverride = null) {
+        let account = accountOverride;
+        if (!account) {
+            account = await this.getActiveAccount();
+        }
+
+        if (!account) throw new Error('No active account found');
 
         return {
             version: instance.version,

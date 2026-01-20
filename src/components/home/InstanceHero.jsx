@@ -2,7 +2,8 @@ import React, { useEffect, useState } from 'react';
 import {
     Sprout, Pickaxe, Axe, Sword, Shield, Box,
     Map, Compass, Flame, Snowflake, Droplet,
-    Zap, Heart, Skull, Ghost, Trophy, Server, X, Play, Loader2, ChevronRight, Clock, Puzzle
+    Zap, Heart, Skull, Ghost, Trophy, Server, X, Play, Loader2, ChevronRight, Clock, Puzzle,
+    Plus, User, Power
 } from 'lucide-react';
 import { formatLastPlayed } from '../../utils/dateUtils';
 import { useTranslation } from 'react-i18next';
@@ -31,10 +32,12 @@ const InstanceHero = ({
     onPlay,
     onStop,
     theme,
-    isAdvanced = false // New prop to control layout mode
+    isAdvanced = false, // New prop to control layout mode
+    accounts = [] // New prop for launch menu
 }) => {
     const { t } = useTranslation();
     const [playTime, setPlayTime] = useState(null);
+    const [showLaunchMenu, setShowLaunchMenu] = useState(false);
 
     // Distinguish between content type and layout mode
     const isModdedContent = selectedInstance.loader !== 'Vanilla';
@@ -159,18 +162,100 @@ const InstanceHero = ({
                                     </button>
                                 </div>
                             )
-                        ) : (
+                        ) : launchStatus === 'launching' ? (
                             <button
-                                onClick={onStop}
-                                className="w-full max-w-sm bg-slate-800 border-2 border-slate-700 text-slate-300 hover:text-slate-200 hover:border-red-500/50 hover:bg-red-500/10 py-5 rounded-2xl font-bold text-xl transition-all flex items-center justify-center gap-3"
+                                onClick={onStop} // Allow cancelling launch
+                                className="w-full max-w-sm bg-slate-800 border-2 border-slate-700 text-amber-500 hover:text-amber-400 hover:border-amber-500/50 py-5 rounded-2xl font-bold text-xl transition-all flex items-center justify-center gap-3"
                             >
-                                {launchStatus === 'launching' ? (
-                                    <Loader2 size={24} className="animate-spin" />
-                                ) : (
-                                    <X size={24} />
-                                )}
-                                {launchStatus === 'launching' ? t('home_germinating') : t('home_stop')}
+                                <Loader2 size={24} className="animate-spin" />
+                                {t('home_germinating')}
                             </button>
+                        ) : (
+                            // RUNNING STATE
+                            <div className="w-full max-w-sm flex items-stretch gap-2">
+                                {/* Main 'Game Open' Button */}
+                                <button
+                                    onClick={() => {
+                                        if (window.electronAPI?.focusGame) {
+                                            window.electronAPI.focusGame(selectedInstance.path);
+                                        }
+                                    }}
+                                    className="flex-1 bg-emerald-600/20 border-2 border-emerald-500/50 text-emerald-400 hover:bg-emerald-600 hover:text-white hover:border-emerald-500 transition-all rounded-2xl font-bold text-lg flex items-center justify-center gap-2 py-4"
+                                >
+                                    <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                                    Game Open
+                                </button>
+
+                                {/* Launch Different Profile Button */}
+                                <div className="relative">
+                                    <button
+                                        onClick={() => setShowLaunchMenu(!showLaunchMenu)}
+                                        className="h-full px-4 rounded-xl bg-slate-800 border border-slate-700 text-slate-300 hover:text-white hover:bg-slate-700 hover:border-slate-600 transition-all flex items-center justify-center"
+                                        title="Launch another instance"
+                                    >
+                                        <Plus size={20} />
+                                    </button>
+
+                                    {/* Dropdown */}
+                                    {showLaunchMenu && (
+                                        <div className="absolute top-full right-0 mt-2 w-56 bg-[#0F172A] border border-slate-700 rounded-xl shadow-xl overflow-hidden z-50 animate-in fade-in zoom-in-95 duration-200">
+                                            <div className="px-3 py-2 border-b border-slate-700/50 bg-slate-800/50">
+                                                <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Launch as...</span>
+                                            </div>
+                                            <div className="py-1 max-h-48 overflow-y-auto">
+                                                {accounts.map(acc => (
+                                                    <button
+                                                        key={acc.uuid || acc.name}
+                                                        onClick={() => {
+                                                            onPlay(selectedInstance, null, acc);
+                                                            setShowLaunchMenu(false);
+                                                        }}
+                                                        className="w-full px-3 py-2 text-left flex items-center gap-2 hover:bg-white/5 text-slate-300 hover:text-white transition-colors"
+                                                    >
+                                                        <div className="w-6 h-6 rounded bg-slate-800 flex items-center justify-center overflow-hidden">
+                                                            <img
+                                                                src={`https://minotar.net/avatar/${acc.name}/64`}
+                                                                alt=""
+                                                                className="w-full h-full"
+                                                                onError={(e) => { e.target.style.display = 'none'; }}
+                                                            />
+                                                            <User size={12} className="text-slate-500" />
+                                                        </div>
+                                                        <span className="text-sm font-medium truncate">{acc.name}</span>
+                                                    </button>
+                                                ))}
+                                                <button
+                                                    onClick={() => {
+                                                        // Redirect to add account? Or just close
+                                                        setShowLaunchMenu(false);
+                                                        // Maybe trigger add account modal if passed?
+                                                    }}
+                                                    className="w-full px-3 py-2 text-center text-xs text-slate-500 hover:text-slate-300 border-t border-slate-800/50 mt-1"
+                                                >
+                                                    Manage Accounts
+                                                </button>
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
+
+                                {/* Stop Button (Separate) */}
+                                <button
+                                    onClick={onStop}
+                                    className="px-4 rounded-xl bg-red-500/10 border border-red-500/20 text-red-500 hover:bg-red-500 hover:text-white transition-all flex items-center justify-center shrink-0"
+                                    title="Stop All Instances"
+                                >
+                                    <Power size={20} />
+                                </button>
+
+                                {/* Close Launch Menu if clicking outside */}
+                                {showLaunchMenu && (
+                                    <div
+                                        className="fixed inset-0 z-40"
+                                        onClick={() => setShowLaunchMenu(false)}
+                                    />
+                                )}
+                            </div>
                         )}
                     </div>
 

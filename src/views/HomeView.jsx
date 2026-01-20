@@ -407,6 +407,7 @@ const HomeView = ({
                             onStop={onStop}
                             theme={theme}
                             isAdvanced={showAdvanced}
+                            accounts={accounts}
                         />
 
                         {/* Modded Details Section */}
