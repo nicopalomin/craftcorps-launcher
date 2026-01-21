@@ -8,29 +8,27 @@ function WelcomeView({ onConnect, disableAnimations }) {
 
     return (
         <div className="flex-1 flex flex-col items-center justify-center relative select-none overflow-hidden">
-            {/* Background */}
-            <div className="absolute inset-0 bg-gradient-to-b from-slate-950 via-slate-900 to-slate-950" />
-            <div className="absolute inset-0 bg-[url('/cubes.png')] opacity-5" />
-            <BackgroundBlobs disabled={disableAnimations} />
-
-            {/* Content Card */}
-            <div className="relative z-10 w-full max-w-sm mx-auto p-8 rounded-3xl bg-slate-900/50 backdrop-blur-xl border border-white/5 shadow-2xl flex flex-col items-center text-center animate-in fade-in zoom-in-95 duration-500">
-                <div className="w-20 h-20 bg-gradient-to-br from-emerald-500 to-cyan-500 rounded-3xl flex items-center justify-center shadow-2xl shadow-emerald-500/20 mb-6 rotate-6 transform hover:rotate-0 transition-all duration-500 group cursor-pointer">
-                    <User size={40} className="text-white drop-shadow-md" />
+            {/* Content Card - Using the new Widget System */}
+            <div className="relative z-10 w-[clamp(320px,90vw,440px)] p-10 rounded-[3rem] glass-spotlight shadow-3xl flex flex-col items-center text-center animate-in fade-in zoom-in-95 duration-700">
+                <div className="w-24 h-24 bg-gradient-to-br from-emerald-500/20 to-emerald-500/5 backdrop-blur-md rounded-[2rem] flex items-center justify-center shadow-2xl border border-emerald-500/20 mb-8 transform hover:scale-105 transition-all duration-500">
+                    <div className="w-16 h-16 bg-emerald-500 rounded-2xl flex items-center justify-center shadow-lg shadow-emerald-500/40">
+                        <User size={32} className="text-white drop-shadow-md" />
+                    </div>
                 </div>
 
-                <h2 className="text-3xl font-bold text-white mb-3">{t('home_welcome_back')}</h2>
-                <p className="text-slate-400 mb-8 leading-relaxed text-sm">
+                <h2 className="text-[clamp(1.75rem,5vw,2.25rem)] font-bold text-white mb-3 tracking-tight">
+                    {t('home_welcome_back')}
+                </h2>
+
+                <p className="text-slate-300 mb-8 leading-relaxed text-sm max-w-[280px]">
                     {t('home_connect_identity')}
                 </p>
 
                 <button
                     onClick={onConnect}
-                    className="w-full bg-emerald-600 text-white font-bold py-4 rounded-2xl hover:bg-emerald-500 transition-all transform hover:scale-[1.02] active:scale-95 shadow-lg shadow-emerald-500/20 flex items-center justify-center gap-3 group border border-emerald-500/50"
+                    className="btn-premium-emerald w-full py-5 px-8 rounded-2xl text-white font-extrabold uppercase tracking-[0.2em] text-sm flex items-center justify-center gap-3"
                 >
-                    <div className="bg-emerald-700/50 p-1.5 rounded-lg group-hover:bg-emerald-600/50 transition-colors">
-                        <User size={18} className="text-emerald-100" />
-                    </div>
+                    <User size={20} strokeWidth={3} />
                     <span>{t('home_btn_connect')}</span>
                 </button>
             </div>

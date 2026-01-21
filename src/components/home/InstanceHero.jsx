@@ -60,31 +60,31 @@ const InstanceHero = ({
     const lastPlayedText = selectedInstance.lastPlayed ? formatLastPlayed(selectedInstance.lastPlayed, t) : t('home_never');
 
     return (
-        <div className={`flex flex-col items-center text-center w-full px-8 pb-8 transition-all duration-500 ${isHorizontalLayout ? 'pt-16 max-w-7xl mx-auto' : 'max-w-4xl'}`}>
+        <div className={`flex flex-col items-center text-center w-full px-[5vw] transition-all duration-500 ${isHorizontalLayout ? 'pt-[5vh] max-w-none mx-auto' : 'max-w-none pt-0'}`}>
 
-            {/* Horizontal Hero for Modded/Advanced */}
-            <div className={`${isHorizontalLayout ? `flex items-start gap-8 w-full text-left p-8 rounded-3xl backdrop-blur-sm shadow-xl ${theme === 'white' ? 'bg-white/60 border border-slate-200' : 'bg-slate-900/40 border border-white/5'}` : 'contents'}`}>
+            {/* Main Hero Widget Container */}
+            <div className={`mx-auto glass-spotlight shadow-2xl transition-all duration-500 overflow-hidden ${isHorizontalLayout ? 'flex items-center gap-[4vw] text-left p-[clamp(1.5rem,3vw,3rem)] rounded-[clamp(2rem,5vw,4rem)] w-[clamp(500px,85vw,1100px)]' : 'flex flex-col items-center text-center p-[clamp(1.5rem,4vw,3.5rem)] rounded-[clamp(2rem,6vw,3.5rem)] w-[clamp(280px,90vw,600px)]'}`}>
 
                 {/* Instance Icon */}
                 <div
-                    className={`${isHorizontalLayout ? 'w-24 h-24 shrink-0' : 'w-32 h-32 mb-8'} rounded-3xl ${selectedInstance.icon ? 'bg-transparent' : selectedInstance.iconColor} flex items-center justify-center ${selectedInstance.glyphColor || 'text-slate-900'} shadow-2xl shadow-black/50 transform hover:scale-105 transition-transform duration-300 ring-4 ring-white/10 overflow-hidden`}
+                    className={`${isHorizontalLayout ? 'w-[clamp(4rem,10vw,6rem)] h-[clamp(4rem,10vw,6rem)] shrink-0' : 'w-[clamp(5rem,15vw,7rem)] h-[clamp(5rem,15vw,7rem)] mb-[clamp(1rem,3vw,1.5rem)]'} rounded-[clamp(1rem,2vw,1.5rem)] ${selectedInstance.icon ? 'bg-transparent' : selectedInstance.iconColor} flex items-center justify-center ${selectedInstance.glyphColor || 'text-slate-900'} shadow-2xl transition-all duration-300 ring-4 ring-white/5 overflow-hidden`}
                 >
                     {selectedInstance.icon ? (
                         <img src={selectedInstance.icon} alt={selectedInstance.name} className="w-full h-full object-cover" />
                     ) : (
-                        React.createElement(ICON_MAP[selectedInstance.iconKey] || Sprout, { size: 64 })
+                        React.createElement(ICON_MAP[selectedInstance.iconKey] || Sprout, { size: isHorizontalLayout ? 40 : 48 })
                     )}
                 </div>
 
-                {/* Info & Play */}
-                <div className={isHorizontalLayout ? 'flex-1 min-w-0' : 'contents'}>
+                {/* Info & Play Content */}
+                <div className={`flex-1 min-w-0 ${isHorizontalLayout ? '' : 'flex flex-col items-center w-full'}`}>
                     {/* Title */}
-                    <h1 className={`${isHorizontalLayout ? 'text-3xl mb-3' : 'text-5xl mb-2'} font-bold tracking-tight truncate ${theme === 'white' ? '!text-black drop-shadow-none' : 'text-slate-200 drop-shadow-lg'}`}>
+                    <h1 className={`${isHorizontalLayout ? 'text-[clamp(1.5rem,3vw,2rem)] mb-1.5' : 'text-[clamp(1.75rem,5vw,2.5rem)] mb-1'} font-bold tracking-tight truncate ${theme === 'white' ? '!text-black' : 'text-slate-200'}`}>
                         {selectedInstance.name}
                     </h1>
 
                     {/* Tags */}
-                    <div className={`flex items-center gap-3 mb-8 ${theme === 'white' ? 'text-slate-600' : 'text-slate-300'} ${isHorizontalLayout ? '' : 'justify-center bg-black/20 px-4 py-2 rounded-full backdrop-blur-sm border border-white/5'}`}>
+                    <div className={`flex items-center gap-2.5 mb-6 ${theme === 'white' ? 'text-slate-600' : 'text-slate-300'} ${isHorizontalLayout ? '' : 'justify-center bg-black/10 px-3 py-1.5 rounded-full backdrop-blur-sm border border-white/5'}`}>
                         <div className={`flex items-center gap-2 px-3 py-1.5 rounded-lg border ${theme === 'white' ? 'bg-slate-200/50 border-slate-300/50' : 'bg-black/20 border-white/5'}`}>
                             <span className={`font-mono ${theme === 'white' ? 'text-emerald-600' : 'text-emerald-300'}`}>{selectedInstance.version}</span>
                         </div>
@@ -117,55 +117,52 @@ const InstanceHero = ({
 
                     {/* Modded Loader Pill */}
                     {isModdedContent && (
-                        <div className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-bold uppercase tracking-wider mb-6 border w-fit ${isHorizontalLayout ? '' : 'mx-auto'} ${theme === 'white' ? 'bg-amber-100 border-amber-200 text-amber-700' : 'bg-amber-500/10 border-amber-500/20 text-amber-400'}`}>
-                            <Puzzle size={14} />
+                        <div className={`flex items-center gap-2 px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider mb-5 border w-fit ${isHorizontalLayout ? '' : 'mx-auto'} ${theme === 'white' ? 'bg-amber-100 border-amber-200 text-amber-700' : 'bg-amber-500/10 border-amber-500/20 text-amber-400'}`}>
+                            <Puzzle size={12} />
                             <span>Modded • {selectedInstance.loader}</span>
                         </div>
                     )}
 
                     {/* Play Button - Inline for Modded */}
-                    <div className={`${isHorizontalLayout ? 'max-w-md' : 'w-full flex justify-center'}`}>
+                    <div className={`${isHorizontalLayout ? 'max-w-sm' : 'w-full flex justify-center'}`}>
                         {launchStatus === 'idle' ? (
                             launchFeedback === 'cancelled' ? (
-                                <button disabled className="group relative w-full max-w-sm bg-slate-800 border-2 border-slate-700 text-amber-500 py-4 px-8 rounded-2xl font-bold text-lg cursor-not-allowed flex items-center justify-center gap-3 animate-pulse">
-                                    <X size={24} /> {t('home_launch_cancelled')}
+                                <button disabled className="group relative w-full max-w-[280px] bg-slate-800 border-2 border-slate-700 text-amber-500 py-3 px-6 rounded-xl font-bold text-base cursor-not-allowed flex items-center justify-center gap-3 animate-pulse">
+                                    <X size={20} /> {t('home_launch_cancelled')}
                                 </button>
                             ) : launchFeedback === 'error' ? (
-                                <button disabled className="group relative w-full max-w-sm bg-slate-800 border-2 border-red-900/50 text-red-500 py-4 px-8 rounded-2xl font-bold text-lg cursor-not-allowed flex items-center justify-center gap-3">
-                                    <X size={24} /> Launch Failed
+                                <button disabled className="group relative w-full max-w-[280px] bg-slate-800 border-2 border-red-900/50 text-red-500 py-3 px-6 rounded-xl font-bold text-base cursor-not-allowed flex items-center justify-center gap-3">
+                                    <X size={20} /> Launch Failed
                                 </button>
                             ) : (
-                                <div className="group relative w-full max-w-sm">
+                                <div className="group relative w-full max-w-[320px]">
                                     <button
                                         onClick={(e) => {
                                             e.stopPropagation();
                                             telemetry.track('CLICK_PLAY', { instanceId: selectedInstance.id });
                                             onPlay(selectedInstance);
                                         }}
-                                        className={`relative w-full bg-emerald-600 group-hover:bg-emerald-500 text-white rounded-2xl font-bold ${['midnight', 'white'].includes(theme)
-                                            ? 'shadow-lg shadow-black/40 group-hover:shadow-2xl group-hover:shadow-black/60'
-                                            : 'shadow-[0_0_40px_rgba(5,150,105,0.4)] group-hover:shadow-[0_0_60px_rgba(5,150,105,0.6)]'
-                                            } transform group-hover:-translate-y-1 active:translate-y-0 active:scale-95 transition-[transform,box-shadow,background-color] duration-200 overflow-hidden flex items-center ring-offset-2 ring-offset-transparent group-hover:ring-2 group-hover:ring-emerald-400/30 ${isHorizontalLayout ? 'py-4 text-xl justify-between text-left px-6' : 'py-6 text-2xl justify-center gap-3'}`}
+                                        className={`btn-premium-emerald group w-full text-white rounded-2xl font-extrabold flex items-center ${isHorizontalLayout ? 'py-4 text-xl justify-between px-6' : 'py-5 text-2xl justify-center gap-4'}`}
                                     >
-                                        {/* Shiny Edge Overlay */}
-                                        <div className={`absolute inset-0 rounded-2xl ring-1 ${theme === 'midnight' ? 'ring-white/5 group-hover:ring-white/10' : 'ring-white/10 group-hover:ring-white/30'} transition-all pointer-events-none`} />
-
-                                        <div className={`absolute inset-0 bg-gradient-to-r from-transparent ${theme === 'midnight' ? 'via-white/5' : 'via-white/20'} to-transparent translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-1000`} />
-                                        <span className="flex items-center gap-4">
-                                            <Play size={isHorizontalLayout ? 28 : 32} fill="currentColor" />
-                                            <span className="flex flex-col items-start leading-none gap-1">
+                                        <div className="flex items-center gap-4 z-10 relative">
+                                            <Play size={isHorizontalLayout ? 24 : 28} fill="currentColor" strokeWidth={3} />
+                                            <span className="flex flex-col items-start leading-none tracking-wider">
                                                 <span>{t('home_playing')}</span>
-                                                {isHorizontalLayout && <span className="text-xs font-medium text-emerald-200 opacity-80 font-sans tracking-wide">Last Played: {lastPlayedText}</span>}
+                                                {isHorizontalLayout && (
+                                                    <span className="text-[10px] font-bold text-emerald-50/70 font-sans tracking-[0.1em] mt-1.5 uppercase group-hover:text-white transition-colors">
+                                                        {lastPlayedText}
+                                                    </span>
+                                                )}
                                             </span>
-                                        </span>
-                                        {isHorizontalLayout && <ChevronRight size={24} className="opacity-50 group-hover:opacity-100 group-hover:translate-x-1 transition-all" />}
+                                        </div>
+                                        {isHorizontalLayout && <ChevronRight size={24} className="opacity-50 group-hover:opacity-100 group-hover:translate-x-1 transition-all z-10 relative" />}
                                     </button>
                                 </div>
                             )
                         ) : launchStatus === 'launching' ? (
                             <button
                                 onClick={onStop} // Allow cancelling launch
-                                className="w-full max-w-sm bg-slate-800 border-2 border-slate-700 text-amber-500 hover:text-amber-400 hover:border-amber-500/50 py-5 rounded-2xl font-bold text-xl transition-all flex items-center justify-center gap-3"
+                                className="w-full max-w-sm bg-slate-800 border-2 border-slate-700 text-amber-500 hover:text-amber-400 hover:border-amber-500/50 py-5 rounded-2xl font-extrabold text-xl transition-all flex items-center justify-center gap-3 uppercase tracking-wider"
                             >
                                 <Loader2 size={24} className="animate-spin" />
                                 {t('home_germinating')}
@@ -180,10 +177,10 @@ const InstanceHero = ({
                                             window.electronAPI.focusGame(selectedInstance.path);
                                         }
                                     }}
-                                    className="flex-1 bg-emerald-600/20 border-2 border-emerald-500/50 text-emerald-400 hover:bg-emerald-600 hover:text-white hover:border-emerald-500 transition-all rounded-2xl font-bold text-lg flex items-center justify-center gap-2 py-4"
+                                    className="flex-1 btn-premium-emerald text-white transition-all rounded-2xl font-extrabold text-lg flex items-center justify-center gap-3 py-4 uppercase tracking-wider"
                                 >
-                                    <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-                                    Game Open
+                                    <div className="w-2.5 h-2.5 rounded-full bg-white animate-pulse shadow-[0_0_10px_rgba(255,255,255,0.8)]" />
+                                    GAME OPEN
                                 </button>
 
                                 {/* Launch Different Profile Button */}

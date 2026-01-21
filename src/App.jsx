@@ -3,6 +3,7 @@ import React, { useState, useEffect } from 'react';
 import Sidebar from './components/layout/Sidebar';
 import TitleBar from './components/layout/TitleBar';
 import AppContent from './components/layout/AppContent';
+import GlobalBackground from './components/common/GlobalBackground';
 const AppOverlays = React.lazy(() => import('./components/layout/AppOverlays'));
 
 import { useGameLaunch } from './hooks/useGameLaunch';
@@ -252,8 +253,8 @@ function App() {
     const getThemeBackground = () => {
         switch (theme) {
             case 'white': return 'bg-slate-50 text-slate-900';
-            case 'midnight': return 'bg-[#050505] text-slate-200';
-            default: return 'bg-slate-900 text-slate-200'; // Classic: Slate 900 (was 950)
+            case 'midnight': return 'bg-black text-slate-200';
+            default: return 'bg-slate-950 text-slate-200';
         }
     };
 
@@ -266,7 +267,15 @@ function App() {
     };
 
     return (
-        <div className={`flex h-screen font-sans selection:bg-emerald-500/30 ${getThemeBackground()}`}>
+        <div className={`flex h-screen font-sans selection:bg-emerald-500/30 overflow-hidden relative ${getThemeBackground()}`}>
+            {/* Global Animated Background */}
+            <GlobalBackground
+                selectedInstance={selectedInstance}
+                theme={theme}
+                disableAnimations={disableAnimations}
+                activeTab={activeTab}
+            />
+
             {/* Sidebar */}
             <Sidebar
                 activeTab={activeTab}
@@ -276,7 +285,7 @@ function App() {
             />
 
             {/* Main Content Area */}
-            <main className={`flex-1 flex flex-col min-w-0 relative overflow-hidden ${theme === 'white' ? 'bg-slate-50' : (theme === 'midnight' ? 'bg-[#050505]' : 'bg-slate-900')}`}>
+            <main className={`flex-1 flex flex-col min-w-0 relative overflow-hidden transition-colors duration-700 ${activeTab === 'home' ? 'bg-transparent' : (theme === 'white' ? 'bg-slate-50' : (theme === 'midnight' ? 'bg-[#050505]' : 'bg-slate-900'))}`}>
                 <TitleBar
                     launchStatus={launchStatus}
                     isRefreshing={isRefreshing}

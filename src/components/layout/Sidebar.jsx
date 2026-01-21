@@ -1,6 +1,6 @@
 import React, { useRef, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Sprout, Play, Edit3, HardDrive, Settings, Shirt, ShoppingBag, Gift, PanelLeftClose, PanelLeftOpen, Star, User } from 'lucide-react';
+import { Sprout, Play, FolderMinus, Box, Settings, Shirt, Store, Gift, PanelLeftClose, PanelLeftOpen, Star, User } from 'lucide-react';
 import SidebarItem from './SidebarItem';
 
 const Sidebar = ({ activeTab, onTabChange, theme, onSelectRunningInstance }) => {
@@ -89,9 +89,10 @@ const Sidebar = ({ activeTab, onTabChange, theme, onSelectRunningInstance }) => 
     };
 
     const getSidebarStyles = () => {
-        if (theme === 'midnight') return 'bg-[#050505] border-white/5'; // Match App background
-        if (theme === 'white') return 'bg-white border-slate-200';
-        return 'bg-slate-900 border-slate-800'; // Default Classic
+        const isHome = activeTab === 'home';
+        if (theme === 'midnight') return isHome ? 'bg-black/40 backdrop-blur-xl border-white/5' : 'bg-[#050505] border-white/5';
+        if (theme === 'white') return isHome ? 'bg-white/60 backdrop-blur-xl border-slate-200' : 'bg-white border-slate-200';
+        return isHome ? 'bg-slate-900/40 backdrop-blur-xl border-white/5' : 'bg-slate-900 border-slate-800'; // Default Classic
     };
 
     return (
@@ -114,13 +115,14 @@ const Sidebar = ({ activeTab, onTabChange, theme, onSelectRunningInstance }) => 
                 </div>
 
                 {/* Navigation */}
-                <nav className="flex-1 space-y-1 overflow-hidden">
+                <nav className="flex-1 flex flex-col space-y-1 overflow-hidden">
                     <SidebarItem
                         icon={Play}
                         label={t('nav_play')}
                         active={activeTab === 'home'}
                         onClick={() => onTabChange('home')}
                         collapsed={isCollapsed}
+                        fill="#6ee7b7"
                     />
                     <SidebarItem
                         icon={Star}
@@ -128,58 +130,68 @@ const Sidebar = ({ activeTab, onTabChange, theme, onSelectRunningInstance }) => 
                         active={activeTab === 'discover'}
                         onClick={() => onTabChange('discover')}
                         collapsed={isCollapsed}
+                        fill="#fcd34d"
                     />
                     <SidebarItem
-                        icon={HardDrive}
+                        icon={Box}
                         label={t('nav_mod_vault')}
                         active={activeTab === 'mods'}
                         onClick={() => onTabChange('mods')}
                         collapsed={isCollapsed}
+                        fill="#93c5fd"
                     />
                     <SidebarItem
-                        icon={Edit3}
+                        icon={FolderMinus}
                         label={t('nav_edit_crops')}
                         active={activeTab === 'instances'}
                         onClick={() => onTabChange('instances')}
                         collapsed={isCollapsed}
+                        fill="#fda4af"
                     />
+                    <SidebarItem
+                        icon={Shirt}
+                        label={t('nav_wardrobe')}
+                        active={activeTab === 'wardrobe'}
+                        onClick={() => onTabChange('wardrobe')}
+                        collapsed={isCollapsed}
+                        fill="#f9a8d4"
+                    />
+
                     <div className={`pt-4 mt-4 border-t border-slate-800 ${isCollapsed ? 'border-transparent' : ''}`}>
-                        <SidebarItem
-                            icon={User}
-                            label={t('nav_profile', { defaultValue: 'Profile' })}
-                            active={activeTab === 'profile'}
-                            onClick={() => onTabChange('profile')}
-                            collapsed={isCollapsed}
-                        />
-                        <SidebarItem
-                            icon={ShoppingBag}
-                            label={t('nav_market', { defaultValue: 'Market' })}
-                            active={activeTab === 'market'}
-                            onClick={() => onTabChange('market')}
-                            collapsed={isCollapsed}
-                        />
                         <SidebarItem
                             icon={Gift}
                             label="Beta Rewards"
                             active={activeTab === 'rewards'}
                             onClick={() => onTabChange('rewards')}
                             collapsed={isCollapsed}
+                            fill="#fca5a5"
+                        />
+                        <SidebarItem
+                            icon={Store}
+                            label={t('nav_market', { defaultValue: 'Market' })}
+                            active={activeTab === 'market'}
+                            onClick={() => onTabChange('market')}
+                            collapsed={isCollapsed}
+                            fill="#fef08a"
                         />
                     </div>
-                    <div className={`pt-4 mt-4 border-t border-slate-800 ${isCollapsed ? 'border-transparent' : ''}`}>
+
+                    <div className="mt-auto pt-4 border-t border-slate-800 space-y-1">
+                        <SidebarItem
+                            icon={User}
+                            label={t('nav_profile', { defaultValue: 'Profile' })}
+                            active={activeTab === 'profile'}
+                            onClick={() => onTabChange('profile')}
+                            collapsed={isCollapsed}
+                            fill="#c4b5fd"
+                        />
                         <SidebarItem
                             icon={Settings}
                             label={t('nav_settings')}
                             active={activeTab === 'settings'}
                             onClick={() => onTabChange('settings')}
                             collapsed={isCollapsed}
-                        />
-                        <SidebarItem
-                            icon={Shirt}
-                            label={t('nav_wardrobe')}
-                            active={activeTab === 'wardrobe'}
-                            onClick={() => onTabChange('wardrobe')}
-                            collapsed={isCollapsed}
+                            fill="#cbd5e1"
                         />
                     </div>
                 </nav>

@@ -432,7 +432,21 @@ const ModsView = ({ selectedInstance, instances = [], onInstanceCreated, onSwitc
     };
 
     return (
-        <div className="flex-1 p-8 flex flex-col h-full overflow-y-auto custom-scrollbar select-none relative">
+        <div
+            className="flex-1 p-8 flex flex-col h-full overflow-y-auto custom-scrollbar select-none relative"
+            style={{
+                backgroundImage: `
+                    repeating-linear-gradient(0deg, transparent, transparent 39px, rgba(148, 163, 184, 0.04) 39px, rgba(148, 163, 184, 0.04) 40px),
+                    repeating-linear-gradient(90deg, transparent, transparent 39px, rgba(148, 163, 184, 0.04) 39px, rgba(148, 163, 184, 0.04) 40px),
+                    repeating-linear-gradient(0deg, transparent, transparent 59px, rgba(100, 116, 139, 0.03) 59px, rgba(100, 116, 139, 0.03) 60px),
+                    repeating-linear-gradient(90deg, transparent, transparent 59px, rgba(100, 116, 139, 0.03) 59px, rgba(100, 116, 139, 0.03) 60px),
+                    repeating-linear-gradient(0deg, transparent, transparent 79px, rgba(148, 163, 184, 0.025) 79px, rgba(148, 163, 184, 0.025) 80px),
+                    repeating-linear-gradient(90deg, transparent, transparent 79px, rgba(148, 163, 184, 0.025) 79px, rgba(148, 163, 184, 0.025) 80px)
+                `,
+                backgroundSize: '40px 40px, 40px 40px, 60px 60px, 60px 60px, 80px 80px, 80px 80px',
+                backgroundPosition: '0 0, 0 0, 7px 13px, 7px 13px, 15px 22px, 15px 22px'
+            }}
+        >
             {selectedProject ? (
                 <ModsDetailView
                     selectedProject={selectedProject}

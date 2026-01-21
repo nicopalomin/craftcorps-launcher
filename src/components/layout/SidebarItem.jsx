@@ -1,17 +1,25 @@
 import React from 'react';
 
-const SidebarItem = ({ icon: Icon, label, active, onClick, collapsed }) => {
-    // Always navigate on click - the sidebar will auto-open via activeTab useEffect
+const SidebarItem = ({ icon: Icon, label, active, onClick, collapsed, fill = "none" }) => {
+    // Determine the effective fill: full opacity when active, lower when inactive
+    const effectiveFill = fill !== 'none' ? (active ? fill : `${fill}40`) : 'none';
+
     return (
         <button
             onClick={onClick}
-            className={`w-full flex items-center pl-3.5 pr-4 py-3 rounded-lg transition-all duration-500 ease-out group relative ${active
-                ? 'bg-emerald-500/10 text-emerald-400'
-                : 'text-slate-400 hover:bg-slate-800 hover:text-slate-200'
+            className={`w-full flex items-center pl-3.5 pr-4 py-3 rounded-xl transition-all duration-300 ease-out group relative ${active
+                ? 'bg-white/10 text-white shadow-sm'
+                : 'text-slate-400 hover:bg-white/5 hover:text-slate-200'
                 }`}
             title={collapsed ? label : undefined}
         >
-            <Icon size={20} className={`shrink-0 transition-colors duration-500 ${active ? 'text-emerald-400' : 'text-slate-400 group-hover:text-slate-200'}`} />
+            <Icon
+                size={22}
+                fill={effectiveFill}
+                stroke={active ? "#000000" : (fill !== 'none' ? fill : 'currentColor')}
+                strokeWidth={active ? 1.8 : 1.5}
+                className={`shrink-0 transition-all duration-300 ${active ? 'opacity-100' : 'opacity-40 group-hover:opacity-80'}`}
+            />
             <span className={`font-medium text-sm pointer-events-none whitespace-nowrap overflow-hidden transition-all duration-500 ease-out ${collapsed ? 'max-w-0 opacity-0 ml-0' : 'max-w-[150px] opacity-100 ml-3'}`}>
                 {label}
             </span>

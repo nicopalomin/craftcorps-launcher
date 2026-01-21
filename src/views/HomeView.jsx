@@ -339,55 +339,49 @@ const HomeView = ({
 
     return (
         <div className={`flex-1 flex flex-col relative animate-in fade-in zoom-in-95 duration-500 select-none overflow-hidden ${isModded && showAdvanced ? 'justify-start' : 'justify-center'}`}>
-            {/* Dynamic Background */}
-            {selectedInstance && !['midnight', 'white'].includes(theme) && (
-                <div
-                    className={`absolute inset-0 bg-gradient-to-br ${selectedInstance.bgGradient} transition-colors duration-1000`}
-                />
-            )}
-            <div className="absolute inset-0 bg-[url('/cubes.png')] opacity-5" />
-            <div className={`absolute inset-0 bg-gradient-to-t ${theme === 'midnight' ? 'from-[#050505] via-[#050505]/80' : (theme === 'white' ? 'from-slate-50/90 via-slate-50/50' : 'from-slate-900 via-slate-900/80')} to-transparent`} />
 
-            {/* Animated Blobs */}
-            <BackgroundBlobs disabled={disableAnimations || isModded || ['midnight', 'white'].includes(theme)} />
-
-            {/* Account Pill & System - Top Right */}
-            <AccountProfile
-                activeAccount={activeAccount}
-                accounts={accounts}
-                showProfileMenu={showProfileMenu}
-                setShowProfileMenu={setShowProfileMenu}
-                onSwitchAccount={onSwitchAccount}
-                onAddAccount={onAddAccount}
-                onLogout={onLogout}
-            />
-
-            {/* Edit/Customize Buttons */}
-            {selectedInstance && (
-                <div className="absolute top-24 right-8 flex flex-col gap-3 z-40">
-                    <button
-                        onClick={() => onEditCrop(selectedInstance)}
-                        className="flex items-center gap-2 px-4 py-2 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800/50 border border-transparent hover:border-slate-700 transition-all backdrop-blur-sm group"
-                        title={t('customize', 'Customize')}
-                    >
-                        <Paintbrush size={18} className="group-hover:text-emerald-400 transition-colors" />
-                        <span className="font-medium text-sm">Customize</span>
-                    </button>
-
-                    {isModded && (
-                        <button
-                            onClick={() => setShowAdvanced(!showAdvanced)}
-                            className={`flex items-center gap-2 px-4 py-2 rounded-xl border transition-all backdrop-blur-sm group ${showAdvanced
-                                ? 'text-white bg-slate-800/50 border-slate-700'
-                                : 'text-slate-400 hover:text-white hover:bg-slate-800/50 border-transparent hover:border-slate-700'}`}
-                            title={showAdvanced ? t('Hide Advanced') : t('Advanced Settings')}
-                        >
-                            <Settings size={18} className={`transition-colors ${showAdvanced ? 'text-indigo-400' : 'group-hover:text-indigo-400'}`} />
-                            <span className="font-medium text-sm">Edit</span>
-                        </button>
-                    )}
+            {/* Top Right Control Cluster (Account + Actions) */}
+            <div className="absolute top-8 right-8 flex flex-col items-end gap-3 z-50">
+                {/* Profile Widget */}
+                <div className="glass-spotlight p-2 rounded-full shadow-2xl relative z-[100]">
+                    <AccountProfile
+                        activeAccount={activeAccount}
+                        accounts={accounts}
+                        showProfileMenu={showProfileMenu}
+                        setShowProfileMenu={setShowProfileMenu}
+                        onSwitchAccount={onSwitchAccount}
+                        onAddAccount={onAddAccount}
+                        onLogout={onLogout}
+                    />
                 </div>
-            )}
+
+                {/* Actions Widget */}
+                {selectedInstance && (
+                    <div className="glass-spotlight p-2 rounded-2xl flex flex-col gap-1 w-48 shadow-2xl relative z-0">
+                        <button
+                            onClick={() => onEditCrop(selectedInstance)}
+                            className="flex items-center justify-between gap-3 px-4 py-2.5 rounded-xl text-slate-300 hover:text-white hover:bg-white/5 transition-all group"
+                            title={t('customize', 'Customize')}
+                        >
+                            <span className="font-bold text-[11px] uppercase tracking-[0.15em]">Customize</span>
+                            <Paintbrush size={14} className="group-hover:text-emerald-400 transition-colors opacity-70 group-hover:opacity-100" />
+                        </button>
+
+                        {isModded && (
+                            <button
+                                onClick={() => setShowAdvanced(!showAdvanced)}
+                                className={`flex items-center justify-between gap-3 px-4 py-2.5 rounded-xl transition-all group ${showAdvanced
+                                    ? 'text-white bg-indigo-500/20 border border-indigo-500/30'
+                                    : 'text-slate-300 hover:text-white hover:bg-white/5'}`}
+                                title={showAdvanced ? t('Hide Advanced') : t('Advanced Settings')}
+                            >
+                                <span className="font-bold text-[11px] uppercase tracking-[0.15em]">Edit</span>
+                                <Settings size={14} className={`transition-colors opacity-70 group-hover:opacity-100 ${showAdvanced ? 'text-indigo-400' : 'group-hover:text-indigo-400'}`} />
+                            </button>
+                        )}
+                    </div>
+                )}
+            </div>
 
             {/* Main Content Scrollable Area */}
             <div
@@ -415,7 +409,19 @@ const HomeView = ({
                             {isModded && (
                                 <div ref={modsSectionRef} className="w-full max-w-7xl mx-auto px-8 pb-8 animate-in slide-in-from-bottom-10 fade-in duration-700 delay-100">
                                     {/* Unified Glass Card */}
-                                    <div className={`backdrop-blur-md flex flex-col h-[750px] overflow-hidden relative border rounded-3xl transition-colors duration-300 ${theme === 'white' ? 'bg-white/90 border-white/50 shadow-xl' : 'bg-slate-900/40 border-white/5'}`}>
+                                    <div
+                                        className={`backdrop-blur-md flex flex-col h-[750px] overflow-hidden relative border rounded-3xl transition-colors duration-300 ${theme === 'white' ? 'bg-white/90 border-white/50 shadow-xl' : 'bg-slate-900/40 border-white/5'}`}
+                                        style={{
+                                            backgroundImage: `
+                                                repeating-linear-gradient(0deg, transparent, transparent 14px, rgba(148, 163, 184, 0.12) 14px, rgba(148, 163, 184, 0.12) 15px),
+                                                repeating-linear-gradient(90deg, transparent, transparent 14px, rgba(148, 163, 184, 0.12) 14px, rgba(148, 163, 184, 0.12) 15px),
+                                                repeating-linear-gradient(45deg, transparent, transparent 29px, rgba(100, 116, 139, 0.08) 29px, rgba(100, 116, 139, 0.08) 30px),
+                                                repeating-linear-gradient(-45deg, transparent, transparent 29px, rgba(100, 116, 139, 0.08) 29px, rgba(100, 116, 139, 0.08) 30px)
+                                            `,
+                                            backgroundSize: '15px 15px, 15px 15px, 30px 30px, 30px 30px',
+                                            backgroundPosition: '0 0, 0 0, 0 0, 0 0'
+                                        }}
+                                    >
 
                                         {/* Internal Tab Switcher */}
                                         <div className={`flex items-center justify-center pt-6 pb-4 border-b ${theme === 'white' ? 'border-slate-200 bg-slate-50/50' : 'border-white/5 bg-white/[0.02]'}`}>

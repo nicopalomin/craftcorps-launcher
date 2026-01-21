@@ -25,12 +25,12 @@ const AccountProfile = ({
     }, [setShowProfileMenu]);
 
     return (
-        <div className="absolute top-8 right-8 z-50 pointer-events-auto" ref={profileMenuRef}>
+        <div className="relative z-50 pointer-events-auto" ref={profileMenuRef}>
             <button
                 onClick={() => setShowProfileMenu(!showProfileMenu)}
-                className={`flex items-center gap-3.5 bg-slate-950/80 backdrop-blur-xl border transition-all duration-300 cursor-pointer group pl-1.5 pr-5 py-1.5 rounded-full shadow-2xl shadow-black/40 ${showProfileMenu
+                className={`flex items-center gap-3.5 bg-transparent border transition-all duration-300 cursor-pointer group pl-1.5 pr-5 py-1.5 rounded-full ${showProfileMenu
                     ? 'border-emerald-500/50 ring-4 ring-emerald-500/10'
-                    : 'border-white/10 hover:border-emerald-500/40 hover:bg-slate-900/90'
+                    : 'border-white/10 hover:border-emerald-500/40 hover:bg-white/5'
                     }`}
             >
                 <div className={`w-10 h-10 rounded-full ${activeAccount?.avatarColor || 'bg-slate-600'} flex items-center justify-center shadow-inner relative ring-2 ring-white/5 group-hover:ring-emerald-500/30 transition-all`}>
@@ -56,7 +56,7 @@ const AccountProfile = ({
 
             {/* Dropdown Menu */}
             {showProfileMenu && (
-                <div className="absolute top-full right-0 mt-2 w-64 bg-slate-900 border border-slate-700 rounded-2xl shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+                <div className="absolute top-full right-0 mt-2 w-72 bg-slate-900 border border-slate-700 rounded-2xl shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-200 z-[100]">
                     {/* Account List */}
                     <div className="p-2 space-y-1">
                         <div className="px-3 py-2 text-[10px] font-bold text-slate-500 uppercase tracking-wider flex justify-between items-center">
