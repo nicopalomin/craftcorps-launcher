@@ -326,6 +326,7 @@ class GameLauncher extends EventEmitter {
             }
 
             this.process = process;
+            this.emit('started', process);
             this.emit('log', { type: 'INFO', message: "Game process started!" });
 
             this.process.on('close', (code) => {

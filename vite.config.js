@@ -9,6 +9,10 @@ const packageJson = JSON.parse(fs.readFileSync('./package.json', 'utf-8'));
 export default defineConfig({
     plugins: [react(), tailwindcss()],
     base: './',
+    server: {
+        port: 51173,
+        strictPort: true,
+    },
     define: {
         '__APP_VERSION__': JSON.stringify(packageJson.version),
     },

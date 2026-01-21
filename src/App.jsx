@@ -178,7 +178,9 @@ function App() {
         errorModal,
         setErrorModal,
         crashModal,
-        setCrashModal
+        setCrashModal,
+        runningInstances,
+        launchCooldown
     } = useGameLaunch(selectedInstance, ram, activeAccount, () => updateLastPlayed(selectedInstance?.id), hideOnLaunch, javaPath, setJavaPath);
 
     // Auto Update
@@ -300,7 +302,7 @@ function App() {
                 <AppContent
                     activeTab={activeTab} setActiveTab={setActiveTab}
                     activeAccount={activeAccount} setShowLoginModal={setShowLoginModal} disableAnimations={disableAnimations}
-                    selectedInstance={selectedInstance} launchStatus={launchStatus} launchFeedback={launchFeedback} handlePlay={handlePlay} handleStop={handleStop} isRefreshing={isRefreshing}
+                    selectedInstance={selectedInstance} launchStatus={launchStatus} launchStep={launchStep} launchProgress={launchProgress} launchFeedback={launchFeedback} handlePlay={handlePlay} handleStop={handleStop} isRefreshing={isRefreshing}
                     instances={instances} setSelectedInstance={setSelectedInstance} handleNewCrop={handleNewCrop} handleEditCrop={handleEditCrop}
                     accounts={accounts} onAccountSwitchWithToast={onAccountSwitchWithToast} showProfileMenu={showProfileMenu} setShowProfileMenu={setShowProfileMenu} onLogoutWithToast={onLogoutWithToast}
                     onDeleteCropWithToast={onDeleteCropWithToast} reorderInstances={reorderInstances}
@@ -308,6 +310,8 @@ function App() {
                     theme={theme} setTheme={setTheme}
                     onSaveCropWithToast={onSaveCropWithToast}
                     isLoadingInstances={isLoadingInstances}
+                    runningInstances={runningInstances}
+                    launchCooldown={launchCooldown}
                 />
             </main>
 

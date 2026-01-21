@@ -2,6 +2,7 @@ const { ipcMain, app } = require('electron');
 const log = require('electron-log');
 const fs = require('fs');
 const path = require('path');
+const crypto = require('crypto');
 const GameLauncher = require('../GameLauncher.cjs');
 
 // Track multiple active launchers
@@ -27,12 +28,16 @@ function setupGameHandlers(getMainWindow) {
     };
 
     const emitRunningInstances = () => {
-        const instances = Array.from(activeLaunchers.values()).map((data) => ({
-            gameDir: data.gameDir,
-            name: data.options.name || path.basename(data.gameDir), // Use name from options or folder name
-            version: data.options.version,
-            icon: data.options.icon // Pass icon if available
-        }));
+        const instances = Array.from(activeLaunchers.entries())
+            .filter(([id, data]) => data.status === 'running')
+            .map(([id, data]) => ({
+                id,
+                gameDir: data.gameDir,
+                name: data.options.name || path.basename(data.gameDir),
+                version: data.options.version,
+                icon: data.options.icon,
+                username: data.options.authorization?.name || data.options.username
+            }));
         safeSend('running-instances-changed', instances);
     };
 
@@ -52,11 +57,10 @@ function setupGameHandlers(getMainWindow) {
 
     ipcMain.on('launch-game', async (event, options) => {
         const gameDir = options.gameDir;
-        const launchId = randomUUID();
-
+        const launchId = crypto.randomUUID();
         const launcher = new GameLauncher();
-        activeLaunchers.set(launchId, { gameDir, launcher, options });
-        emitRunningInstances();
+        activeLaunchers.set(launchId, { gameDir, launcher, options, status: 'launching' });
+        // Don't emitRunningInstances yet, it's not 'running'
 
         // Local state for this instance
         let lastCrashReport = null;
@@ -68,6 +72,14 @@ function setupGameHandlers(getMainWindow) {
         playTimeService.startSession(gameDir);
 
         // --- Instance Listeners ---
+        launcher.on('started', () => {
+            const data = activeLaunchers.get(launchId);
+            if (data) {
+                data.status = 'running';
+                emitRunningInstances();
+            }
+        });
+
         launcher.on('log', (data) => {
             const { type, message } = data;
             // Log to backend file
@@ -224,17 +236,25 @@ function setupGameHandlers(getMainWindow) {
         launcher.launch(options);
     });
 
-    ipcMain.on('stop-game', (event, gameDir) => {
-        if (gameDir) {
-            log.info(`[Main] Stopping games for ${gameDir}`);
+    ipcMain.on('stop-game', (event, target) => {
+        if (target) {
+            // Check if it's a specific launchId
+            if (activeLaunchers.has(target)) {
+                log.info(`[Main] Stopping specific launch ID: ${target}`);
+                const data = activeLaunchers.get(target);
+                if (data && data.launcher) data.launcher.kill();
+                return;
+            }
+
+            log.info(`[Main] Stopping games for directory: ${target}`);
             // Stop ALL instances matching gameDir
             for (const [id, data] of activeLaunchers) {
-                if (data.gameDir === gameDir && data.launcher) {
+                if (data.gameDir === target && data.launcher) {
                     data.launcher.kill();
                 }
             }
         } else {
-            // Stop ALL (Legacy behavior or 'Stop All' button)
+            // Stop ALL
             log.info(`[Main] Stopping ALL games (${activeLaunchers.size} active)`);
             for (const [id, data] of activeLaunchers) {
                 if (data && data.launcher) {
@@ -430,12 +450,16 @@ const getNewInstancePath = async (event, name) => {
 };
 
 const getRunningInstances = async () => {
-    return Array.from(activeLaunchers.values()).map((data) => ({
-        gameDir: data.gameDir,
-        name: data.options.name || path.basename(data.gameDir),
-        version: data.options.version,
-        icon: data.options.icon
-    }));
+    return Array.from(activeLaunchers.entries())
+        .filter(([id, data]) => data.status === 'running')
+        .map(([id, data]) => ({
+            id,
+            gameDir: data.gameDir,
+            name: data.options.name || path.basename(data.gameDir),
+            version: data.options.version,
+            icon: data.options.icon,
+            username: data.options.authorization?.name || data.options.username
+        }));
 };
 
 const handleFocusGame = (event, gameDir) => {

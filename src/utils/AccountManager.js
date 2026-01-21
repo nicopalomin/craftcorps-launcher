@@ -80,7 +80,7 @@ class AccountManager {
             xuid: account.xuid,
             useDefaultPath: !instance.path,
             gameDir: instance.path || null,
-            server: server,
+            server: serverAddress,
             javaPath: javaPath,
             loader: instance.loader,
             loaderVersion: instance.loaderVersion

@@ -15,14 +15,16 @@ import { useToast } from '../../contexts/ToastContext';
 const AppContent = ({
     activeTab, setActiveTab,
     activeAccount, setShowLoginModal, disableAnimations,
-    selectedInstance, launchStatus, launchFeedback, handlePlay, handleStop, isRefreshing,
+    selectedInstance, launchStatus, launchStep, launchProgress, launchFeedback, handlePlay, handleStop, isRefreshing,
     instances, setSelectedInstance, handleNewCrop, handleEditCrop,
     accounts, onAccountSwitchWithToast, showProfileMenu, setShowProfileMenu, onLogoutWithToast,
     onDeleteCropWithToast, reorderInstances,
     ram, setRam, javaPath, setJavaPath, hideOnLaunch, setHideOnLaunch, setDisableAnimations, availableJavas, enableDiscordRPC, setEnableDiscordRPC,
     theme, setTheme,
     onSaveCropWithToast,
-    isLoadingInstances
+    isLoadingInstances,
+    runningInstances,
+    launchCooldown
 }) => {
     const { addToast } = useToast();
     const [hasOpenedMods, setHasOpenedMods] = React.useState(false);
@@ -55,6 +57,8 @@ const AppContent = ({
                     <HomeView
                         selectedInstance={selectedInstance}
                         launchStatus={launchStatus}
+                        launchStep={launchStep}
+                        launchProgress={launchProgress}
                         launchFeedback={launchFeedback}
                         onPlay={onPlayWrapper}
                         onStop={handleStop}
@@ -75,6 +79,8 @@ const AppContent = ({
                         disableAnimations={disableAnimations}
                         theme={theme}
                         isLoadingInstances={isLoadingInstances}
+                        runningInstances={runningInstances}
+                        launchCooldown={launchCooldown}
                     />
                 )
             )}

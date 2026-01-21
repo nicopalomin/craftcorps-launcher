@@ -14,16 +14,16 @@ export const useGameLaunch = (selectedInstance, ram, activeAccount, updateLastPl
     const [showJavaModal, setShowJavaModal] = useState(false);
     const [errorModal, setErrorModal] = useState(null); // { summary, advice }
     const [crashModal, setCrashModal] = useState(null); // { code, crashReport }
+    const [launchCooldown, setLaunchCooldown] = useState(false);
 
-    const [runningInstances, setRunningInstances] = useState(new Set());
+    const [runningInstances, setRunningInstances] = useState([]);
 
     // Sync Running Instances
     useEffect(() => {
         if (!window.electronAPI) return;
 
         const handleRunningUpdate = (instances) => {
-            const paths = new Set(instances.map(i => i.gameDir));
-            setRunningInstances(paths);
+            setRunningInstances(instances || []);
         };
 
         window.electronAPI.getRunningInstances().then(handleRunningUpdate);
@@ -36,8 +36,9 @@ export const useGameLaunch = (selectedInstance, ram, activeAccount, updateLastPl
     useEffect(() => {
         if (!selectedInstance) return;
 
-        if (runningInstances.has(selectedInstance.path)) {
-            setLaunchStatus('running');
+        if (runningInstances.some(i => i.gameDir === selectedInstance.path)) {
+            // Only auto-switch to 'running' if we aren't currently in the middle of a 'launching' sequence
+            setLaunchStatus(prev => prev === 'launching' ? 'launching' : 'running');
         } else {
             // If we were 'running' but now it's not in the list, go to idle.
             // If we are 'launching', DO NOT reset to idle, wait for event failure or success.
@@ -99,7 +100,7 @@ export const useGameLaunch = (selectedInstance, ram, activeAccount, updateLastPl
             // Actually if we have 2 instances and 1 fails, we might still be running.
             // But this hook tracks the "Action" often.
             // For now, let's just show the error.
-            if (runningInstances.has(selectedInstance.path)) {
+            if (runningInstances.some(i => i.gameDir === selectedInstance.path)) {
                 setLaunchStatus('running');
             } else {
                 setLaunchStatus('idle');
@@ -153,9 +154,7 @@ export const useGameLaunch = (selectedInstance, ram, activeAccount, updateLastPl
                 }
 
                 // Status update handled by runningInstances sync usually, but immediate feedback is good
-                setTimeout(() => {
-                    // setLaunchStatus('running'); 
-                }, 500);
+                setLaunchStatus('running');
             } else {
                 if (log.message && log.message.length < 50 && !log.message.includes('DEBUG')) {
                     setLaunchStep(log.message);
@@ -232,7 +231,15 @@ export const useGameLaunch = (selectedInstance, ram, activeAccount, updateLastPl
             return;
         }
 
-        // Allow multiple launches - no check against runningInstances
+        // Prevent double-launching while already preparing
+        // Prevent double-launching while already preparing or in cooldown
+        if (launchStatusRef.current === 'launching' || launchCooldown) {
+            console.warn('Launch already in progress or in cooldown, ignoring request');
+            return;
+        }
+
+        setLaunchCooldown(true);
+        setTimeout(() => setLaunchCooldown(false), 5000);
 
         setLaunchStatus('launching');
         launchStatusRef.current = 'launching';
@@ -263,25 +270,33 @@ export const useGameLaunch = (selectedInstance, ram, activeAccount, updateLastPl
 
         // Use AccountManager to build launch options for consistency
         (async () => {
-            if (!window.electronAPI) {
-                setLogs([{ time: "Now", type: "ERROR", message: "Electron API not found. Cannot launch native process." }]);
+            try {
+                if (!window.electronAPI) {
+                    setLogs([{ time: "Now", type: "ERROR", message: "Electron API not found. Cannot launch native process." }]);
+                    setLaunchStatus('idle');
+                    return;
+                }
+
+                const launchOptions = await AccountManager.buildLaunchOptions(
+                    instance,
+                    ram,
+                    server,
+                    javaPath,
+                    accountToUse // Passing the specific account
+                );
+
+                // Attach gameDir for backend identification
+                launchOptions.gameDir = instance.path;
+
+                window.electronAPI.launchGame(launchOptions);
+                window.electronAPI.log('info', `[UI] Launch command sent to backend. RAM: ${ram} GB, User: ${launchOptions.username}, Java: ${javaPath}`);
+            } catch (error) {
+                console.error("Failed to build launch options or send launch command:", error);
+                setLogs(prev => [...prev, { time: "Now", type: "ERROR", message: `Launch initialization failed: ${error.message}` }]);
                 setLaunchStatus('idle');
-                return;
+                setLaunchStep("Launch Failed");
+                setLaunchFeedback('error');
             }
-
-            const launchOptions = await AccountManager.buildLaunchOptions(
-                instance,
-                ram,
-                server,
-                javaPath,
-                accountToUse // Passing the specific account
-            );
-
-            // Attach gameDir for backend identification
-            launchOptions.gameDir = instance.path;
-
-            window.electronAPI.launchGame(launchOptions);
-            window.electronAPI.log('info', `[UI] Launch command sent to backend. RAM: ${ram} GB, User: ${launchOptions.username}, Java: ${javaPath}`);
         })();
 
     }, [selectedInstance, ram, activeAccount, updateLastPlayed, hideOnLaunch, javaPath, requiredJavaVersion]);
@@ -333,7 +348,9 @@ export const useGameLaunch = (selectedInstance, ram, activeAccount, updateLastPl
         errorModal,
         setErrorModal,
         crashModal,
-        setCrashModal
+        setCrashModal,
+        runningInstances,
+        launchCooldown
     };
 };
 

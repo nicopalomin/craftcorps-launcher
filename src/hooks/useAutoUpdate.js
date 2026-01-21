@@ -41,8 +41,19 @@ export function useAutoUpdate() {
     }, [addToast]);
 
     const downloadUpdate = async () => {
+        // Prevent duplicate download calls
+        if (updateStatus === 'downloading' || updateStatus === 'downloaded') {
+            console.log('[AutoUpdate] Download already in progress or completed');
+            return;
+        }
+
         if (window.electronAPI) {
-            await window.electronAPI.downloadUpdate();
+            try {
+                await window.electronAPI.downloadUpdate();
+            } catch (err) {
+                console.error('[AutoUpdate] Failed to download update:', err);
+                addToast('Failed to download update', 'error');
+            }
         }
     };
 

@@ -9,6 +9,25 @@ const UpdateModal = ({ isOpen, onClose, updateInfo, updateStatus, downloadProgre
 
     const isDownloading = updateStatus === 'downloading';
     const isReadyToInstall = updateStatus === 'downloaded';
+    const isProcessing = isDownloading || isReadyToInstall;
+
+    // Determine button state and text
+    const getButtonContent = () => {
+        if (isReadyToInstall) {
+            return (
+                <>
+                    <RefreshCw size={18} className="group-hover:rotate-180 transition-transform duration-500" />
+                    Restart & Install
+                </>
+            );
+        }
+        return (
+            <>
+                <Download size={18} className="group-hover:translate-y-0.5 transition-transform" />
+                Download Update
+            </>
+        );
+    };
 
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 animate-in fade-in duration-200">
@@ -22,7 +41,7 @@ const UpdateModal = ({ isOpen, onClose, updateInfo, updateStatus, downloadProgre
                             <><Download className="w-6 h-6" /> Update Available</>
                         )}
                     </h2>
-                    {!isDownloading && (
+                    {!isProcessing && (
                         <button onClick={onClose} className="text-emerald-100 hover:text-white transition-colors">
                             <X size={20} />
                         </button>
@@ -47,7 +66,9 @@ const UpdateModal = ({ isOpen, onClose, updateInfo, updateStatus, downloadProgre
                     {isDownloading ? (
                         <div className="space-y-3">
                             <div className="flex justify-between text-sm text-slate-400">
-                                <span>Downloading...</span>
+                                <span>
+                                    {downloadProgress?.percent >= 99 ? 'Extracting...' : 'Downloading...'}
+                                </span>
                                 <span>{Math.round(downloadProgress?.percent || 0)}%</span>
                             </div>
                             <div className="h-2 bg-slate-800 rounded-full overflow-hidden">
@@ -57,31 +78,33 @@ const UpdateModal = ({ isOpen, onClose, updateInfo, updateStatus, downloadProgre
                                 />
                             </div>
                             <div className="text-xs text-slate-500 text-right">
-                                {(downloadProgress?.transferred / 1024 / 1024).toFixed(1)} MB / {(downloadProgress?.total / 1024 / 1024).toFixed(1)} MB
+                                {downloadProgress?.transferred && downloadProgress?.total ? (
+                                    `${(downloadProgress.transferred / 1024 / 1024).toFixed(1)} MB / ${(downloadProgress.total / 1024 / 1024).toFixed(1)} MB`
+                                ) : (
+                                    'Preparing...'
+                                )}
                             </div>
                         </div>
                     ) : (
                         <div className="flex flex-col gap-3">
                             <button
                                 onClick={isReadyToInstall ? onInstall : onDownload}
-                                className="w-full bg-emerald-600 hover:bg-emerald-500 text-white py-3 rounded-lg font-bold shadow-lg shadow-emerald-900/20 transition-all flex items-center justify-center gap-2 group"
+                                disabled={isProcessing}
+                                className={`w-full py-3 rounded-lg font-bold shadow-lg shadow-emerald-900/20 transition-all flex items-center justify-center gap-2 group ${isProcessing
+                                        ? 'bg-slate-700 text-slate-400 cursor-not-allowed'
+                                        : 'bg-emerald-600 hover:bg-emerald-500 text-white'
+                                    }`}
                             >
-                                {isReadyToInstall ? (
-                                    <>
-                                        <RefreshCw size={18} className="group-hover:rotate-180 transition-transform duration-500" />
-                                        Restart & Install
-                                    </>
-                                ) : (
-                                    <>
-                                        <Download size={18} className="group-hover:translate-y-0.5 transition-transform" />
-                                        Download Update
-                                    </>
-                                )}
+                                {getButtonContent()}
                             </button>
                             {!isReadyToInstall && (
                                 <button
                                     onClick={onClose}
-                                    className="w-full bg-slate-800 hover:bg-slate-700 text-slate-300 py-3 rounded-lg font-medium transition-colors"
+                                    disabled={isProcessing}
+                                    className={`w-full py-3 rounded-lg font-medium transition-colors ${isProcessing
+                                            ? 'bg-slate-800 text-slate-500 cursor-not-allowed'
+                                            : 'bg-slate-800 hover:bg-slate-700 text-slate-300'
+                                        }`}
                                 >
                                     Remind Me Later
                                 </button>

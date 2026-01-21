@@ -279,6 +279,20 @@
     }
   }
 
+  @keyframes slide-in-from-bottom {
+    from {
+      transform: translateY(1rem);
+    }
+
+    to {
+      transform: translateY(0);
+    }
+  }
+
+  .slide-in-from-bottom-4 {
+    animation-name: slide-in-from-bottom;
+  }
+
   @keyframes warning-pulse {
 
     0%,

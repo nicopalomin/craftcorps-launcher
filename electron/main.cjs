@@ -12,7 +12,32 @@ if (process.platform === 'win32') {
 }
 app.setName('CraftCorps Launcher');
 
-if (process.argv.includes('--marketing-shot')) {
+// --- Instance Isolation & Profile Support ---
+// This ensures that development, marketing shots, or different user profiles don't collide.
+const profileArg = process.argv.find(arg => arg.startsWith('--profile='));
+const isDev = process.env.NODE_ENV === 'development' || process.argv.includes('--dev');
+const isMarketing = process.argv.includes('--marketing-shot');
+
+if (profileArg || isDev || isMarketing) {
+    let profileSuffix = 'dev';
+    if (profileArg) profileSuffix = profileArg.split('=')[1];
+    else if (isMarketing) profileSuffix = 'marketing';
+
+    const currentDataPath = app.getPath('userData');
+    const newDataPath = path.join(path.dirname(currentDataPath), `CraftCorps-${profileSuffix}`);
+
+    app.setPath('userData', newDataPath);
+
+    // Also isolate logs!
+    if (log.transports && log.transports.file) {
+        log.transports.file.resolvePathFn = () => path.join(newDataPath, 'logs', 'main.log');
+    }
+
+    log.info(`[MAIN] Instance Isolated. Profile: ${profileSuffix}`);
+    log.info(`[MAIN] UserData Path: ${newDataPath}`);
+}
+
+if (isMarketing) {
     app.commandLine.appendSwitch('force-device-scale-factor', '2');
 }
 
@@ -153,7 +178,7 @@ async function createWindow() {
 
     console.time('[MAIN] loadURL');
     if (process.env.NODE_ENV === 'development') {
-        await mainWindow.loadURL('http://localhost:5173');
+        await mainWindow.loadURL('http://localhost:51173');
     } else {
         await mainWindow.loadURL(startUrl);
     }

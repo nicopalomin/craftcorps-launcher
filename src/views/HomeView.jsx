@@ -16,6 +16,8 @@ import HomeSkeleton from '../components/home/HomeSkeleton';
 const HomeView = ({
     selectedInstance,
     launchStatus,
+    launchStep,
+    launchProgress,
     launchFeedback,
     onPlay,
     onStop,
@@ -35,7 +37,9 @@ const HomeView = ({
     setShowProfileMenu,
     disableAnimations,
     theme,
-    isLoadingInstances
+    isLoadingInstances,
+    runningInstances,
+    launchCooldown
 }) => {
     const { t } = useTranslation();
     const { addToast: showToast } = useToast();
@@ -396,12 +400,16 @@ const HomeView = ({
                         <InstanceHero
                             selectedInstance={selectedInstance}
                             launchStatus={launchStatus}
+                            launchStep={launchStep}
+                            launchProgress={launchProgress}
                             launchFeedback={launchFeedback}
                             onPlay={onPlay}
                             onStop={onStop}
                             theme={theme}
                             isAdvanced={showAdvanced}
                             accounts={accounts}
+                            runningInstances={runningInstances}
+                            launchCooldown={launchCooldown}
                         />
 
                         {/* Modded Details Section */}

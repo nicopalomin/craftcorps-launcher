@@ -34,13 +34,15 @@ const AppOverlays = ({
                 onClose={() => setShowConsole(false)}
             />
 
+            {/* 
             <LaunchOverlay
                 isOpen={launchStatus === 'launching'}
                 status={launchStep}
                 progress={launchProgress}
                 instanceName={selectedInstance?.name}
                 onCancel={handleStop}
-            />
+            /> 
+            */}
 
             <LoginModal
                 isOpen={showLoginModal}
