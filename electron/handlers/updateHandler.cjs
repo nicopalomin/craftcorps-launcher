@@ -76,7 +76,7 @@ function setupUpdateHandlers(getMainWindow) {
     });
 
     ipcMain.handle('quit-and-install', () => {
-        autoUpdater.quitAndInstall();
+        autoUpdater.quitAndInstall(true, true);
     });
 }
 
