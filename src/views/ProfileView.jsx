@@ -63,9 +63,9 @@ const ProfileView = ({ activeAccount, accounts, instances, theme }) => {
     };
 
     return (
-        <div className="relative flex-1 overflow-hidden">
+        <div className="relative flex-1 overflow-hidden mask-linear-fade bg-slate-950">
             {/* Blurred Content */}
-            <div className="flex-1 overflow-y-auto h-full p-8 pb-20 scrollbar-thin scrollbar-thumb-slate-700 scrollbar-track-transparent filter blur-sm pointer-events-none select-none">
+            <div className="flex-1 overflow-y-auto h-full p-8 pb-20 scrollbar-hide filter blur-sm pointer-events-none select-none">
                 <div className="max-w-6xl mx-auto space-y-8">
 
                     {/* Header Profile Card */}
@@ -368,7 +368,7 @@ const ProfileView = ({ activeAccount, accounts, instances, theme }) => {
             </div>
 
             {/* Coming Soon Overlay */}
-            <div className="absolute inset-0 z-50 flex items-center justify-center p-8 bg-slate-900/40 backdrop-blur-sm">
+            <div className="absolute inset-0 z-50 flex items-center justify-center p-8 bg-slate-950/80 backdrop-blur-md">
                 <div className="max-w-md w-full bg-slate-900 border border-slate-800 rounded-2xl shadow-2xl p-8 relative overflow-hidden animate-in fade-in zoom-in-95 duration-500">
                     {/* Decorative Background */}
                     <div className="absolute top-0 right-0 w-64 h-64 bg-emerald-500/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2 pointer-events-none" />
@@ -388,17 +388,6 @@ const ProfileView = ({ activeAccount, accounts, instances, theme }) => {
                         {/* Description */}
                         <p className="text-slate-400 mb-8 leading-relaxed">
                             We're working hard to bring you an amazing profile experience. Track your stats, manage cosmetics, and showcase your achievements!
-                        </p>
-
-                        {/* CTA Button */}
-                        <button className="w-full py-3.5 px-6 rounded-xl font-bold bg-emerald-600 hover:bg-emerald-500 text-white shadow-lg shadow-emerald-900/20 transition-all duration-200 flex items-center justify-center gap-2">
-                            Stay Tuned
-                            <Award size={18} />
-                        </button>
-
-                        {/* Additional Info */}
-                        <p className="mt-6 text-xs text-slate-600 uppercase tracking-widest font-medium">
-                            Expected in Next Update
                         </p>
                     </div>
                 </div>
