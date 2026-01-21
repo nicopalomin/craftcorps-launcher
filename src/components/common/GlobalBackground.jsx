@@ -1,5 +1,6 @@
 import React from 'react';
 import BackgroundBlobs from './BackgroundBlobs';
+import heroBg from '/images/hero-bg.png';
 
 const GlobalBackground = ({
     selectedInstance,
@@ -17,7 +18,7 @@ const GlobalBackground = ({
             {/* Base Image Layer */}
             <div
                 className="absolute inset-0 bg-cover bg-center transition-opacity duration-1000 animate-ken-burns"
-                style={{ backgroundImage: "url('/images/hero-bg.png')" }}
+                style={{ backgroundImage: `url(${heroBg})` }}
             />
 
             {/* Vignette / Corner Blacking */}

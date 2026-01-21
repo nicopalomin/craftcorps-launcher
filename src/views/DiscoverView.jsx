@@ -5,6 +5,7 @@ import { Info, Globe, ShieldAlert, Check, ChevronRight } from "lucide-react";
 import { useDiscover } from "../hooks/useDiscover";
 import DiscoverHeader from "../components/discover/DiscoverHeader";
 import DiscoverGrid from "../components/discover/DiscoverGrid";
+import sprinkleBg from '/images/sprinkle_bg.svg';
 
 const DiscoverView = ({ selectedInstance, activeAccount }) => {
     const { t } = useTranslation();
@@ -55,7 +56,7 @@ const DiscoverView = ({ selectedInstance, activeAccount }) => {
                     <div
                         className="absolute inset-0 -z-10 pointer-events-none opacity-30"
                         style={{
-                            backgroundImage: 'url(/images/sprinkle_bg.svg)',
+                            backgroundImage: `url(${sprinkleBg})`,
                             backgroundRepeat: 'repeat',
                             backgroundSize: '600px',
                             filter: 'blur(0.5px)',
