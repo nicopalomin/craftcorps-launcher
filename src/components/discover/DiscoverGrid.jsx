@@ -22,7 +22,7 @@ const DiscoverGrid = React.memo(({
     handleStop // [NEW]
 }) => {
     return (
-        <div className="flex-1 overflow-y-auto p-8 pt-0 custom-scrollbar relative z-0">
+        <div className="relative z-0">
             {loading ? (
                 <div className="max-w-7xl mx-auto space-y-8 pb-16">
                     <div className="h-[400px] w-full bg-slate-800/50 rounded-3xl animate-pulse" />

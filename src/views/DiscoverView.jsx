@@ -44,17 +44,56 @@ const DiscoverView = ({ selectedInstance, activeAccount }) => {
     } = useDiscover(selectedInstance, activeAccount);
 
     return (
-        <div className="flex-1 bg-slate-900 overflow-hidden relative flex flex-col select-none">
-            <DiscoverHeader
-                query={query}
-                setQuery={setQuery}
-                activeFilters={activeFilters}
-                setActiveFilters={setActiveFilters}
-                metadata={metadata}
-            />
+        <div
+            className="flex-1 bg-slate-900 overflow-hidden relative flex flex-col select-none"
+        >
+            <div
+                className="flex-1 overflow-y-auto custom-scrollbar relative z-10"
+            >
+                <div className="relative min-h-full w-full p-8">
+                    {/* Background Layer - Anchored to expanding block container */}
+                    <div
+                        className="absolute inset-0 -z-10 pointer-events-none opacity-30"
+                        style={{
+                            backgroundImage: 'url(/images/sprinkle_bg.svg)',
+                            backgroundRepeat: 'repeat',
+                            backgroundSize: '600px',
+                            filter: 'blur(0.5px)',
+                            willChange: 'transform'
+                        }}
+                    />
+                    {/* Darkening Overlay */}
+                    <div className="absolute inset-0 -z-10 bg-slate-950/40 pointer-events-none" />
+
+                    <DiscoverHeader
+                        query={query}
+                        setQuery={setQuery}
+                        activeFilters={activeFilters}
+                        setActiveFilters={setActiveFilters}
+                        metadata={metadata}
+                    />
+
+                    <div className="mt-6">
+                        <DiscoverGrid
+                            loading={loading}
+                            servers={servers}
+                            sections={sections}
+                            hasMore={hasMore}
+                            loadingMore={loadingMore}
+                            loadServers={loadServers}
+                            handleJoin={handleJoin}
+                            handleCopy={handleCopy}
+                            handleStop={handleStop}
+                            joiningServers={joiningServers}
+                            playingServerIp={playingServerIp}
+                            isBusy={isBusy}
+                        />
+                    </div>
+                </div>
+            </div>
 
             {showDisclaimer && (
-                <div className="absolute inset-0 z-50 bg-slate-900/30 backdrop-blur-[2px] flex items-center justify-center p-6 animate-in fade-in duration-300">
+                <div className="absolute inset-0 z-[60] bg-slate-900/40 backdrop-blur-[2px] flex items-center justify-center p-6 animate-in fade-in duration-300">
                     <div className="max-w-lg w-full bg-slate-900 border border-slate-800 rounded-2xl shadow-2xl p-8 relative overflow-hidden">
                         {/* Decorative Background */}
                         <div className="absolute top-0 right-0 w-64 h-64 bg-emerald-500/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2 pointer-events-none" />
@@ -101,21 +140,6 @@ const DiscoverView = ({ selectedInstance, activeAccount }) => {
                     </div>
                 </div>
             )}
-
-            <DiscoverGrid
-                loading={loading}
-                servers={servers}
-                sections={sections}
-                hasMore={hasMore}
-                loadingMore={loadingMore}
-                loadServers={loadServers}
-                handleJoin={handleJoin}
-                handleCopy={handleCopy}
-                handleStop={handleStop}
-                joiningServers={joiningServers}
-                playingServerIp={playingServerIp}
-                isBusy={isBusy}
-            />
         </div>
     );
 };

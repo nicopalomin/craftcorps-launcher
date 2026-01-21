@@ -35,7 +35,7 @@ const CompactServerRow = React.memo(({ server, onJoin, onCopy, onStop, rank, isJ
 
     return (
         <div
-            className="group relative flex flex-col gap-2 p-4 rounded-xl bg-slate-800/20 hover:bg-slate-800/60 border border-transparent hover:border-white/5 transition-colors duration-200 h-full"
+            className="group relative flex flex-col gap-2 p-4 rounded-xl bg-slate-900 hover:bg-slate-800 border border-transparent hover:border-white/5 transition-colors duration-200 h-full"
         >
             {/* Corner Flag */}
             <div className={`absolute top-0 right-0 px-2.5 py-1 rounded-bl-xl border-b border-l rounded-tr-xl text-[9px] font-bold uppercase tracking-widest flex items-center gap-1.5 ${status.color} z-10 shadow-sm`}>

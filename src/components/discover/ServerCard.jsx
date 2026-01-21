@@ -49,7 +49,7 @@ const ServerCard = React.memo(({
 
     return (
         <div
-            className={`group bg-slate-800/40 hover:bg-slate-800 border border-white/5 hover:border-white/10 overflow-hidden transition-colors transition-shadow duration-300 hover:shadow-xl hover:shadow-black/20 flex flex-col ${base}`}
+            className={`group bg-slate-900 hover:bg-slate-800 border border-white/5 hover:border-white/10 overflow-hidden transition-colors transition-shadow duration-300 hover:shadow-xl hover:shadow-black/20 flex flex-col ${base}`}
         >
             {/* Banner */}
             <div className={`${bannerH} bg-slate-900 relative overflow-hidden`}>

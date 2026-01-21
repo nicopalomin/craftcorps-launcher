@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Maximize2, Upload, HardDrive, User, Check, PlusCircle, Sparkles, Shirt, Save, Trash2, Edit2, Crown, Lock } from 'lucide-react';
+import { Maximize2, Upload, HardDrive, User, Check, PlusCircle, Sparkles, Shirt, Save, Trash2, Edit2, Crown, Lock, ShieldAlert } from 'lucide-react';
 import { SKINS } from '../data/mockData';
 // import { MOCK_COSMETICS } from '../data/cosmetics'; // Removed
 import SkinViewer from '../components/common/SkinViewer';
@@ -247,8 +247,12 @@ const WardrobeView = ({ theme, activeAccount }) => {
                     return [...prev, cosmetic];
                 });
 
-                await equipCosmetic(activeAccount.accessToken, cosmetic.id);
-                addToast(`Equipped ${cosmetic.name}`, 'success');
+                if (activeAccount?.type?.toLowerCase() !== 'offline') {
+                    await equipCosmetic(activeAccount.accessToken, cosmetic.id);
+                    addToast(`Equipped ${cosmetic.name}`, 'success');
+                } else {
+                    addToast(`Previewing ${cosmetic.name} (Offline Mode)`, 'info');
+                }
             }
         } catch (e) {
             addToast("Failed to equip cosmetic", 'error');
@@ -401,129 +405,195 @@ const WardrobeView = ({ theme, activeAccount }) => {
         if (selectedSkin?.id === id) setSelectedSkin(currentSkin);
     };
 
+    // Group cosmetics by type
+    const categorizedCosmetics = useMemo(() => {
+        const groups = {};
+        ownedCosmetics.forEach(item => {
+            const rawType = item.type || 'Cosmetic';
+            // Normalize type - 'CAPE' -> 'Capes'
+            let typeKey = rawType.toUpperCase();
+            if (typeKey === 'CAPE') typeKey = 'Capes';
+            else if (typeKey === 'WING') typeKey = 'Wings';
+            else if (typeKey === 'HEAD') typeKey = 'Heads';
+            else if (typeKey === 'JACKET') typeKey = 'Jackets';
+            else typeKey = typeKey.charAt(0) + typeKey.slice(1).toLowerCase() + 's';
+
+            if (!groups[typeKey]) groups[typeKey] = [];
+            groups[typeKey].push(item);
+        });
+        // Sort keys to have Capes first
+        return Object.keys(groups).sort((a, b) => {
+            if (a === 'Capes') return -1;
+            if (b === 'Capes') return 1;
+            return a.localeCompare(b);
+        }).reduce((acc, key) => {
+            acc[key] = groups[key];
+            return acc;
+        }, {});
+    }, [ownedCosmetics]);
+
     // Determine what to show in viewer
     const viewerSkin = selectedSkin || currentSkin;
 
-    return (
-        <div className="flex-1 p-8 animate-in fade-in slide-in-from-bottom-4 duration-300 flex flex-col h-full overflow-hidden relative select-none">
-            <h2 className={`text-3xl font-bold mb-6 ${theme === 'white' ? 'text-slate-800' : 'text-white'}`}>{t('wardrobe_title')}</h2>
+    // Get unequipped cosmetic slots for display
+    const unequippedCosmeticSlots = useMemo(() => {
+        const allTypes = ['Capes', 'Wings', 'Heads', 'Jackets']; // Define all possible cosmetic types
+        return allTypes.filter(type => !categorizedCosmetics[type] || categorizedCosmetics[type].every(item => !activeCosmetics.some(c => c.id === item.id)));
+    }, [categorizedCosmetics, activeCosmetics]);
 
-            <div className="flex flex-col lg:flex-row gap-8 flex-1 min-h-0">
+
+    return (
+        <div className="flex-1 overflow-hidden h-full flex flex-col relative bg-slate-950 p-8 animate-in fade-in slide-in-from-bottom-4 duration-500 select-none">
+            {/* Deep FX Layers */}
+            <div className="noise-overlay" />
+            <div className="vignette-overlay" />
+
+            {/* Header Area */}
+            <div className="px-8 pt-4 pb-4 flex items-end justify-between relative z-20">
+                <div className="flex flex-col">
+                    <span className="label-caps mb-2">Character Customization</span>
+                    <h1 className="typography-wardrobe-title text-white">Wardrobe</h1>
+                </div>
+
+                {/* Status Pill Cluster */}
+                <div className="flex items-center gap-3">
+                    {activeAccount?.type?.toLowerCase() === 'offline' && (
+                        <div className="status-pill border-amber-500/30 text-amber-500 animate-in fade-in duration-700">
+                            <ShieldAlert size={12} className="shrink-0" />
+                            <span>Offline Profile · Limited Sync</span>
+                            <button className="ml-1 text-[9px] hover:underline opacity-60">Learn more</button>
+                        </div>
+                    )}
+                    <div className="status-pill text-slate-400">
+                        <User size={12} />
+                        <span>{activeAccount?.name || 'Guest'}</span>
+                    </div>
+                </div>
+            </div>
+
+            <div className="flex-1 flex flex-row min-h-0 p-8 pt-4 gap-8 relative z-20">
+
                 {/* Left Column: Preview */}
-                <div className="lg:w-1/3 flex flex-col gap-4">
-                    <div className="flex-1 flex flex-col items-center justify-center relative group min-h-[400px]">
+                <div className="lg:w-2/5 flex flex-col gap-6">
+                    <div className="flex-1 flex flex-col items-center justify-center relative group min-h-[450px] bg-slate-900/40 rounded-[2rem] border border-white/5 overflow-hidden shadow-inner">
+
+                        {/* Dramatic Spotlight behind character */}
+                        <div className="skin-spotlight scale-150 opacity-40 top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2" />
 
                         {/* 3D Model Viewer */}
                         <div className="relative z-10 w-full h-full flex items-center justify-center">
-                            {viewerSkin.skinUrl ? (
-                                <SkinViewer
-                                    skinUrl={viewerSkin.skinUrl}
-                                    capeUrl={viewerSkin.capeUrl}
-                                    model={viewerSkin.model}
-                                    cosmetics={activeCosmetics}
-                                    nameTag={activeAccount?.name || 'Player'}
-                                />
-                            ) : (
-                                <div className="text-slate-500 flex flex-col items-center gap-2">
-                                    <User size={48} className="opacity-50" />
-                                    <span>{activeAccount ? (isLoading ? 'Loading...' : 'No Skin Selected') : 'No Account Selected'}</span>
-                                </div>
-                            )}
+                            <SkinViewer
+                                skinUrl={viewerSkin.skinUrl}
+                                model={viewerSkin.model}
+                                cosmetics={activeCosmetics}
+                                className="w-full h-full"
+                            />
                         </div>
 
                         {/* Drag hint */}
-                        <div className="absolute bottom-4 text-xs font-medium text-slate-500 opacity-0 group-hover:opacity-100 transition-opacity bg-black/20 backdrop-blur-sm px-3 py-1 rounded-full pointer-events-none">
-                            Drag to rotate
+                        <div className="absolute bottom-6 text-[10px] font-bold tracking-widest uppercase text-slate-500 opacity-0 group-hover:opacity-100 transition-opacity bg-black/40 backdrop-blur-md px-4 py-2 rounded-full pointer-events-none z-20 border border-white/5">
+                            Rotate Preview
                         </div>
                     </div>
 
-                    <div className="flex gap-2">
+                    <div className="flex gap-3">
                         <button
                             onClick={handleImportSkin}
                             disabled={isProcessing}
-                            className={`flex-1 py-3 rounded-lg font-medium text-sm flex items-center justify-center gap-2 transition-colors border ${theme === 'white' ? 'bg-white hover:bg-slate-50 text-slate-700 border-slate-300' : 'bg-slate-800 hover:bg-slate-700 text-slate-200 border-slate-700'} ${isProcessing ? 'opacity-50 cursor-not-allowed' : ''}`}
+                            className={`flex-1 py-4 rounded-xl font-bold text-xs uppercase tracking-widest flex items-center justify-center gap-2 transition-all border ${theme === 'white' ? 'bg-white hover:bg-slate-50 text-slate-700 border-slate-200' : 'bg-slate-800/40 hover:bg-slate-700/60 text-slate-200 border-white/5'} ${isProcessing ? 'opacity-50 cursor-not-allowed' : 'hover:scale-[1.02] active:scale-[0.98]'}`}
                         >
-                            <Upload size={16} /> Import Skin
+                            <Upload size={14} /> Import Skin
                         </button>
                         <button
                             onClick={handleApplySkin}
-                            disabled={isProcessing || !selectedSkin || selectedSkin.source === 'mojang'}
-                            className={`flex-1 bg-emerald-600 hover:bg-emerald-500 disabled:bg-slate-700 disabled:text-slate-500 text-white py-3 rounded-lg font-medium text-sm flex items-center justify-center gap-2 transition-colors`}
+                            disabled={isProcessing || !selectedSkin || selectedSkin.source === 'mojang' || activeAccount?.type?.toLowerCase() === 'offline'}
+                            className={`flex-1 bg-emerald-600 hover:bg-emerald-500 disabled:bg-slate-800 disabled:text-slate-600 disabled:border-transparent text-white py-4 rounded-xl font-bold text-xs uppercase tracking-widest flex items-center justify-center gap-2 transition-all shadow-lg shadow-emerald-900/20 active:scale-[0.98] ${!isProcessing && selectedSkin && selectedSkin.source !== 'mojang' && activeAccount?.type?.toLowerCase() !== 'offline' ? 'hover:scale-[1.02]' : ''}`}
                         >
-                            {isProcessing ? <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div> : <Save size={16} />}
-                            {isProcessing ? 'Applying...' : 'Apply to Minecraft'}
+                            {isProcessing ? <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div> : <Save size={14} />}
+                            {isProcessing ? 'Processing...' : 'Apply Details'}
                         </button>
                     </div>
                 </div>
 
                 {/* Right Column: Library */}
-                <div className={`flex-1 rounded-2xl border p-6 flex flex-col min-h-0 ${theme === 'white' ? 'bg-white/60 border-slate-200' : 'bg-slate-900/50 border-slate-800'}`}>
+                <div className={`flex-1 rounded-[2rem] border p-8 flex flex-col min-h-0 ${theme === 'white' ? 'bg-white/60 border-slate-200 shadow-xl' : 'bg-slate-900/40 border-white/5 shadow-2xl backdrop-blur-xl'}`}>
 
                     {/* Tabs */}
-                    <div className="flex gap-4 mb-6 border-b border-slate-700/50 pb-2">
+                    <div className="flex gap-8 mb-8 border-b border-white/5 pb-0">
                         <button
                             onClick={() => setActiveTab('skins')}
-                            className={`pb-2 font-bold text-sm transition-colors flex items-center gap-2 ${activeTab === 'skins' ? 'text-emerald-500 border-b-2 border-emerald-500 -mb-2.5' : 'text-slate-400 hover:text-slate-200'}`}
+                            className={`pb-4 font-bold text-sm tracking-tight transition-all relative ${activeTab === 'skins' ? 'text-emerald-400' : 'text-slate-500 hover:text-slate-300'}`}
                         >
-                            <Shirt size={16} /> My Skins
+                            <div className="flex items-center gap-2">
+                                <Shirt size={16} /> My Skins
+                            </div>
+                            {activeTab === 'skins' && <div className="absolute bottom-0 left-0 right-0 h-1 bg-emerald-400 rounded-t-full shadow-[0_-4px_10px_rgba(16,185,129,0.5)] animate-in slide-in-from-bottom-1" />}
                         </button>
                         <button
                             onClick={() => setActiveTab('cosmetics')}
-                            className={`pb-2 font-bold text-sm transition-colors flex items-center gap-2 ${activeTab === 'cosmetics' ? 'text-emerald-500 border-b-2 border-emerald-500 -mb-2.5' : 'text-slate-400 hover:text-slate-200'}`}
+                            className={`pb-4 font-bold text-sm tracking-tight transition-all relative ${activeTab === 'cosmetics' ? 'text-emerald-400' : 'text-slate-500 hover:text-slate-300'}`}
                         >
-                            <Sparkles size={16} /> Cosmetics
+                            <div className="flex items-center gap-2">
+                                <Sparkles size={16} /> Cosmetics
+                            </div>
+                            {activeTab === 'cosmetics' && <div className="absolute bottom-0 left-0 right-0 h-1 bg-emerald-400 rounded-t-full shadow-[0_-4px_10px_rgba(16,185,129,0.5)] animate-in slide-in-from-bottom-1" />}
                         </button>
                     </div>
 
-                    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4 overflow-y-auto pr-2 custom-scrollbar">
+                    {/* Offline Warning (Skins Tab Only) moved to status-pill in header */}
+
+                    <div className="flex-1 overflow-y-auto pr-2 custom-scrollbar">
 
                         {activeTab === 'skins' ? (
-                            <>
+                            <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 pb-8">
                                 {/* Current Equipped Card */}
                                 {currentSkin.skinUrl && (
                                     <div
                                         onClick={() => setSelectedSkin(currentSkin)}
-                                        className={`group relative rounded-xl p-3 border transition-all cursor-pointer ${theme === 'white' ? (currentSkin.id === selectedSkin?.id ? 'bg-slate-50 border-emerald-500 ring-1 ring-emerald-500/20' : 'bg-white border-slate-200 hover:border-slate-300') : (currentSkin.id === selectedSkin?.id ? 'bg-slate-800 border-emerald-500 ring-1 ring-emerald-500/20' : 'bg-slate-800 border-slate-700 hover:border-slate-500')}`}
+                                        className={`group relative rounded-3xl p-4 border transition-all cursor-pointer card-premium ${theme === 'white' ? (currentSkin.id === selectedSkin?.id ? 'bg-slate-50 border-emerald-500 ring-1 ring-emerald-500/20' : 'bg-white border-slate-200 hover:border-slate-300') : (currentSkin.id === selectedSkin?.id ? 'bg-slate-800/60 border-emerald-500' : 'bg-slate-800/40 border-white/5 hover:border-white/10')}`}
                                     >
-                                        <div className="aspect-[3/4] rounded-lg bg-emerald-900/20 mb-3 flex items-center justify-center relative overflow-hidden p-2">
-                                            {/* Render 2D Front View */}
+                                        <div className={`aspect-[3/4] rounded-2xl bg-emerald-950/20 mb-4 flex items-center justify-center relative overflow-hidden p-2`}>
+                                            {/* Pulse ring for equipped */}
+                                            <div className="equipped-pulse-ring" />
+
                                             <Skin2DRender
                                                 skinUrl={currentSkin.skinUrl}
                                                 model={currentSkin.model}
-                                                scale={5}
-                                                className="w-full h-full object-contain drop-shadow-xl"
+                                                scale={6}
+                                                className="w-full h-full object-contain drop-shadow-[0_12px_12px_rgba(0,0,0,0.6)] relative z-10"
                                             />
-                                            <div className="absolute top-2 right-2 bg-emerald-500 text-black text-[10px] font-bold px-1.5 py-0.5 rounded shadow-sm">EQUIPPED</div>
+                                            <div className="absolute top-4 right-4 bg-emerald-500 text-black text-[9px] font-black px-2.5 py-1 rounded-full shadow-lg z-20 flex items-center gap-1">
+                                                <Check size={10} strokeWidth={4} /> EQUIPPED
+                                            </div>
                                         </div>
-                                        <div className="mb-2">
+                                        <div className="px-1">
                                             <h4 className={`text-sm font-bold truncate ${theme === 'white' ? 'text-slate-700' : 'text-slate-200'}`}>Current Skin</h4>
-                                            <p className="text-xs text-slate-500">Mojang</p>
+                                            <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mt-0.5">Mojang Official</p>
                                         </div>
                                     </div>
                                 )}
 
-                                {/* Validation: Saved Skins */}
                                 {savedSkins.map(skin => (
                                     <div
                                         key={skin.id}
                                         onClick={() => setSelectedSkin(skin)}
-                                        className={`group relative rounded-xl p-3 border transition-all cursor-pointer ${theme === 'white' ? (skin.id === selectedSkin?.id ? 'bg-slate-50 border-emerald-500 ring-1 ring-emerald-500/20' : 'bg-white border-slate-200 hover:border-slate-300') : (skin.id === selectedSkin?.id ? 'bg-slate-800 border-emerald-500 ring-1 ring-emerald-500/20' : 'bg-slate-800 border-slate-700 hover:border-slate-500')}`}
+                                        className={`group relative rounded-3xl p-4 border transition-all cursor-pointer card-premium ${theme === 'white' ? (skin.id === selectedSkin?.id ? 'bg-slate-50 border-emerald-500' : 'bg-white border-slate-200 hover:border-slate-300') : (skin.id === selectedSkin?.id ? 'bg-slate-800/60 border-emerald-500' : 'bg-slate-800/40 border-white/5 hover:border-white/10')}`}
                                     >
-                                        <div className="aspect-[3/4] rounded-lg bg-slate-700/50 mb-3 flex items-center justify-center relative overflow-hidden p-2">
+                                        <div className="aspect-[3/4] rounded-2xl bg-slate-900/60 mb-4 flex items-center justify-center relative border border-white/5 overflow-hidden p-2">
                                             <Skin2DRender
                                                 skinUrl={skin.skinUrl}
                                                 model={skin.model || 'classic'}
-                                                scale={5}
-                                                className="w-full h-full object-contain drop-shadow-xl"
+                                                scale={6}
+                                                className="w-full h-full object-contain drop-shadow-[0_12px_12px_rgba(0,0,0,0.6)]"
                                             />
                                             <button
                                                 onClick={(e) => handleDeleteSkin(e, skin.id)}
-                                                className="absolute top-2 right-2 bg-red-500/80 hover:bg-red-500 text-white p-1 rounded opacity-0 group-hover:opacity-100 transition-opacity shadow-sm"
+                                                className="absolute top-3 right-3 bg-red-500/80 hover:bg-red-500 text-white p-2 rounded-full opacity-0 group-hover:opacity-100 transition-all shadow-lg hover:scale-110 active:scale-95"
                                             >
                                                 <Trash2 size={12} />
                                             </button>
                                         </div>
-                                        <div className="mb-2">
+                                        <div className="px-1">
                                             {editingSkinId === skin.id ? (
                                                 <input
                                                     type="text"
@@ -542,7 +612,7 @@ const WardrobeView = ({ theme, activeAccount }) => {
                                                 <div className="flex items-center gap-1.5 group/name">
                                                     <h4
                                                         onClick={(e) => startEditing(e, skin)}
-                                                        className={`text-sm font-bold truncate cursor-text hover:underline decoration-dotted transition-colors ${theme === 'white' ? 'text-slate-700' : 'text-slate-200'} max-w-[80%]`}
+                                                        className={`text-sm font-bold truncate cursor-text hover:text-emerald-400 transition-colors ${theme === 'white' ? 'text-slate-700' : 'text-slate-200'} max-w-[80%]`}
                                                         title="Click to rename"
                                                     >
                                                         {skin.name}
@@ -555,131 +625,150 @@ const WardrobeView = ({ theme, activeAccount }) => {
                                                     </button>
                                                 </div>
                                             )}
-                                            <p className="text-xs text-slate-500 capitalize">{skin.type}</p>
-                                        </div>
-                                        <div className="flex gap-2">
-                                            <button className={`w-full py-1.5 rounded text-xs font-medium transition-colors ${theme === 'white' ? 'bg-slate-100 text-slate-500' : 'bg-slate-900 text-slate-400 group-hover:bg-slate-700 group-hover:text-white'}`}>
-                                                {skin.id === selectedSkin?.id ? 'Previewing' : 'Preview'}
-                                            </button>
+                                            <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mt-0.5">{skin.type}</p>
                                         </div>
                                     </div>
                                 ))}
 
-                                {/* Add New Placeholder */}
                                 <div
                                     onClick={handleImportSkin}
-                                    className={`border border-dashed rounded-xl flex flex-col items-center justify-center gap-2 hover:text-emerald-400 hover:border-emerald-500/30 transition-all cursor-pointer aspect-[3/4] ${theme === 'white' ? 'bg-white/50 border-slate-300 text-slate-400 hover:bg-slate-50' : 'bg-slate-900/50 border-slate-700 text-slate-500 hover:bg-slate-900'}`}
+                                    className={`border-2 border-dashed rounded-3xl flex flex-col items-center justify-center gap-3 hover:text-emerald-400 hover:border-emerald-500/40 transition-all cursor-pointer aspect-[3/4] group ${theme === 'white' ? 'bg-white/50 border-slate-300 text-slate-400 hover:bg-slate-50 shadow-inner' : 'bg-slate-900/20 border-white/5 text-slate-500 hover:bg-slate-800/40'}`}
                                 >
-                                    <PlusCircle size={24} />
-                                    <span className="text-xs font-medium">Add to Library</span>
+                                    <div className="w-12 h-12 rounded-full border-2 border-dashed border-current flex items-center justify-center group-hover:scale-110 transition-transform">
+                                        <PlusCircle size={24} />
+                                    </div>
+                                    <span className="text-xs font-bold uppercase tracking-widest">Add Skin</span>
                                 </div>
-                            </>
+                            </div>
                         ) : (
-                            // COSMETICS RENDER (Dynamic)
-                            isLoadingCosmetics ? (
-                                <div className="col-span-full py-12 text-center text-slate-500">
-                                    Loading cosmetics...
-                                </div>
-                            ) : ownedCosmetics.length === 0 ? (
-                                <div className="col-span-full py-12 text-center text-slate-500 flex flex-col items-center gap-2">
-                                    <Sparkles size={32} className="opacity-20" />
-                                    <p>No cosmetics found.</p>
-                                </div>
-                            ) : (
-                                ownedCosmetics.map((item, index) => {
-                                    if (index === 0) console.log('[Wardrobe] Rendering', ownedCosmetics.length, 'cosmetics');
-                                    // 'isOwned' comes from the enriched data. 
-                                    const isOwned = item.isOwned === true; // Strict check
-                                    const isEquipped = activeCosmetics.find(c => c.id === item.id);
-                                    const isFounder = item.id === 'cape_founder';
-
-                                    let cardBgClass = '';
-                                    if (theme === 'white') {
-                                        cardBgClass = isEquipped
-                                            ? 'bg-slate-50 border-emerald-500 ring-1 ring-emerald-500/20'
-                                            : 'bg-white border-slate-200 hover:border-slate-300';
-                                    } else {
-                                        cardBgClass = isEquipped
-                                            ? 'bg-slate-800 border-emerald-500 ring-1 ring-emerald-500/20'
-                                            : 'bg-slate-800 border-slate-700 hover:border-slate-500';
-                                    }
-
-                                    if (isFounder) {
-                                        cardBgClass = isEquipped
-                                            ? 'bg-gradient-to-br from-amber-900/40 to-purple-900/40 border-amber-500 ring-1 ring-amber-500/40'
-                                            : 'bg-gradient-to-br from-amber-900/20 to-purple-900/20 border-amber-500/50 hover:border-amber-400';
-                                    }
-
-                                    // Locked State Styling
-                                    if (!isOwned) {
-                                        cardBgClass = theme === 'white'
-                                            ? 'bg-slate-100 border-slate-200 opacity-70'
-                                            : 'bg-slate-900/50 border-slate-800 opacity-60';
-                                    }
-
-                                    return (
-                                        <div
-                                            key={item.id}
-                                            onClick={() => isOwned && toggleCosmetic(item)}
-                                            className={`group relative rounded-xl p-3 border transition-all ${isOwned ? 'cursor-pointer' : 'cursor-not-allowed'} ${cardBgClass}`}
-                                        >
-                                            <div className={`aspect-square rounded-lg mb-3 flex items-center justify-center relative overflow-hidden ${isFounder ? 'bg-gradient-to-br from-black/60 via-purple-900/30 to-amber-900/30' : 'bg-slate-900/80'}`}>
-                                                {!isOwned && (
-                                                    <div className="absolute inset-0 z-20 bg-black/40 backdrop-blur-[1px] flex items-center justify-center">
-                                                        <Lock size={20} className="text-white/80" />
-                                                    </div>
-                                                )}
-
-                                                {/* Cape Texture Preview */}
-                                                {item.texture ? (
-                                                    <div className="relative w-full h-full flex items-center justify-center p-2">
-                                                        <Cape2DRender
-                                                            capeUrl={item.texture}
-                                                            scale={4}
-                                                            className={`drop-shadow-lg ${isFounder ? 'founder-cape-glow' : ''}`}
-                                                        />
-                                                    </div>
-                                                ) : (
-                                                    // No texture available - show icon
-                                                    isFounder ? (
-                                                        <Crown size={32} className="text-amber-400" />
-                                                    ) : (
-                                                        <Sparkles size={32} className="text-white/60" />
-                                                    )
-                                                )}
-
-                                                {isEquipped && (
-                                                    <div className={`absolute top-2 right-2 w-5 h-5 rounded-full flex items-center justify-center ${isFounder ? 'bg-amber-400' : 'bg-emerald-500'} shadow-lg`}>
-                                                        <Check size={12} className="text-black" />
-                                                    </div>
-                                                )}
-
-                                                {/* Special Badge for Founder */}
-                                                {isFounder && isOwned && (
-                                                    <div className="absolute bottom-2 left-2 bg-gradient-to-r from-amber-500 to-amber-600 text-white text-[9px] font-bold px-1.5 py-0.5 rounded shadow-md">
-                                                        FOUNDER
-                                                    </div>
-                                                )}
-                                            </div>
-                                            <div className="mb-2">
-                                                <h4 className={`text-sm font-bold truncate ${isFounder ? 'text-amber-400' : (theme === 'white' ? 'text-slate-700' : 'text-slate-200')}`}>{item.name}</h4>
-                                                <p className={`text-xs capitalize ${isFounder ? 'text-amber-500/70' : 'text-slate-500'}`}>{item.type}</p>
-                                            </div>
-                                            <button
-                                                disabled={!isOwned}
-                                                className={`w-full py-1.5 rounded text-xs font-medium transition-colors ${!isOwned
-                                                    ? 'bg-transparent text-slate-500 border border-slate-700/50'
-                                                    : isFounder
-                                                        ? 'bg-amber-500/10 text-amber-400 hover:bg-amber-500/20'
-                                                        : (theme === 'white' ? 'bg-slate-100 text-slate-500 hover:bg-slate-200' : 'bg-slate-900 text-slate-400 group-hover:bg-slate-700 group-hover:text-white')
-                                                    }`}>
-                                                {isOwned ? (isEquipped ? 'Unequip' : 'Equip') : 'Locked'}
-                                            </button>
+                            <div className="space-y-12 pb-8">
+                                {isLoadingCosmetics ? (
+                                    <div className="py-20 text-center">
+                                        <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-emerald-500 mx-auto mb-4 shadow-[0_0_15px_rgba(16,185,129,0.3)]"></div>
+                                        <p className="text-slate-500 font-medium">Synchronizing wardrobe...</p>
+                                    </div>
+                                ) : Object.keys(categorizedCosmetics).length === 0 && unequippedCosmeticSlots.length === 0 ? (
+                                    <div className="py-20 text-center text-slate-500 flex flex-col items-center gap-4">
+                                        <div className="w-16 h-16 bg-slate-900/40 rounded-full flex items-center justify-center border border-white/5">
+                                            <Sparkles size={32} className="opacity-20" />
                                         </div>
-                                    );
-                                }))
-                        )}
+                                        <p className="font-medium">No cosmetics discovered yet.</p>
+                                    </div>
+                                ) : (
+                                    <>
+                                        {Object.entries(categorizedCosmetics).map(([category, items]) => (
+                                            <div key={category} className="space-y-6">
+                                                <div className="flex items-center gap-4">
+                                                    <h3 className="text-xs font-black text-white tracking-widest uppercase bg-slate-800 border border-white/10 px-4 py-1.5 rounded-full shadow-lg">
+                                                        {category}
+                                                    </h3>
+                                                    <div className="flex-1 h-[1px] bg-gradient-to-r from-white/10 to-transparent" />
+                                                    <span className="text-[10px] font-black text-slate-600 tracking-tighter">{items.length} ITEMS</span>
+                                                </div>
 
+                                                <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                                                    {items.map((item) => {
+                                                        const isOwned = item.isOwned === true;
+                                                        const isEquipped = activeCosmetics.find(c => c.id === item.id);
+                                                        const isFounder = item.id === 'cape_founder';
+
+                                                        let cardBgClass = '';
+                                                        if (theme === 'white') {
+                                                            cardBgClass = isEquipped
+                                                                ? 'bg-slate-50 border-emerald-500'
+                                                                : 'bg-white border-slate-200 hover:border-slate-300';
+                                                        } else {
+                                                            cardBgClass = isEquipped
+                                                                ? 'bg-slate-800/60 border-emerald-500 shadow-[0_0_20px_rgba(16,185,129,0.1)]'
+                                                                : 'bg-slate-800/40 border-white/5 hover:border-white/10';
+                                                        }
+
+                                                        if (isFounder) {
+                                                            cardBgClass = isEquipped
+                                                                ? 'bg-gradient-to-br from-amber-900/40 to-purple-900/40 border-amber-500 shadow-[0_0_25px_rgba(245,158,11,0.2)]'
+                                                                : 'bg-gradient-to-br from-amber-900/10 to-purple-900/10 border-amber-500/30 hover:border-amber-400';
+                                                        }
+
+                                                        if (!isOwned) {
+                                                            cardBgClass = theme === 'white'
+                                                                ? 'bg-slate-100 border-slate-200 opacity-60'
+                                                                : 'bg-slate-900/30 border-white/5 opacity-50';
+                                                        }
+
+                                                        return (
+                                                            <div
+                                                                key={item.id}
+                                                                onClick={() => isOwned && toggleCosmetic(item)}
+                                                                className={`group relative rounded-3xl p-4 border transition-all card-premium ${isOwned ? 'cursor-pointer' : 'cursor-not-allowed'} ${cardBgClass}`}
+                                                            >
+                                                                {isEquipped && <div className="equipped-pulse-ring rounded-3xl" />}
+
+                                                                <div className={`aspect-square rounded-2xl mb-4 flex items-center justify-center relative overflow-hidden z-10 ${isFounder ? 'bg-gradient-to-br from-black/80 via-purple-950/40 to-amber-950/40' : 'bg-slate-950 shadow-inner'}`}>
+                                                                    {!isOwned && (
+                                                                        <div className="absolute inset-0 z-20 bg-black/60 backdrop-blur-[2px] flex flex-col items-center justify-center gap-2">
+                                                                            <Lock size={18} className="text-white/40" />
+                                                                            <span className="text-[8px] font-black tracking-widest text-white/40 uppercase">Locked</span>
+                                                                        </div>
+                                                                    )}
+
+                                                                    {item.texture ? (
+                                                                        item.type?.toLowerCase() === 'cape' ? (
+                                                                            <div className={`w-full h-full flex items-center justify-center p-6 transition-transform duration-700 ${isOwned ? 'group-hover:scale-115' : ''}`}>
+                                                                                <Cape2DRender
+                                                                                    capeUrl={item.texture}
+                                                                                    className={`w-auto h-full max-h-[85%] drop-shadow-[0_15px_15px_rgba(0,0,0,0.8)] ${isFounder ? 'founder-cape-glow' : ''}`}
+                                                                                />
+                                                                            </div>
+                                                                        ) : (
+                                                                            <img src={item.texture} alt={item.name} className="w-20 h-20 object-contain drop-shadow-2xl transition-transform duration-700 group-hover:scale-115" />
+                                                                        )
+                                                                    ) : (
+                                                                        <Sparkles size={24} className="text-slate-800" />
+                                                                    )}
+
+                                                                    {isEquipped && (
+                                                                        <div className="absolute top-3 right-3 bg-emerald-500 text-black p-1.5 rounded-full shadow-xl z-20 animate-in zoom-in duration-500">
+                                                                            <Check size={8} strokeWidth={5} />
+                                                                        </div>
+                                                                    )}
+                                                                </div>
+
+                                                                <div>
+                                                                    <h4 className={`text-sm font-bold truncate ${isFounder ? 'text-amber-400' : (theme === 'white' ? 'text-slate-700' : 'text-slate-200')}`}>
+                                                                        {item.name}
+                                                                    </h4>
+                                                                    <div className="flex items-center justify-between mt-1 opacity-60">
+                                                                        <span className="text-[9px] font-black uppercase tracking-widest">
+                                                                            {item.type || 'Cosmetic'}
+                                                                        </span>
+                                                                        {isFounder && (
+                                                                            <Crown size={12} className="text-amber-500" />
+                                                                        )}
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+                                                        );
+                                                    })}
+                                                </div>
+                                            </div>
+                                        ))}
+
+                                        {/* Silhouettes for empty slots */}
+                                        <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 pt-4">
+                                            {unequippedCosmeticSlots.map(type => (
+                                                <div key={`empty-${type}`} className="group relative rounded-3xl p-4 border border-dashed border-white/5 bg-white/[0.02] opacity-20 transition-all">
+                                                    <div className="aspect-square rounded-2xl mb-4 flex items-center justify-center relative overflow-hidden bg-black/40 border border-dashed border-white/5">
+                                                        <Shirt size={24} className="text-white/20" />
+                                                    </div>
+                                                    <div className="h-3 w-2/3 bg-white/10 rounded-full mb-2" />
+                                                    <div className="h-2 w-1/3 bg-white/5 rounded-full" />
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </>
+                                )}
+                            </div>
+                        )}
                     </div>
                 </div>
             </div>

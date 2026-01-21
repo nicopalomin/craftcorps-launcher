@@ -79,33 +79,83 @@ const SkinViewer = ({
     useEffect(() => {
         if (!canvasRef.current) return;
 
-        console.log("[SkinViewer] Initializing...");
+        console.log("[SkinViewer] Initializing Premium Renderer...");
         const viewer = new SkinViewer3D({
             canvas: canvasRef.current,
-            // Initial size placeholder, will be updated by ResizeObserver immediately
             width: width,
             height: height,
             skin: skinUrl,
             cape: capeUrl,
             model: model,
-            alpha: !background,
-            nameTag: nameTag ? createNameTag(nameTag) : null
+            alpha: true // Always transparent for custom background FX
         });
 
-        if (background) {
-            viewer.background = background;
+        // Set nameTag after constructor
+        if (nameTag) {
+            try {
+                viewer.nameTag = createNameTag(nameTag);
+            } catch (err) {
+                console.warn("[SkinViewer] Failed to set nameTag:", err);
+            }
         }
 
-        viewer.controls.enableZoom = true;
-        viewer.controls.enableRotate = true;
-        viewer.controls.enablePan = false;
+        // --- PREMIUM LIGHTING SETUP ---
+        if (viewer.scene) {
+            // 1. Scene Lighting
+            const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+            viewer.scene.add(ambientLight);
 
-        // Limit Zoom
-        viewer.controls.minDistance = 65;
-        viewer.controls.maxDistance = 75;
+            // Spot/Point light from top-left for drama
+            const spotLight = new THREE.PointLight(0xffffff, 1.2);
+            spotLight.position.set(-20, 40, 30);
+            viewer.scene.add(spotLight);
 
-        // Set Initial Zoom
+            // Rim light from behind
+            const rimLight = new THREE.PointLight(0xffffff, 0.8);
+            rimLight.position.set(20, 20, -30);
+            viewer.scene.add(rimLight);
+
+            // --- GROUND SHADOW ---
+            const shadowCanvas = document.createElement('canvas');
+            shadowCanvas.width = 128;
+            shadowCanvas.height = 128;
+            const shadowCtx = shadowCanvas.getContext('2d');
+            const gradient = shadowCtx.createRadialGradient(64, 64, 0, 64, 64, 64);
+            gradient.addColorStop(0, 'rgba(0,0,0,0.6)');
+            gradient.addColorStop(0.5, 'rgba(0,0,0,0.2)');
+            gradient.addColorStop(1, 'rgba(0,0,0,0)');
+            shadowCtx.fillStyle = gradient;
+            shadowCtx.fillRect(0, 0, 128, 128);
+
+            const shadowTexture = new THREE.CanvasTexture(shadowCanvas);
+            const shadowGeo = new THREE.PlaneGeometry(25, 25);
+            const shadowMat = new THREE.MeshBasicMaterial({ map: shadowTexture, transparent: true, opacity: 0.5 });
+            const shadowMesh = new THREE.Mesh(shadowGeo, shadowMat);
+            shadowMesh.rotation.x = -Math.PI / 2;
+            shadowMesh.position.y = -31.5; // Feet bottom
+            viewer.scene.add(shadowMesh);
+        } else {
+            console.warn("[SkinViewer] viewer.scene is missing during initialization.");
+        }
+
+        // --- AMBIENT ROTATION ---
+        viewer.autoRotate = true;
+        viewer.autoRotateSpeed = 0.5; // Very slow cinematic turn
+
+        if (viewer.controls) {
+            viewer.controls.enableZoom = true;
+            viewer.controls.enableRotate = true;
+            viewer.controls.enablePan = false;
+
+            // Limit Zoom
+            viewer.controls.minDistance = 60;
+            viewer.controls.maxDistance = 85;
+        }
+
+        // Set Initial Camera
         viewer.camera.position.z = zoom;
+        viewer.camera.position.y = 10;
+        viewer.camera.lookAt(0, 0, 0);
 
         applyAnimation(viewer, animation);
         viewerRef.current = viewer;
@@ -117,14 +167,12 @@ const SkinViewer = ({
         const resizeObserver = new ResizeObserver(entries => {
             for (const entry of entries) {
                 const { width, height } = entry.contentRect;
-                // Force minimum 2.0 scale for crisper text, or device native if higher
                 const dpr = Math.max(window.devicePixelRatio || 1, 2);
 
                 if (viewerRef.current) {
                     viewerRef.current.setSize(width * dpr, height * dpr);
                 }
 
-                // Ensure style matches display size (logical pixels)
                 canvas.style.width = `${width}px`;
                 canvas.style.height = `${height}px`;
             }

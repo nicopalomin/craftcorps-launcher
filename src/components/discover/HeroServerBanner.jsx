@@ -21,13 +21,13 @@ const HeroServerBanner = React.memo(({ server, onJoin, onCopy, onStop, isJoining
     };
 
     return (
-        <div className="relative w-full h-[400px] rounded-3xl overflow-hidden group shrink-0 mb-8 border border-white/10 shadow-2xl shadow-black/50">
+        <div className="relative w-full h-[400px] rounded-3xl overflow-hidden group shrink-0 mb-8 border border-white/10 shadow-2xl shadow-black/50 bg-slate-950">
             {/* Backgrounds */}
-            <div className={`absolute inset-0 bg-gradient-to-br ${gradient} opacity-20`} />
+            <div className={`absolute inset-0 bg-gradient-to-br ${gradient} opacity-25`} />
             {server.icon && (
-                <img src={server.icon} className="absolute inset-0 w-full h-full object-cover blur-2xl opacity-30 scale-110" alt="" />
+                <img src={server.icon} className="absolute inset-0 w-full h-full object-cover blur-2xl opacity-40 scale-110" alt="" />
             )}
-            <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/60 to-transparent" />
+            <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/90 to-slate-950/40" />
 
             {/* Status Badges */}
             <ServerBadge server={server} isHot={isHot} />

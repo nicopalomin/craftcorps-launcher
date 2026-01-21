@@ -30,20 +30,15 @@ const DiscoverHeader = React.memo(({
     }, [showFilterMenu]);
 
     return (
-        <div className="relative z-50 p-8 pb-4 shrink-0">
-            <div className="flex items-center justify-between gap-4 mb-6">
-                <div className="flex items-center gap-4">
-                    <div className="w-12 h-12 bg-emerald-500/10 rounded-xl flex items-center justify-center ring-1 ring-emerald-500/30">
-                        <Star size={24} className="text-emerald-400" />
-                    </div>
-                    <div>
-                        <h1 className="text-3xl font-bold text-white tracking-tight">
-                            Discover Servers
-                        </h1>
-                        <p className="text-slate-400">
-                            Pick something alive. Join in one click.
-                        </p>
-                    </div>
+        <div className="relative z-50 p-0 pb-6 shrink-0">
+            <div className="flex items-center justify-between gap-4">
+                <div>
+                    <h1 className="text-3xl font-bold text-slate-200 tracking-tight leading-none mb-1">
+                        Discover Servers
+                    </h1>
+                    <p className="text-slate-400 text-sm">
+                        Browse, select and you're in the server!
+                    </p>
                 </div>
 
                 {/* Right: Search + Filter + Status */}
