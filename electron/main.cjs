@@ -7,10 +7,13 @@ const authService = require('./services/authService.cjs');
 const playTimeService = require('./services/playTimeService.cjs');
 
 // Set AppUserModelID for Windows Taskbar
+const pkg = require('../package.json');
+const isCanary = pkg.isCanary === true;
+
 if (process.platform === 'win32') {
-    app.setAppUserModelId('com.craftcorps.launcher'); // Matches package.json appId
+    app.setAppUserModelId(isCanary ? 'com.craftcorps.launcher.canary' : 'com.craftcorps.launcher');
 }
-app.setName('CraftCorps Launcher');
+app.setName(isCanary ? 'CraftCorps Canary' : 'CraftCorps Launcher');
 
 // --- Instance Isolation & Profile Support ---
 // This ensures that development, marketing shots, or different user profiles don't collide.
@@ -324,6 +327,30 @@ app.whenReady().then(async () => {
 
     modChannels.forEach(channel => {
         lazyHandle(channel, createModLoader(channel));
+    });
+
+    // Lazy: Shaders
+    let cachedShaderHandlers = null;
+    const createShaderLoader = (channel) => async () => {
+        if (!cachedShaderHandlers) {
+            console.log('[IPC] Lazy loading Shader Handlers...');
+            const { setupShaderPackHandlers } = require('./handlers/shaderPackHandler.cjs');
+            cachedShaderHandlers = setupShaderPackHandlers();
+        }
+        const handler = cachedShaderHandlers[channel];
+        if (!handler) {
+            console.error(`[IPC] No handler found for ${channel} after loading.`);
+            return () => null;
+        }
+        return handler;
+    };
+
+    const shaderChannels = [
+        'get-instance-shaders', 'select-shader-files', 'add-instance-shaders', 'delete-shader'
+    ];
+
+    shaderChannels.forEach(channel => {
+        lazyHandle(channel, createShaderLoader(channel));
     });
 
 

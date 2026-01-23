@@ -1,0 +1,25 @@
+{
+    "productName": "CraftCorps Canary",
+    "appId": "com.craftcorps.launcher.canary",
+    "extraMetadata": {
+        "isCanary": true
+    },
+    "directories": {
+        "output": "release/canary"
+    },
+    "win": {
+        "artifactName": "CraftCorps-Canary-Setup-${version}.exe"
+    },
+    "mac": {
+        "artifactName": "CraftCorps-Canary-Setup-${version}.${ext}"
+    },
+    "linux": {
+        "artifactName": "CraftCorps-Canary-Setup-${version}.${ext}"
+    },
+    "nsis": {
+        "artifactName": "CraftCorps-Canary-Setup-${version}.exe",
+        "createDesktopShortcut": true,
+        "createStartMenuShortcut": true,
+        "shortcutName": "CraftCorps Canary"
+    }
+}
