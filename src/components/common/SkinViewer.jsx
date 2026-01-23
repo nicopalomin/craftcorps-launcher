@@ -200,8 +200,9 @@ const SkinViewer = ({
         const handleUpdate = async () => {
             // 1. Load Skin
             if (skinUrl !== viewer.skinUrl || model !== viewer.playerObject?.skin?.model) {
+                const finalSkin = skinUrl || "https://textures.minecraft.net/texture/3b60a1f6d5aa4abb850eb34673899478148b6154564c4786650bf6b1fd85a3";
                 console.log(`[SkinViewer] Loading skin: ${model}`);
-                await viewer.loadSkin(skinUrl, { model: model });
+                await viewer.loadSkin(finalSkin, { model: model });
             }
 
             // 2. Load Cape

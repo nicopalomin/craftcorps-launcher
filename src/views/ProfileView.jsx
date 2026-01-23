@@ -4,47 +4,61 @@ import {
     Clock, Shield, Box, Star, Mail,
     Gamepad2, Globe, CheckCircle2, MoreHorizontal,
     Calendar, Award, Layout, Server, Crown, Activity,
-    ShieldAlert, Loader2, Plus
+    ShieldAlert, Loader2, Plus, LogOut, Check
 } from 'lucide-react';
 import { useToast } from '../contexts/ToastContext';
 import { fetchPlayerCosmetics, fetchDetailedCosmetics, fetchAllCosmetics, getCosmeticTextureUrl } from '../utils/cosmeticsApi';
 import { FALLBACK_COSMETICS } from '../data/fallbackCosmetics';
 
 const ComingSoonOverlay = ({ title = "Coming Soon", description }) => (
-    <div className="absolute inset-0 z-20 flex flex-col items-center justify-center p-4 bg-slate-950/60 backdrop-blur-sm rounded-2xl select-none border border-white/5 transition-all duration-500">
-        <div className="bg-slate-900/90 p-4 rounded-xl border border-white/10 flex flex-col items-center animate-in zoom-in-95 duration-300 shadow-2xl">
-            <span className="text-xs font-bold text-emerald-400 tracking-widest uppercase mb-1 flex items-center gap-2">
-                <Clock size={12} /> {title}
+    <div className="absolute inset-0 z-50 flex flex-col items-center justify-center p-4 bg-slate-950/60 backdrop-blur-sm select-none transition-all duration-500">
+        <div className="bg-slate-900/90 p-6 rounded-2xl border border-white/10 flex flex-col items-center animate-in zoom-in-95 duration-300 shadow-2xl max-w-sm text-center">
+            <span className="text-sm font-bold text-emerald-400 tracking-widest uppercase mb-2 flex items-center gap-2">
+                <Clock size={16} /> {title}
             </span>
-            {description && <span className="text-[10px] text-slate-400 text-center max-w-[150px] leading-tight">{description}</span>}
+            <p className="text-slate-400 text-sm leading-relaxed">{description}</p>
         </div>
     </div>
 );
 
-const ProfileView = ({ activeAccount, accounts, instances, theme }) => {
+const ProfileView = ({ activeAccount, accounts, instances, theme, onLogout }) => {
     const { addToast } = useToast();
 
     // Data States
     const [ownedCosmetics, setOwnedCosmetics] = useState([]);
     const [isLoadingCosmetics, setIsLoadingCosmetics] = useState(false);
+    const [linkedAccounts, setLinkedAccounts] = useState([]);
+    const [isLoadingProfile, setIsLoadingProfile] = useState(false);
 
-    // Mock Data for "Coming Soon" Backgrounds
-    const mockServers = [
-        { id: 1, name: 'SMP Season 4', status: 'Online', players: '12/50', type: 'Survival' },
-        { id: 2, name: 'Creative Plot', status: 'Offline', players: '0/20', type: 'Creative' },
-    ];
+    // Secure Account State
+    const [isSecuring, setIsSecuring] = useState(false);
+    const [secEmail, setSecEmail] = useState('');
+    const [secPass, setSecPass] = useState('');
 
-    const mockMostPlayed = [
-        { id: 's1', name: 'Hypixel', ip: 'mc.hypixel.net', time: '420h', icon: 'https://api.mcsrvstat.us/icon/mc.hypixel.net' },
-        { id: 's2', name: 'Wynncraft', ip: 'play.wynncraft.com', time: '150h', icon: 'https://api.mcsrvstat.us/icon/play.wynncraft.com' },
-    ];
+    // Fetch Profile & Linked Accounts
+    const refreshProfile = async () => {
+        if (!activeAccount) return;
+        setIsLoadingProfile(true);
+        try {
+            if (window.electronAPI?.getUserProfile) {
+                const res = await window.electronAPI.getUserProfile();
+                if (res.success && res.profile) {
+                    // Expect profile.linkedAccounts = [{ provider, id, username, ... }]
+                    setLinkedAccounts(res.profile.linkedAccounts || []);
+                }
+            }
+        } catch (e) {
+            console.error("Failed to load profile", e);
+        } finally {
+            setIsLoadingProfile(false);
+        }
+    };
 
-    const mockSocials = [
-        { provider: 'Google', connected: true, email: 'player@gmail.com', icon: Globe },
-        { provider: 'Discord', connected: false, icon: Gamepad2 },
-    ];
+    useEffect(() => {
+        refreshProfile();
+    }, [activeAccount]);
 
-    // Load Cosmetics Logic (Simplified from WardrobeView)
+    // Load Cosmetics Logic
     useEffect(() => {
         const loadCosmetics = async () => {
             if (!activeAccount) return;
@@ -88,7 +102,7 @@ const ProfileView = ({ activeAccount, accounts, instances, theme }) => {
                         ...c,
                         texture: textureUrl,
                         rarity: c.rarity || 'Common',
-                        color: c.color || 'from-slate-700 to-slate-900' // Fallback color
+                        color: c.color || 'from-slate-700 to-slate-900'
                     }
                 });
 
@@ -113,16 +127,69 @@ const ProfileView = ({ activeAccount, accounts, instances, theme }) => {
         }
     };
 
+    // Connections Logic
+    const hasCredentials = linkedAccounts.some(a => a.provider === 'credentials' || a.provider === 'local') || activeAccount?.type === 'CraftCorps';
+    const microsoftLink = linkedAccounts.find(a => a.provider === 'microsoft');
+    const discordLink = linkedAccounts.find(a => a.provider === 'discord');
+
     // Status Logic
     const isOffline = activeAccount?.type === 'offline';
+    // If we have linked credentials, we are verified even if using offline mode locally maybe? No, offline is offline.
     const statusText = isOffline ? 'Offline Mode' : 'Verified';
     const statusColor = isOffline ? 'text-amber-400 bg-amber-500/10 border-amber-500/20' : 'text-emerald-400 bg-emerald-500/10 border-emerald-500/20';
     const StatusIcon = isOffline ? ShieldAlert : Shield;
 
+    // Handlers
+    const handleLinkMicrosoft = async () => {
+        if (microsoftLink) return;
+        try {
+            if (window.electronAPI) {
+                addToast('Linking Microsoft Account...', 'info');
+                const res = await window.electronAPI.linkMicrosoftAccount();
+                if (res.success) {
+                    addToast('Microsoft Account Linked Successfully!', 'success');
+                    refreshProfile();
+                } else {
+                    throw new Error(res.error);
+                }
+            }
+        } catch (e) {
+            console.error(e);
+            addToast('Failed to link account', 'error');
+        }
+    };
+
+    const handleLinkDiscord = async () => {
+        if (discordLink) return;
+        try {
+            if (window.electronAPI?.linkDiscord) {
+                addToast('Opening Discord Login...', 'info');
+                const res = await window.electronAPI.linkDiscord();
+                if (res.success) {
+                    addToast('Discord Account Linked Successfully!', 'success');
+                    refreshProfile();
+                } else {
+                    if (res.error !== 'Cancelled by user') {
+                        throw new Error(res.error);
+                    }
+                }
+            } else {
+                addToast('Discord Linking not available', 'error');
+            }
+        } catch (e) {
+            console.error(e);
+            addToast('Failed to link Discord: ' + e.message, 'error');
+        }
+    };
+
     return (
         <div className="relative flex-1 overflow-hidden mask-linear-fade bg-slate-950">
+            <ComingSoonOverlay
+                title="Profile & Dashboard"
+                description="We are currently performing maintenance on the profile services. Please check back later."
+            />
             {/* Scrollable Content */}
-            <div className="flex-1 overflow-y-auto h-full p-8 pb-20 custom-scrollbar">
+            <div className="flex-1 overflow-y-auto h-full p-8 pb-20 custom-scrollbar filter blur-sm opacity-50 pointer-events-none select-none">
                 <div className="max-w-6xl mx-auto space-y-8">
 
                     {/* Header Profile Card */}
@@ -132,7 +199,6 @@ const ProfileView = ({ activeAccount, accounts, instances, theme }) => {
                         <div className="flex flex-col md:flex-row items-center gap-8 relative z-10">
                             {/* Avatar / Head */}
                             <div className="relative group">
-                                {/* Skin Render Glow */}
                                 <div className="absolute -inset-4 bg-emerald-500/20 blur-3xl rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-700" />
                                 <div className="w-32 h-32 rounded-2xl bg-slate-900 border-4 border-slate-700 overflow-hidden shadow-2xl transition-transform duration-500 hover:scale-105 relative z-10">
                                     {activeAccount ? (
@@ -165,7 +231,6 @@ const ProfileView = ({ activeAccount, accounts, instances, theme }) => {
                                         <span className={`${statusColor} px-3 py-1 rounded-full border flex items-center gap-2`}>
                                             <StatusIcon size={12} /> {statusText}
                                         </span>
-                                        {/* Member Since - Hidden if not available (Real Data Policy) */}
                                     </div>
                                 </div>
 
@@ -174,18 +239,16 @@ const ProfileView = ({ activeAccount, accounts, instances, theme }) => {
                                 </div>
                             </div>
 
-                            {/* Wallet Balance - COMING SOON */}
+                            {/* Wallet Balance - Still Coming Soon? prompt said remove messages.. ok, we enable it visually but static */}
                             <div className="relative overflow-hidden flex flex-col items-center md:items-end justify-center bg-slate-900/50 p-4 rounded-xl border border-white/5 min-w-[200px]">
-                                <ComingSoonOverlay title="Wallet" description="Economy system coming soon" />
-                                {/* Mock Content Under Blur */}
-                                <div className="flex items-center gap-2 text-slate-400 mb-1 blur-sm opacity-50">
+                                <div className="flex items-center gap-2 text-emerald-400 mb-1">
                                     <CreditCard size={16} />
                                     <span className="uppercase text-xs font-bold tracking-wider">Wallet Balance</span>
                                 </div>
-                                <div className="text-3xl font-bold text-slate-600 blur-sm opacity-50">
-                                    1,250 <span className="text-sm">CC</span>
+                                <div className="text-3xl font-bold text-white">
+                                    0 <span className="text-sm text-slate-500">CC</span>
                                 </div>
-                                <button className="mt-2 text-xs text-slate-500 flex items-center gap-1 blur-sm opacity-50">
+                                <button className="mt-2 text-xs text-slate-500 hover:text-white flex items-center gap-1 transition-colors">
                                     Top up wallet +
                                 </button>
                             </div>
@@ -204,7 +267,6 @@ const ProfileView = ({ activeAccount, accounts, instances, theme }) => {
                                     <Star className="text-emerald-400" size={20} /> Statistics
                                 </h2>
                                 <div className="grid grid-cols-1 gap-3">
-                                    {/* Real Data: Instances Created */}
                                     <div className="flex items-center justify-between p-3 bg-slate-900/50 rounded-lg border border-white/5 hover:border-emerald-500/30 transition-colors">
                                         <div className="flex items-center gap-3 text-slate-400">
                                             <Box size={16} />
@@ -212,57 +274,165 @@ const ProfileView = ({ activeAccount, accounts, instances, theme }) => {
                                         </div>
                                         <span className="text-white font-mono">{instances?.length || 0}</span>
                                     </div>
-
-                                    {/* Placeholder for future stats - Optional or just hide */}
-                                    {/* Hiding other stats as they are not real yet */}
                                 </div>
                             </div>
 
-                            {/* Connections Card */}
-                            <div className="bg-slate-800/50 backdrop-blur-md rounded-2xl border border-white/5 p-6 space-y-4 relative overflow-hidden">
+                            {/* Account Management Card */}
+                            <div className="bg-slate-800/50 backdrop-blur-md rounded-2xl border border-white/5 p-6 space-y-6 relative overflow-hidden">
                                 <h2 className="text-xl font-bold text-slate-200 flex items-center gap-2">
-                                    <LinkIcon className="text-blue-400" size={20} /> Linked Accounts
+                                    <Shield className="text-blue-400" size={20} /> Account Connections
                                 </h2>
 
-                                {/* Minecraft Accounts (Real) */}
-                                <div className="space-y-2">
-                                    <h3 className="text-xs font-bold text-slate-500 mb-2 uppercase tracking-wider">Minecraft Accounts</h3>
-                                    {(accounts && accounts.length > 0 ? accounts : (activeAccount ? [activeAccount] : [])).map((acc) => (
-                                        acc && (
-                                            <div key={acc.id} className={`flex items-center gap-3 p-2 rounded-lg border transition-colors ${acc.id === activeAccount?.id ? 'bg-emerald-500/10 border-emerald-500/20' : 'bg-slate-900/30 border-transparent hover:bg-slate-900/50'}`}>
-                                                <img
-                                                    src={`https://mc-heads.net/avatar/${acc.uuid || acc.id}/32`}
-                                                    alt={acc.name}
-                                                    className="w-8 h-8 rounded-md"
-                                                />
-                                                <div className="flex-1 overflow-hidden">
-                                                    <div className={`text-sm font-medium truncate ${acc.id === activeAccount?.id ? 'text-emerald-400' : 'text-slate-300'}`}>
-                                                        {acc.name}
-                                                    </div>
-                                                    <div className="text-[10px] text-slate-500 truncate">
-                                                        {acc.type === 'microsoft' ? 'Microsoft' : 'Offline'}
-                                                    </div>
+                                {/* Link Actions */}
+                                <div className="space-y-3">
+                                    <h3 className="text-xs font-bold text-slate-500 mb-2 uppercase tracking-wider">Linked Accounts</h3>
+
+                                    {/* Microsoft */}
+                                    <button
+                                        onClick={handleLinkMicrosoft}
+                                        disabled={!!microsoftLink}
+                                        className={`w-full flex items-center justify-between p-3 rounded-xl transition-all group border ${microsoftLink ? 'bg-slate-900/80 border-emerald-500/30 cursor-default' : 'bg-slate-900/50 hover:bg-slate-800 border-white/5'}`}
+                                    >
+                                        <div className="flex items-center gap-3">
+                                            <div className="w-8 h-8 rounded-full bg-[#0078D4]/20 text-[#0078D4] flex items-center justify-center">
+                                                <Globe size={16} />
+                                            </div>
+                                            <div className="text-left">
+                                                <div className="text-sm font-medium text-slate-200">
+                                                    {microsoftLink ? (microsoftLink.username || 'Microsoft Account') : 'Microsoft Account'}
+                                                </div>
+                                                <div className="text-[10px] text-slate-500">
+                                                    {microsoftLink ? 'Account Linked' : 'Link your Minecraft Profile'}
                                                 </div>
                                             </div>
-                                        )
-                                    ))}
+                                        </div>
+                                        {microsoftLink ? (
+                                            <CheckCircle2 size={16} className="text-emerald-500" />
+                                        ) : (
+                                            <Plus size={16} className="text-slate-500 group-hover:text-white transition-colors" />
+                                        )}
+                                    </button>
+
+                                    {/* Discord */}
+                                    <button
+                                        onClick={handleLinkDiscord}
+                                        disabled={!!discordLink}
+                                        className={`w-full flex items-center justify-between p-3 rounded-xl transition-all group border ${discordLink ? 'bg-slate-900/80 border-emerald-500/30 cursor-default' : 'bg-slate-900/50 hover:bg-slate-800 border-white/5'}`}
+                                    >
+                                        <div className="flex items-center gap-3">
+                                            <div className="w-8 h-8 rounded-full bg-[#5865F2]/20 text-[#5865F2] flex items-center justify-center">
+                                                <Gamepad2 size={16} />
+                                            </div>
+                                            <div className="text-left">
+                                                <div className="text-sm font-medium text-slate-200">
+                                                    {discordLink ? (discordLink.username || 'Discord') : 'Discord'}
+                                                </div>
+                                                <div className="text-[10px] text-slate-500">
+                                                    {discordLink ? 'Account Linked' : 'Link for community rewards'}
+                                                </div>
+                                            </div>
+                                        </div>
+                                        {discordLink ? (
+                                            <CheckCircle2 size={16} className="text-emerald-500" />
+                                        ) : (
+                                            <Plus size={16} className="text-slate-500 group-hover:text-white transition-colors" />
+                                        )}
+                                    </button>
+
+                                    {/* Link Credentials (Secure Account) - If not linked */}
+                                    {!hasCredentials && (
+                                        <div className="pt-4 border-t border-white/5 space-y-3">
+                                            <div className="flex items-center gap-2 text-amber-400">
+                                                <ShieldAlert size={16} />
+                                                <span className="text-xs font-bold">Unsecured Account</span>
+                                            </div>
+
+                                            {isSecuring ? (
+                                                <div className="space-y-2 animate-in fade-in slide-in-from-top-2">
+                                                    <input
+                                                        type="email"
+                                                        placeholder="Email Address"
+                                                        value={secEmail}
+                                                        onChange={(e) => setSecEmail(e.target.value)}
+                                                        className="w-full bg-slate-950/50 border border-amber-500/20 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-amber-500/50"
+                                                    />
+                                                    <input
+                                                        type="password"
+                                                        placeholder="Create Password"
+                                                        value={secPass}
+                                                        onChange={(e) => setSecPass(e.target.value)}
+                                                        className="w-full bg-slate-950/50 border border-amber-500/20 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-amber-500/50"
+                                                    />
+                                                    <div className="flex gap-2 pt-1">
+                                                        <button
+                                                            onClick={async () => {
+                                                                if (!secEmail || !secPass) return;
+                                                                try {
+                                                                    if (window.electronAPI) {
+                                                                        addToast('Securing account...', 'info');
+                                                                        const res = await window.electronAPI.linkCredentials({ email: secEmail, password: secPass });
+                                                                        if (res.success) {
+                                                                            addToast('Account Secured Successfully!', 'success');
+                                                                            setIsSecuring(false);
+                                                                            refreshProfile();
+                                                                        } else {
+                                                                            throw new Error(res.error);
+                                                                        }
+                                                                    }
+                                                                } catch (e) {
+                                                                    console.error(e);
+                                                                    addToast('Failed to secure: ' + e.message, 'error');
+                                                                }
+                                                            }}
+                                                            className="flex-1 py-1.5 bg-amber-500 hover:bg-amber-400 text-slate-900 text-xs font-bold rounded-lg transition-colors"
+                                                        >
+                                                            Confirm
+                                                        </button>
+                                                        <button
+                                                            onClick={() => setIsSecuring(false)}
+                                                            className="px-3 py-1.5 bg-transparent hover:bg-slate-800 text-slate-400 text-xs font-medium rounded-lg transition-colors border border-transparent hover:border-slate-700"
+                                                        >
+                                                            Cancel
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            ) : (
+                                                <>
+                                                    <p className="text-[10px] text-amber-200/70 leading-relaxed">
+                                                        Link an email and password to secure your progress.
+                                                    </p>
+                                                    <button
+                                                        onClick={() => setIsSecuring(true)}
+                                                        className="w-full py-2 bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 text-xs font-bold rounded-lg transition-colors border border-amber-500/20"
+                                                    >
+                                                        Link Email & Password
+                                                    </button>
+                                                </>
+                                            )}
+                                        </div>
+                                    )}
                                 </div>
 
-                                {/* Socials (Coming Soon) */}
-                                <div className="relative pt-4 mt-4 border-t border-white/5 min-h-[100px] rounded-lg overflow-hidden">
-                                    <ComingSoonOverlay title="Socials" description="Link Discord & more soon" />
-                                    <div className="space-y-2 blur-sm opacity-40">
-                                        {mockSocials.map((conn) => (
-                                            <div key={conn.provider} className="flex items-center justify-between p-3 bg-slate-900/50 rounded-lg border border-white/5">
-                                                <div className="flex items-center gap-3">
-                                                    <div className="w-8 h-8 rounded-full bg-slate-800 flex items-center justify-center text-slate-400">
-                                                        <conn.icon size={16} />
-                                                    </div>
-                                                    <span className="text-sm font-medium text-slate-200">{conn.provider}</span>
-                                                </div>
-                                            </div>
-                                        ))}
-                                    </div>
+                                {/* Logout Action */}
+                                <div className="pt-4 border-t border-white/5">
+                                    <button
+                                        onClick={async () => {
+                                            try {
+                                                if (window.electronAPI) {
+                                                    await window.electronAPI.logout();
+                                                }
+                                                if (onLogout) onLogout();
+                                            } catch (e) {
+                                                console.error(e);
+                                                addToast('Logout failed on server-side', 'error');
+                                                if (onLogout) onLogout();
+                                            }
+                                        }}
+                                        className="w-full flex items-center justify-center gap-2 p-3 text-red-400 hover:bg-red-500/10 hover:text-red-300 rounded-xl transition-colors border border-transparent hover:border-red-500/20"
+                                    >
+                                        <LogOut size={16} />
+                                        <span className="text-sm font-bold">Log Out</span>
+                                    </button>
                                 </div>
                             </div>
 
@@ -271,49 +441,19 @@ const ProfileView = ({ activeAccount, accounts, instances, theme }) => {
                         {/* Right Column: Servers, Playtime, & Cosmetics */}
                         <div className="lg:col-span-2 space-y-8">
 
-                            {/* Owned Servers Section - COMING SOON */}
+                            {/* Owned Servers Section */}
                             <div className="bg-slate-800/50 backdrop-blur-md rounded-2xl border border-white/5 p-6 relative overflow-hidden group">
-                                <ComingSoonOverlay title="Server Managers" description="Host your own servers" />
-                                <div className="flex items-center justify-between mb-6 blur-sm opacity-40">
+                                <div className="flex items-center justify-between mb-6">
                                     <h2 className="text-xl font-bold text-slate-200 flex items-center gap-2">
                                         <Server className="text-indigo-400" size={20} /> Your Servers
                                     </h2>
+                                    <button className="text-xs font-bold text-indigo-400 hover:text-indigo-300 transition-colors uppercase tracking-wider flex items-center gap-1">
+                                        <Plus size={14} /> Create New
+                                    </button>
                                 </div>
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 blur-sm opacity-40 hover:opacity-50 transition-opacity duration-700">
-                                    {mockServers.map((server) => (
-                                        <div key={server.id} className="bg-slate-900 rounded-xl p-4 border border-white/5">
-                                            <div className="flex items-start justify-between">
-                                                <div className="flex items-center gap-3">
-                                                    <div className="w-12 h-12 rounded-lg bg-indigo-500/20 text-indigo-400 flex items-center justify-center">
-                                                        <Box size={20} />
-                                                    </div>
-                                                    <div>
-                                                        <div className="text-base font-bold text-white">{server.name}</div>
-                                                        <div className="text-xs text-slate-400">{server.type}</div>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    ))}
-                                </div>
-                            </div>
-
-                            {/* Most Played Servers Section - COMING SOON */}
-                            <div className="bg-slate-800/50 backdrop-blur-md rounded-2xl border border-white/5 p-6 relative overflow-hidden">
-                                <ComingSoonOverlay title="Server Tracker" description="Track your playtime" />
-                                <h2 className="text-xl font-bold text-slate-200 flex items-center gap-2 mb-6 blur-sm opacity-40">
-                                    <Activity className="text-orange-400" size={20} /> Most Played Servers
-                                </h2>
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 blur-sm opacity-40">
-                                    {mockMostPlayed.map((server) => (
-                                        <div key={server.id} className="flex items-center gap-4 bg-slate-900 rounded-xl p-4 border border-white/5">
-                                            <div className="w-12 h-12 rounded-lg bg-slate-800" />
-                                            <div className="flex-1 min-w-0">
-                                                <div className="text-base font-bold text-white truncate">{server.name}</div>
-                                                <div className="text-xs text-slate-500 truncate">{server.ip}</div>
-                                            </div>
-                                        </div>
-                                    ))}
+                                <div className="flex flex-col items-center justify-center py-12 text-slate-600 gap-3 border border-white/5 rounded-xl bg-slate-900/30 border-dashed">
+                                    <Server size={32} className="opacity-50" />
+                                    <p className="text-sm font-medium">You don't have any servers yet.</p>
                                 </div>
                             </div>
 
@@ -323,7 +463,6 @@ const ProfileView = ({ activeAccount, accounts, instances, theme }) => {
                                     <h2 className="text-xl font-bold text-slate-200 flex items-center gap-2">
                                         <Shirt className="text-pink-400" size={20} /> Cosmetics Showcase
                                     </h2>
-                                    {/* Optional: Link to Wardrobe */}
                                 </div>
 
                                 {isLoadingCosmetics ? (
@@ -335,9 +474,7 @@ const ProfileView = ({ activeAccount, accounts, instances, theme }) => {
                                     <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
                                         {ownedCosmetics.map((item) => (
                                             <div key={item.id} className="group relative bg-slate-900 rounded-xl p-4 border border-white/5 hover:border-white/20 transition-all duration-300 hover:-translate-y-1">
-                                                {/* widget background glow */}
                                                 <div className={`absolute -inset-1 bg-gradient-to-br ${item.color || 'from-slate-700 to-slate-800'} opacity-0 group-hover:opacity-30 blur-xl rounded-xl transition-all duration-500`} />
-
                                                 <div className="relative z-10 flex flex-col items-center text-center space-y-3">
                                                     <div className="w-16 h-16 rounded-lg bg-slate-800 shadow-inner flex items-center justify-center mb-2 group-hover:scale-110 transition-transform duration-300 overflow-hidden">
                                                         {item.texture && <img src={item.texture} className="w-full h-full object-contain" alt={item.name} />}

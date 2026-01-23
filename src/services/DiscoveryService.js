@@ -23,8 +23,14 @@ class DiscoveryService {
     }
 
     async getCategories() {
-        // Deprecated: use getMetadata for full set
-        return this.getMetadata().then(res => ({ categories: res.categories || [] }));
+        if (window.electronAPI && window.electronAPI.getDiscoverCategories) {
+            try {
+                return await window.electronAPI.getDiscoverCategories();
+            } catch (e) {
+                console.error('[Discovery] Failed to fetch categories', e);
+            }
+        }
+        return { categories: [] };
     }
 
     async getMetadata() {
@@ -36,6 +42,42 @@ class DiscoveryService {
             }
         }
         return { categories: [], versions: [], languages: [] };
+    }
+
+    async createServer(ip) {
+        if (window.electronAPI && window.electronAPI.createServer) {
+            try {
+                return await window.electronAPI.createServer({ ip });
+            } catch (e) {
+                console.error('[Discovery] Failed to create server', e);
+                return { success: false, error: e.message };
+            }
+        }
+        return { success: false, error: 'IPC Unavailable' };
+    }
+
+    async verifyServer(ownerUuid, verificationCode) {
+        if (window.electronAPI && window.electronAPI.verifyServer) {
+            try {
+                return await window.electronAPI.verifyServer({ ownerUuid, verificationCode });
+            } catch (e) {
+                console.error('[Discovery] Failed to verify server', e);
+                return { success: false, error: e.message };
+            }
+        }
+        return { success: false, error: 'IPC Unavailable' };
+    }
+
+    async voteServer(serverId, voterUuid, verificationString) {
+        if (window.electronAPI && window.electronAPI.voteServer) {
+            try {
+                return await window.electronAPI.voteServer({ serverId, voterUuid, verificationString });
+            } catch (e) {
+                console.error('[Discovery] Failed to vote server', e);
+                return { success: false, error: e.message };
+            }
+        }
+        return { success: false, error: 'IPC Unavailable' };
     }
 
     async joinServer(payload) {

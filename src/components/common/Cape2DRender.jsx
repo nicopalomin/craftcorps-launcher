@@ -4,7 +4,7 @@ import React, { useRef, useEffect } from 'react';
  * Renders a Minecraft cape texture in 2D with perspective
  * Cape textures are 64x32 or 46x22 pixels
  */
-const Cape2DRender = ({ capeUrl, scale = 3, className = '' }) => {
+const Cape2DRender = ({ capeUrl, scale = 6, className = '' }) => {
     const canvasRef = useRef(null);
 
     useEffect(() => {
@@ -21,31 +21,59 @@ const Cape2DRender = ({ capeUrl, scale = 3, className = '' }) => {
             const capeWidth = img.width;
             const capeHeight = img.height;
 
-            // Set canvas size based on cape back portion (20x16 for 64x32, or 10x16 for 46x22)
+            // Define the cape back portion dimensions
             const backWidth = capeWidth >= 64 ? 10 : 10;  // Back portion width
             const backHeight = capeHeight >= 32 ? 16 : 16; // Back portion height
 
-            canvas.width = backWidth * scale;
-            canvas.height = backHeight * scale;
+            // Cape texture layout: back portion starts at x=1, y=1
+            const sourceX = 1;
+            const sourceY = 1;
+
+            // STEP 1: Extract the back portion to a temporary canvas
+            const tempCanvas = document.createElement('canvas');
+            tempCanvas.width = backWidth;
+            tempCanvas.height = backHeight;
+            const tempCtx = tempCanvas.getContext('2d');
+            tempCtx.imageSmoothingEnabled = false;
+
+            // Draw just the back portion at 1:1 scale
+            tempCtx.drawImage(
+                img,
+                sourceX, sourceY, backWidth, backHeight,  // Source rectangle (back of cape)
+                0, 0, backWidth, backHeight               // Destination (1:1)
+            );
+
+            // STEP 2: Upscale the pixel data using nearest-neighbor
+            // Create a higher resolution version
+            const upscaleFactor = scale;
+            const upscaledWidth = backWidth * upscaleFactor;
+            const upscaledHeight = backHeight * upscaleFactor;
+
+            const upscaleCanvas = document.createElement('canvas');
+            upscaleCanvas.width = upscaledWidth;
+            upscaleCanvas.height = upscaledHeight;
+            const upscaleCtx = upscaleCanvas.getContext('2d');
+            upscaleCtx.imageSmoothingEnabled = false;
+
+            // Draw the temp canvas to upscaled canvas with nearest-neighbor
+            upscaleCtx.drawImage(
+                tempCanvas,
+                0, 0, backWidth, backHeight,           // Source (original size)
+                0, 0, upscaledWidth, upscaledHeight    // Destination (upscaled)
+            );
+
+            // STEP 3: Set final canvas size and render the upscaled texture
+            canvas.width = upscaledWidth;
+            canvas.height = upscaledHeight;
 
             // Clear canvas
             ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-            // Disable image smoothing for crisp pixels
+            // Disable image smoothing for final render
             ctx.imageSmoothingEnabled = false;
 
-            // Draw the back portion of the cape (the visible part when worn)
-            // Cape texture layout: front on left (1-10), back in middle (11-20)
-            const sourceX = capeWidth >= 64 ? 1 : 1;   // Start of back portion
-            const sourceY = capeWidth >= 64 ? 1 : 1;   // Top of cape
-            const sourceWidth = backWidth;
-            const sourceHeight = backHeight;
-
-            ctx.drawImage(
-                img,
-                sourceX, sourceY, sourceWidth, sourceHeight,  // Source rectangle (back of cape)
-                0, 0, canvas.width, canvas.height              // Destination (fill canvas)
-            );
+            // Draw the upscaled texture
+            ctx.drawImage(upscaleCanvas, 0, 0);
         };
 
         img.onerror = () => {
