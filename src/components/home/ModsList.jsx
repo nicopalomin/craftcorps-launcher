@@ -34,7 +34,7 @@ const ModsList = ({
                             <Box size={20} />
                         </div>
                         Installed Mods
-                        <span className={`text-xs font-medium px-2 py-1 rounded-full ${theme === 'white' ? 'bg-slate-200 text-slate-600' : 'bg-slate-800 text-slate-400'}`}>
+                        <span className={`text-xs font-medium px-2 py-1 rounded-full ${theme === 'white' ? 'bg-slate-200 text-slate-600' : 'bg-slate-800 text-white'}`}>
                             {isLoading ? '...' : (installedMods.length > 0 ? installedMods.length : (selectedInstance.mods?.length || 0))}
                         </span>
                     </h3>
@@ -117,8 +117,8 @@ const ModsList = ({
                                                 <Cpu size={16} />
                                             </div>
                                             <div className="min-w-0">
-                                                <div className={`font-medium text-sm truncate ${mod.enabled ? (theme === 'white' ? 'text-slate-700' : 'text-slate-200') : 'text-slate-500 decoration-slate-600 line-through'}`}>{mod.name}</div>
-                                                {mod.version && <div className="text-xs text-slate-500 font-mono truncate mr-2">{mod.version}</div>}
+                                                <div className={`font-medium text-sm truncate ${mod.enabled ? (theme === 'white' ? 'text-slate-700' : 'text-white') : 'text-slate-500 decoration-slate-600 line-through'}`}>{mod.name}</div>
+                                                {mod.version && <div className="text-xs text-slate-400 font-mono truncate mr-2">{mod.version}</div>}
                                             </div>
                                         </div>
                                         <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
@@ -139,7 +139,7 @@ const ModsList = ({
                                     </div>
                                 ))
                             ) : (
-                                <div className="text-center text-slate-500 py-12 flex flex-col items-center gap-2">
+                                <div className="text-center text-slate-400 py-12 flex flex-col items-center gap-2">
                                     {searchQuery ? (
                                         <>
                                             <Search size={32} className="opacity-20" />

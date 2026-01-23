@@ -24,7 +24,8 @@ const AppOverlays = ({
     // Crash
     crashModal, setCrashModal,
     // Update
-    showUpdateModal, setShowUpdateModal, updateStatus, updateInfo, downloadProgress, onDownloadUpdate, onInstallUpdate
+    showUpdateModal, setShowUpdateModal, updateStatus, updateInfo, downloadProgress, onDownloadUpdate, onInstallUpdate,
+    instanceCount
 }) => {
     return (
         <>
@@ -58,6 +59,7 @@ const AppOverlays = ({
                 onSave={onSaveCropWithToast}
                 editingCrop={editingCrop}
                 onDelete={onDeleteCropWithToast}
+                instanceCount={instanceCount}
             />
 
             <JavaInstallModal

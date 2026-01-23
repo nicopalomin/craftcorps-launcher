@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Paintbrush, Box, Layers, Settings } from 'lucide-react';
+import { Paintbrush, Box, Layers, Settings, Aperture } from 'lucide-react';
 import BackgroundBlobs from '../components/common/BackgroundBlobs';
 import { useToast } from '../contexts/ToastContext';
 import { useTranslation } from 'react-i18next';
@@ -9,6 +9,7 @@ import AccountProfile from '../components/home/AccountProfile';
 import InstanceHero from '../components/home/InstanceHero';
 import ModsList from '../components/home/ModsList';
 import ResourcePacksList from '../components/home/ResourcePacksList';
+import ShadersList from '../components/home/ShadersList';
 import EmptyState from '../components/home/EmptyState';
 import QuickSwitchPanel from '../components/home/QuickSwitchPanel';
 import HomeSkeleton from '../components/home/HomeSkeleton';
@@ -28,6 +29,7 @@ const HomeView = ({
     onNewCrop,
     onEditCrop,
     onBrowseMods, // New prop
+    onBrowseShaders, // New prop
     // Account System Props
     accounts,
     onSwitchAccount,
@@ -48,11 +50,21 @@ const HomeView = ({
     const [isLoadingMods, setIsLoadingMods] = useState(false);
     const [resourcePacks, setResourcePacks] = useState(null);
     const [isLoadingResourcePacks, setIsLoadingResourcePacks] = useState(false);
+    const [installedShaders, setInstalledShaders] = useState(null);
+    const [isLoadingShaders, setIsLoadingShaders] = useState(false);
     const [isDragging, setIsDragging] = useState(false);
     const [activeTab, setActiveTab] = useState('mods');
     const [showQuickSwitch, setShowQuickSwitch] = useState(true);
-    const [showAdvanced, setShowAdvanced] = useState(false);
+    const [showAdvanced, setShowAdvanced] = useState(() => {
+        const saved = localStorage.getItem('home_showAdvanced');
+        return saved === 'true';
+    });
     const lastScrollY = React.useRef(0);
+
+    // Persist showAdvanced
+    useEffect(() => {
+        localStorage.setItem('home_showAdvanced', showAdvanced);
+    }, [showAdvanced]);
 
     // Handlers
     const handleAddMods = async (filePaths = null) => {
@@ -159,8 +171,13 @@ const HomeView = ({
     const handleDrop = (e) => {
         e.preventDefault();
         setIsDragging(false);
+        if (!window.electronAPI || !window.electronAPI.getPathForFile) return;
+
         if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
-            const files = Array.from(e.dataTransfer.files).map(f => f.path).filter(p => p.endsWith('.jar'));
+            const files = Array.from(e.dataTransfer.files)
+                .map(f => window.electronAPI.getPathForFile(f))
+                .filter(p => p && p.toLowerCase().endsWith('.jar'));
+
             if (files.length > 0) {
                 handleAddMods(files);
             } else {
@@ -226,8 +243,13 @@ const HomeView = ({
     const handleResourcePackDrop = (e) => {
         e.preventDefault();
         setIsDragging(false);
+        if (!window.electronAPI || !window.electronAPI.getPathForFile) return;
+
         if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
-            const files = Array.from(e.dataTransfer.files).map(f => f.path).filter(p => p.endsWith('.zip'));
+            const files = Array.from(e.dataTransfer.files)
+                .map(f => window.electronAPI.getPathForFile(f))
+                .filter(p => p && p.toLowerCase().endsWith('.zip'));
+
             if (files.length > 0) {
                 handleAddResourcePacks(files);
             } else {
@@ -269,6 +291,104 @@ const HomeView = ({
         }
     };
 
+    // Shaders Handlers
+    const handleAddShaders = async (filePaths = null) => {
+        if (!selectedInstance?.path || !window.electronAPI) {
+            showToast(t('Error: Configuration missing'), 'error');
+            return;
+        }
+
+        let files = filePaths;
+        if (!files) {
+            try {
+                files = await window.electronAPI.selectShaderFiles();
+            } catch (err) {
+                console.error(err);
+                return;
+            }
+        }
+
+        if (files && Array.isArray(files) && files.length > 0) {
+            showToast('Adding shaders...', 'info');
+
+            try {
+                const result = await window.electronAPI.addInstanceShaders(selectedInstance.path, files);
+
+                if (result.success) {
+                    if (result.added > 0) {
+                        showToast(`Successfully added ${result.added} shaders`, 'success');
+                    }
+                    // Optimistic update
+                    if (result.addedShaders && Array.isArray(result.addedShaders)) {
+                        setInstalledShaders(prev => {
+                            if (!Array.isArray(prev)) return result.addedShaders;
+                            const prevPaths = new Set(prev.map(p => p.path));
+                            const newShaders = result.addedShaders.filter(p => !prevPaths.has(p.path));
+                            return [...newShaders, ...prev];
+                        });
+                    }
+                } else {
+                    showToast(result.error || 'Failed to add shaders', 'error');
+                }
+            } catch (e) {
+                console.error(e);
+                showToast(e.message || 'Error adding shaders', 'error');
+            }
+        }
+    };
+
+    const handleRefreshShaders = async () => {
+        if (!selectedInstance?.path || !window.electronAPI) return;
+        setIsLoadingShaders(true);
+        try {
+            const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error('Refresh timed out')), 5000));
+            const shaders = await Promise.race([
+                window.electronAPI.getInstanceShaders(selectedInstance.path),
+                timeoutPromise
+            ]);
+            setInstalledShaders(shaders);
+        } catch (e) {
+            console.error(e);
+            showToast('Failed to refresh shaders', 'error');
+        } finally {
+            setIsLoadingShaders(false);
+        }
+    };
+
+    const handleDeleteShader = async (shader) => {
+        if (!shader.path || !window.electronAPI) return;
+        try {
+            const result = await window.electronAPI.deleteShader(shader.path);
+            if (result.success) {
+                setInstalledShaders(prev => (prev || []).filter(p => p.path !== shader.path));
+                showToast('Shader deleted', 'success');
+            } else {
+                showToast(result.error || 'Failed to delete shader', 'error');
+            }
+        } catch (e) {
+            console.error(e);
+            showToast('Error deleting shader', 'error');
+        }
+    };
+
+    const handleShaderDrop = (e) => {
+        e.preventDefault();
+        setIsDragging(false);
+        if (!window.electronAPI || !window.electronAPI.getPathForFile) return;
+
+        if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+            const files = Array.from(e.dataTransfer.files)
+                .map(f => window.electronAPI.getPathForFile(f))
+                .filter(p => p && p.toLowerCase().endsWith('.zip'));
+
+            if (files.length > 0) {
+                handleAddShaders(files);
+            } else {
+                showToast('Please drop .zip files for shaders', 'warning');
+            }
+        }
+    };
+
     const handleScroll = (e) => {
         const currentScrollY = e.target.scrollTop;
 
@@ -290,11 +410,9 @@ const HomeView = ({
     useEffect(() => {
         setInstalledMods([]);
         setResourcePacks([]);
+        setInstalledShaders([]);
         setHasLoadedMods(false);
-        // Do NOT reset showAdvanced here if we want persistence, 
-        // but user probably expects it to close when switching instances? 
-        // Let's reset it for now to keep it clean.
-        setShowAdvanced(false);
+        // We preserve showAdvanced state across instance switches
     }, [selectedInstance]);
 
     useEffect(() => {
@@ -306,6 +424,7 @@ const HomeView = ({
                 setHasLoadedMods(true);
                 handleRefreshMods();
                 handleRefreshResourcePacks();
+                handleRefreshShaders();
                 observer.disconnect();
             }
         }, { threshold: 0.1 });
@@ -415,20 +534,10 @@ const HomeView = ({
                         {/* Modded Details Section */}
                         <div className={`w-full transition-all duration-700 ease-in-out ${isModded && showAdvanced ? 'opacity-100 max-h-[2000px] translate-y-0' : 'opacity-0 max-h-0 translate-y-20 overflow-hidden'}`}>
                             {isModded && (
-                                <div ref={modsSectionRef} className="w-full max-w-7xl mx-auto px-8 pb-8 animate-in slide-in-from-bottom-10 fade-in duration-700 delay-100">
+                                <div ref={modsSectionRef} className="w-full max-w-7xl mx-auto px-8 pb-8 mt-4 animate-in slide-in-from-bottom-10 fade-in duration-700 delay-100">
                                     {/* Unified Glass Card */}
                                     <div
-                                        className={`backdrop-blur-md flex flex-col h-[750px] overflow-hidden relative border rounded-3xl transition-colors duration-300 ${theme === 'white' ? 'bg-white/90 border-white/50 shadow-xl' : 'bg-slate-900/40 border-white/5'}`}
-                                        style={{
-                                            backgroundImage: `
-                                                repeating-linear-gradient(0deg, transparent, transparent 14px, rgba(148, 163, 184, 0.12) 14px, rgba(148, 163, 184, 0.12) 15px),
-                                                repeating-linear-gradient(90deg, transparent, transparent 14px, rgba(148, 163, 184, 0.12) 14px, rgba(148, 163, 184, 0.12) 15px),
-                                                repeating-linear-gradient(45deg, transparent, transparent 29px, rgba(100, 116, 139, 0.08) 29px, rgba(100, 116, 139, 0.08) 30px),
-                                                repeating-linear-gradient(-45deg, transparent, transparent 29px, rgba(100, 116, 139, 0.08) 29px, rgba(100, 116, 139, 0.08) 30px)
-                                            `,
-                                            backgroundSize: '15px 15px, 15px 15px, 30px 30px, 30px 30px',
-                                            backgroundPosition: '0 0, 0 0, 0 0, 0 0'
-                                        }}
+                                        className={`flex flex-col h-[750px] overflow-hidden relative transition-all duration-300 ${theme === 'white' ? 'bg-white/90 border border-white/50 shadow-xl rounded-3xl backdrop-blur-md' : 'bg-slate-950/80 border border-slate-800/50 shadow-2xl rounded-[2rem] backdrop-blur-xl'}`}
                                     >
 
                                         {/* Internal Tab Switcher */}
@@ -454,12 +563,22 @@ const HomeView = ({
                                                     <Layers size={16} />
                                                     <span>Resource Packs</span>
                                                 </button>
+                                                <button
+                                                    onClick={() => setActiveTab('shaders')}
+                                                    className={`relative px-8 py-2 rounded-lg font-medium text-sm transition-all duration-300 flex items-center justify-center gap-2 min-w-[140px] z-10 ${activeTab === 'shaders'
+                                                        ? 'text-white bg-cyan-600 shadow-lg shadow-cyan-500/20'
+                                                        : (theme === 'white' ? 'text-slate-600 hover:text-slate-900 hover:bg-white/60' : 'text-slate-400 hover:text-white hover:bg-white/5')
+                                                        }`}
+                                                >
+                                                    <Aperture size={16} />
+                                                    <span>Shaders</span>
+                                                </button>
                                             </div>
                                         </div>
 
                                         {/* Content Area */}
                                         <div className="flex-1 overflow-hidden relative">
-                                            {activeTab === 'mods' ? (
+                                            {activeTab === 'mods' && (
                                                 <ModsList
                                                     installedMods={installedMods}
                                                     selectedInstance={selectedInstance}
@@ -475,7 +594,8 @@ const HomeView = ({
                                                     theme={theme}
                                                     className="!bg-transparent !border-none !rounded-none !shadow-none !h-full !p-6 animate-in fade-in duration-300"
                                                 />
-                                            ) : (
+                                            )}
+                                            {activeTab === 'resourcepacks' && (
                                                 <ResourcePacksList
                                                     resourcePacks={resourcePacks}
                                                     selectedInstance={selectedInstance}
@@ -487,6 +607,23 @@ const HomeView = ({
                                                     onDragOver={handleDragOver}
                                                     onDragLeave={handleDragLeave}
                                                     onDrop={handleResourcePackDrop}
+                                                    theme={theme}
+                                                    className="!bg-transparent !border-none !rounded-none !shadow-none !h-full !p-6 animate-in fade-in duration-300"
+                                                />
+                                            )}
+                                            {activeTab === 'shaders' && (
+                                                <ShadersList
+                                                    shaders={installedShaders}
+                                                    selectedInstance={selectedInstance}
+                                                    isLoading={isLoadingShaders}
+                                                    onRefresh={handleRefreshShaders}
+                                                    onAdd={handleAddShaders}
+                                                    onBrowse={onBrowseShaders}
+                                                    onDelete={handleDeleteShader}
+                                                    isDraggingGlobal={isDragging}
+                                                    onDragOver={handleDragOver}
+                                                    onDragLeave={handleDragLeave}
+                                                    onDrop={handleShaderDrop}
                                                     theme={theme}
                                                     className="!bg-transparent !border-none !rounded-none !shadow-none !h-full !p-6 animate-in fade-in duration-300"
                                                 />

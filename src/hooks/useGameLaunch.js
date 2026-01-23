@@ -277,9 +277,12 @@ export const useGameLaunch = (selectedInstance, ram, activeAccount, updateLastPl
                     return;
                 }
 
+                // Calculate effective RAM
+                const effectiveRam = (instance?.ramOverride && instance?.ram) ? instance.ram : ram;
+
                 const launchOptions = await AccountManager.buildLaunchOptions(
                     instance,
-                    ram,
+                    effectiveRam,
                     server,
                     javaPath,
                     accountToUse // Passing the specific account
@@ -289,7 +292,7 @@ export const useGameLaunch = (selectedInstance, ram, activeAccount, updateLastPl
                 launchOptions.gameDir = instance.path;
 
                 window.electronAPI.launchGame(launchOptions);
-                window.electronAPI.log('info', `[UI] Launch command sent to backend. RAM: ${ram} GB, User: ${launchOptions.username}, Java: ${javaPath}`);
+                window.electronAPI.log('info', `[UI] Launch command sent to backend. RAM: ${effectiveRam} GB (Override: ${!!instance?.ramOverride}), User: ${launchOptions.username}, Java: ${javaPath}`);
             } catch (error) {
                 console.error("Failed to build launch options or send launch command:", error);
                 setLogs(prev => [...prev, { time: "Now", type: "ERROR", message: `Launch initialization failed: ${error.message}` }]);

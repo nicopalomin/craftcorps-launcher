@@ -45,6 +45,7 @@ const ServerCard = React.memo(({
     };
 
     const [imgError, setImgError] = React.useState(false);
+    const [imgLoaded, setImgLoaded] = React.useState(false);
     const iconSrc = server.icon || `https://api.mcsrvstat.us/icon/${server.ip}`;
 
     return (
@@ -57,8 +58,9 @@ const ServerCard = React.memo(({
                 {!imgError && (
                     <img
                         src={iconSrc}
+                        loading="lazy"
                         decoding="async"
-                        className="absolute inset-0 w-full h-full object-cover blur-xl opacity-35 scale-150"
+                        className={`absolute inset-0 w-full h-full object-cover blur-xl scale-150 transition-opacity duration-700 ${imgLoaded ? 'opacity-35' : 'opacity-0'}`}
                         alt=""
                         onError={() => setImgError(true)}
                     />
@@ -83,13 +85,20 @@ const ServerCard = React.memo(({
                     className={`absolute -top-8 left-6 ${iconSize} rounded-2xl bg-slate-800 p-1 shadow-lg border border-slate-700 group-hover:scale-105 transition-transform duration-300`}
                 >
                     {!imgError ? (
-                        <img
-                            src={iconSrc}
-                            alt={server.name}
-                            decoding="async"
-                            className="w-full h-full rounded-xl"
-                            onError={() => setImgError(true)}
-                        />
+                        <div className="w-full h-full relative rounded-xl overflow-hidden bg-slate-800">
+                            {/* Optional Placeholder */}
+                            <div className={`absolute inset-0 bg-gradient-to-br ${gradient} opacity-20 transition-opacity duration-500 ${imgLoaded ? 'opacity-0' : 'opacity-100'}`} />
+
+                            <img
+                                src={iconSrc}
+                                alt={server.name}
+                                loading="lazy"
+                                decoding="async"
+                                className={`w-full h-full object-cover transition-opacity duration-500 ${imgLoaded ? 'opacity-100' : 'opacity-0'}`}
+                                onLoad={() => setImgLoaded(true)}
+                                onError={() => setImgError(true)}
+                            />
+                        </div>
                     ) : (
                         <div
                             className={`w-full h-full rounded-xl bg-gradient-to-br ${gradient} flex items-center justify-center`}

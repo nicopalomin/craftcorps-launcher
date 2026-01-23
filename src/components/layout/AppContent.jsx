@@ -45,6 +45,33 @@ const AppContent = ({
         handlePlay(...args);
     };
 
+    const [modsProjectType, setModsProjectType] = React.useState('mod');
+
+    // Reset mods view type when instance changes (optional, but good for context)
+    React.useEffect(() => {
+        if (selectedInstance) {
+            // Default to mod if we have an instance
+            // But don't override if user was just browsing shaders? 
+            // Maybe just leave it sticky?
+            // Original logic was: useState(selectedInstance ? 'mod' : 'modpack')
+            // Let's implement that behavior on mount/change, but be careful not to annoy.
+            // Actually, let's just default on initial selection.
+            setModsProjectType('mod');
+        } else {
+            setModsProjectType('modpack');
+        }
+    }, [selectedInstance?.path]); // Only when path changes (instance switch)
+
+    const handleBrowseMods = () => {
+        setModsProjectType('mod');
+        setActiveTab('mods');
+    };
+
+    const handleBrowseShaders = () => {
+        setModsProjectType('shader');
+        setActiveTab('mods');
+    };
+
     return (
         <div className="flex-1 flex flex-col relative pt-10 overflow-hidden">
             {activeTab === 'home' && (
@@ -68,7 +95,8 @@ const AppContent = ({
                         setSelectedInstance={setSelectedInstance}
                         onNewCrop={handleNewCrop}
                         onEditCrop={handleEditCrop}
-                        onBrowseMods={() => setActiveTab('mods')}
+                        onBrowseMods={handleBrowseMods}
+                        onBrowseShaders={handleBrowseShaders}
                         // Account System Props
                         accounts={accounts}
                         onSwitchAccount={onAccountSwitchWithToast}
@@ -118,6 +146,8 @@ const AppContent = ({
                             setActiveTab('home');
                         }}
                         onSwitchInstance={() => setActiveTab('instances')}
+                        projectType={modsProjectType}
+                        setProjectType={setModsProjectType}
                     />
                 </div>
             )}

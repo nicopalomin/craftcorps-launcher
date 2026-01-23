@@ -6,9 +6,15 @@ const ToastContext = createContext(null);
 export const ToastProvider = ({ children }) => {
     const [toasts, setToasts] = useState([]);
 
-    const addToast = useCallback((message, type = 'info') => {
-        const id = Date.now();
-        setToasts(prev => [...prev, { id, message, type }]);
+    const addToast = useCallback((message, type = 'info', duration = 3000) => {
+        const id = Date.now().toString(36) + Math.random().toString(36).substr(2);
+        setToasts(prev => {
+            const newToasts = [...prev, { id, message, type, duration }];
+            if (newToasts.length > 5) {
+                return newToasts.slice(newToasts.length - 5);
+            }
+            return newToasts;
+        });
     }, []);
 
     const removeToast = useCallback((id) => {
@@ -27,7 +33,7 @@ export const ToastProvider = ({ children }) => {
     );
 };
 
-const ToastItem = ({ id, message, type, removeCallback }) => {
+const ToastItem = ({ id, message, type, duration = 3000, removeCallback }) => {
     const [isExiting, setIsExiting] = useState(false);
 
     const handleClose = () => {
@@ -41,9 +47,9 @@ const ToastItem = ({ id, message, type, removeCallback }) => {
     React.useEffect(() => {
         const timer = setTimeout(() => {
             handleClose();
-        }, 3000);
+        }, duration);
         return () => clearTimeout(timer);
-    }, []);
+    }, [duration]);
 
     const icons = {
         success: <Check size={18} className="text-emerald-500" />,
