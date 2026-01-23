@@ -14,6 +14,7 @@ const LoginModal = ({ isOpen, onClose, onAddAccount, isAutoRefreshing }) => {
     const [isLoading, setIsLoading] = useState(false);
     const [loginType, setLoginType] = useState(null); // microsoft | offline
     const [errorMsg, setErrorMsg] = useState(null);
+    const [detectedAccounts, setDetectedAccounts] = useState([]);
 
     // Reset state when modal opens/closes
     React.useEffect(() => {
@@ -23,9 +24,18 @@ const LoginModal = ({ isOpen, onClose, onAddAccount, isAutoRefreshing }) => {
             setErrorMsg(null);
             setTosAgreed(false);
             setLoginType(null);
-            // Don't reset activeMethod here if we want to remember tab? 
-            // Usually reset to selection is safer.
             setActiveMethod('selection');
+        } else {
+            // Scan for local accounts
+            const scan = async () => {
+                if (window.electronAPI?.detectLocalAccounts) {
+                    const res = await window.electronAPI.detectLocalAccounts();
+                    if (res.success) {
+                        setDetectedAccounts(res.accounts);
+                    }
+                }
+            };
+            scan();
         }
     }, [isOpen]);
 
@@ -192,6 +202,44 @@ const LoginModal = ({ isOpen, onClose, onAddAccount, isAutoRefreshing }) => {
                                 <div className="bg-red-500/10 border border-red-500/20 text-red-400 p-3 rounded-xl text-sm flex items-start gap-2">
                                     <ShieldCheck size={16} className="mt-0.5 shrink-0" />
                                     <span>{errorMsg}</span>
+                                </div>
+                            )}
+
+                            {detectedAccounts.length > 0 && (
+                                <div className="space-y-3">
+                                    <div className="flex items-center gap-2 px-1">
+                                        <div className="h-px bg-slate-800 flex-1" />
+                                        <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest bg-slate-900 px-2">Detected Accounts</span>
+                                        <div className="h-px bg-slate-800 flex-1" />
+                                    </div>
+                                    <div className="grid grid-cols-1 gap-2">
+                                        {detectedAccounts.map((acc, idx) => (
+                                            <button
+                                                key={idx}
+                                                onClick={handleMicrosoftLogin}
+                                                disabled={!tosAgreed}
+                                                className={`w-full p-4 rounded-xl flex items-center justify-between group/btn transition-all ${tosAgreed ? 'bg-slate-800/50 hover:bg-slate-700/60 border-slate-700 text-white' : 'bg-slate-900 text-slate-600 cursor-not-allowed border border-slate-800/10 pointer-events-none'}`}
+                                            >
+                                                <div className="flex items-center gap-3">
+                                                    <div className="relative">
+                                                        <div className="absolute -inset-1 bg-emerald-500/20 blur-sm rounded-lg opacity-0 group-hover/btn:opacity-100 transition-opacity" />
+                                                        <div className="w-10 h-10 rounded-lg bg-slate-900 border border-slate-700 overflow-hidden relative">
+                                                            <img
+                                                                src={`https://mc-heads.net/avatar/${acc.uuid}/64`}
+                                                                alt={acc.name}
+                                                                className="w-full h-full rendering-pixelated"
+                                                            />
+                                                        </div>
+                                                    </div>
+                                                    <div className="text-left">
+                                                        <div className="font-bold text-sm">{acc.name}</div>
+                                                        <div className="text-[10px] text-slate-500 uppercase tracking-tight">System Detected Profile</div>
+                                                    </div>
+                                                </div>
+                                                {tosAgreed && <div className="bg-emerald-500/10 text-emerald-400 text-[10px] font-black px-2 py-1 rounded-md opacity-0 group-hover/btn:opacity-100 transition-all translate-x-2 group-hover/btn:translate-x-0">CONNECT</div>}
+                                            </button>
+                                        ))}
+                                    </div>
                                 </div>
                             )}
 

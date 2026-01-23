@@ -66,6 +66,49 @@ function setupAuthHandlers(getMainWindow) {
             return { success: false, error: error.message || error };
         }
     });
+
+    ipcMain.handle('detect-local-accounts', async () => {
+        try {
+            const fs = require('fs').promises;
+            const path = require('path');
+            const os = require('os');
+
+            let mcPath;
+            if (process.platform === 'win32') {
+                mcPath = path.join(process.env.APPDATA, '.minecraft');
+            } else if (process.platform === 'darwin') {
+                mcPath = path.join(os.homedir(), 'Library', 'Application Support', 'minecraft');
+            } else {
+                mcPath = path.join(os.homedir(), '.minecraft');
+            }
+
+            const accountsPath = path.join(mcPath, 'launcher_accounts.json');
+
+            try {
+                const data = await fs.readFile(accountsPath, 'utf8');
+                const json = JSON.parse(data);
+
+                if (json.accounts) {
+                    const accounts = Object.values(json.accounts)
+                        .filter(acc => acc.type === 'msa' && acc.minecraftProfile)
+                        .map(acc => ({
+                            name: acc.minecraftProfile.name,
+                            uuid: acc.minecraftProfile.id,
+                            type: 'microsoft'
+                        }));
+
+                    return { success: true, accounts };
+                }
+            } catch (e) {
+                // File not found or unreadable
+                return { success: false, error: 'NO_LOCAL_ACCOUNTS' };
+            }
+
+            return { success: false, error: 'NO_LOCAL_ACCOUNTS' };
+        } catch (error) {
+            return { success: false, error: error.message };
+        }
+    });
 }
 
 module.exports = { setupAuthHandlers };
