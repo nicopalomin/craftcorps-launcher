@@ -16,8 +16,7 @@ const Sidebar = ({ activeTab, onTabChange, theme, onSelectRunningInstance }) => 
     const sidebarRef = useRef(null);
 
 
-    // Timer ref for hover-to-open functionality
-    const hoverTimer = useRef(null);
+
 
     // Save width to local storage whenever it changes
     useEffect(() => {
@@ -69,23 +68,13 @@ const Sidebar = ({ activeTab, onTabChange, theme, onSelectRunningInstance }) => 
         };
     }, [isResizing, resize, stopResizing]);
 
-    const handleMouseEnter = () => {
-        if (isCollapsed) {
-            hoverTimer.current = setTimeout(() => {
-                setIsCollapsed(false);
-                hoverTimer.current = null;
-            }, 750);
-        }
-    };
-
     const handleMouseLeave = () => {
-        // Clear the open timer if the user leaves before 3s
-        if (hoverTimer.current) {
-            clearTimeout(hoverTimer.current);
-            hoverTimer.current = null;
-        }
         // Collapse if leaving (and not resizing)
         if (!isResizing) setIsCollapsed(true);
+    };
+
+    const handleDoubleClick = () => {
+        setIsCollapsed(false);
     };
 
     const getSidebarStyles = () => {
@@ -100,8 +89,8 @@ const Sidebar = ({ activeTab, onTabChange, theme, onSelectRunningInstance }) => 
             ref={sidebarRef}
             className={`${getSidebarStyles()} border-r flex flex-col z-20 select-none relative group/sidebar ${isResizing ? 'transition-none' : 'transition-[width,background-color] duration-500 ease-out'} transform-gpu will-change-[width] overflow-hidden`}
             style={{ width: effectiveWidth }}
-            onMouseEnter={handleMouseEnter}
             onMouseLeave={handleMouseLeave}
+            onDoubleClick={handleDoubleClick}
         >
             <div className="flex flex-col h-full overflow-hidden p-4" style={{ width: width, minWidth: width }}>
                 {/* Logo area */}
