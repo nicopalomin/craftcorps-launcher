@@ -1,303 +1,362 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import { AlertCircle, Check } from 'lucide-react';
+import React, { useState, useEffect, useRef } from 'react'; // Ensure React and other hooks are imported
 import { useTranslation } from 'react-i18next';
 import { useToast } from '../contexts/ToastContext';
-import { ModsGridView } from './mods/ModsGridView';
-import { ModsDetailView } from './mods/ModsDetailView';
+import { ModsDetailView } from './mods/ModsDetailView'; // Named export
+import { ModsGridView } from './mods/ModsGridView'; // Named export
 
-// Since we moved components, lucide-react etc are imported there or handled via props.
+const ShaderDependencyModal = ({ isOpen, onClose, onConfirm, loader }) => {
+    if (!isOpen) return null;
 
-const ModsView = ({ selectedInstance, instances = [], onInstanceCreated, onSwitchInstance }) => {
+    const recommended = (loader === 'fabric' || loader === 'quilt') ? 'Iris & Sodium' : 'Oculus';
+    const description = (loader === 'fabric' || loader === 'quilt')
+        ? "To use shaders on Fabric/Quilt, you need the Iris mod (and Sodium). We can install these for you automatically."
+        : "To use shaders on Forge/NeoForge, you need the Oculus mod. We can install it for you automatically.";
+
+    return (
+        <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
+            <div className="bg-slate-900 border border-slate-700 rounded-2xl p-6 max-w-md w-full shadow-2xl scale-100 animate-in zoom-in-95 duration-200">
+                <div className="flex items-center gap-3 mb-4 text-amber-500">
+                    <AlertCircle size={32} />
+                    <h3 className="text-xl font-bold text-white">Shader Support Required</h3>
+                </div>
+
+                <p className="text-slate-300 mb-6 leading-relaxed">
+                    {description}
+                </p>
+
+                <div className="flex justify-end gap-3">
+                    <button
+                        onClick={onClose}
+                        className="px-4 py-2 rounded-xl text-slate-400 hover:text-white hover:bg-white/5 transition-colors font-medium"
+                    >
+                        Cancel
+                    </button>
+                    <button
+                        onClick={onConfirm}
+                        className="px-5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold shadow-lg shadow-emerald-900/20 transition-all active:scale-95 flex items-center gap-2"
+                    >
+                        <Check size={18} />
+                        Install {recommended} & Shader
+                    </button>
+                </div>
+            </div>
+        </div>
+    );
+};
+
+const ModsView = ({ selectedInstance, instances = [], onInstanceCreated, onSwitchInstance, projectType = 'mod', setProjectType }) => {
     const { t } = useTranslation();
     const { addToast } = useToast();
 
     // -- State: Search --
     const [searchQuery, setSearchQuery] = useState('');
-    const [projectType, setProjectType] = useState(selectedInstance ? 'mod' : 'modpack'); // Auto-select mod if instance selected
 
-    const [filterVersion, setFilterVersion] = useState(selectedInstance ? selectedInstance.version : '');
+    // -- State: Selection & Details --
+    const [selectedProject, setSelectedProject] = useState(null);
+    const [projectDetails, setProjectDetails] = useState(null);
+    const [versions, setVersions] = useState([]);
+    const [selectedVersion, setSelectedVersion] = useState(null);
+    const [dependencies, setDependencies] = useState([]);
+    const [isLoadingDetails, setIsLoadingDetails] = useState(false);
+    const [activeTab, setActiveTab] = useState('description');
+
+    // -- State: Installation --
+    const [installingStates, setInstallingStates] = useState({});
+    const [installProgress, setInstallProgress] = useState({});
+
+    // -- State: Filters & Search --
+    const [filterVersion, setFilterVersion] = useState('');
     const [filterCategory, setFilterCategory] = useState('');
-    const [results, setResults] = useState([]);
-    const [isSearching, setIsSearching] = useState(false);
-    const [searchError, setSearchError] = useState(null);
-
-    // Filter Options State
     const [availableVersions, setAvailableVersions] = useState([]);
     const [availableCategories, setAvailableCategories] = useState([]);
     const [isLoadingFilters, setIsLoadingFilters] = useState(false);
 
-    // -- Mount Delay for Smooth Animation --
-    const [isReady, setIsReady] = useState(false);
-    useEffect(() => {
-        const timer = setTimeout(() => setIsReady(true), 350);
-        return () => clearTimeout(timer);
-    }, []);
+    // -- State: Search Results --
+    const [isSearching, setIsSearching] = useState(true); // Start loading immediately
+    const [isLoadingMore, setIsLoadingMore] = useState(false);
+    const [searchError, setSearchError] = useState(null);
+    const [results, setResults] = useState([]);
 
-    // -- State: Detail View --
-    const [selectedProject, setSelectedProject] = useState(null); // The basic project info from search
-    const [projectDetails, setProjectDetails] = useState(null); // Full details (body, etc)
-    const [versions, setVersions] = useState([]);
-    const [selectedVersion, setSelectedVersion] = useState(null); // State for user-selected version
-    const [dependencies, setDependencies] = useState([]); // Resolved dependency projects
-    const [isLoadingDetails, setIsLoadingDetails] = useState(false);
-    const [activeTab, setActiveTab] = useState('description'); // 'description', 'versions', or 'dependencies'
+    const [installedMods, setInstalledMods] = useState([]);
+    const [installedShaders, setInstalledShaders] = useState([]);
 
-    // -- State: Installation --
-    const [installingStates, setInstallingStates] = useState({});
-    const [installProgress, setInstallProgress] = useState({}); // { projectId: { progress, step, downloaded, total, speed, remaining } }
+    // -- State: Shader Warning --
+    const [showShaderWarning, setShowShaderWarning] = useState(false);
+    const [pendingShaderProject, setPendingShaderProject] = useState(null);
+    const [pendingShaderVersion, setPendingShaderVersion] = useState(null);
+
+    // -- Cache --
+    const searchCache = useRef({});
 
     useEffect(() => {
-        if (window.electronAPI && window.electronAPI.onInstallProgress) {
-            window.electronAPI.onInstallProgress((data) => {
-                setInstallProgress(prev => ({ ...prev, [data.projectId]: data }));
-            });
+        // Reset filters when project type changes
+        setFilterCategory('');
+        setSearchQuery('');
+        setSearchError(null);
+
+        // Caching Logic
+        const cached = searchCache.current[projectType];
+        // Validate cache context (loader match for mods)
+        let isValid = !!cached;
+        if (isValid && projectType === 'mod' && selectedInstance && selectedInstance.loader && selectedInstance.loader !== 'Vanilla') {
+            if (cached.loader !== selectedInstance.loader.toLowerCase()) isValid = false;
         }
-        return () => {
-            if (window.electronAPI && window.electronAPI.removeInstallProgressListeners) {
-                window.electronAPI.removeInstallProgressListeners();
+
+        if (isValid) {
+            setResults(cached.data);
+            setIsSearching(false);
+        } else {
+            setResults([]);
+            setIsSearching(true); // Show shimmer while waiting for debounce/fetch
+        }
+    }, [projectType, selectedInstance?.id]);
+
+    useEffect(() => {
+        loadInstalledMods();
+        loadInstalledShaders();
+    }, [selectedInstance]);
+
+    // Load metadata (versions, categories) on mount
+    useEffect(() => {
+        // ... existing metadata load ...
+        const loadMetadata = async () => {
+            if (!window.electronAPI) return;
+            try {
+                // Load Game Versions
+                const vRes = await window.electronAPI.modrinthGetTags('game_version');
+                if (vRes.success && Array.isArray(vRes.data)) {
+                    const vers = vRes.data
+                        .map(v => v.version)
+                        .filter(v => v && v.match(/^\d+\.\d+(\.\d+)?$/))
+                        .sort((a, b) => b.localeCompare(a, undefined, { numeric: true }));
+                    setAvailableVersions(vers.slice(0, 50));
+                }
+
+                // Load Categories
+                const cRes = await window.electronAPI.modrinthGetTags('category');
+                if (cRes.success && Array.isArray(cRes.data)) {
+                    setAvailableCategories(cRes.data.map(c => ({ value: c.name, label: c.header || c.name })));
+                }
+            } catch (e) {
+                console.error("Failed to load tags", e);
             }
         };
+        loadMetadata();
     }, []);
+
+    // ... (omitted Load Project Details & Versions and Load Dependencies for brevity if unchanged, but I need to be careful with range)
+    // Actually I should only replace the relevant blocks to make it cleaner.
+
+    // I will use multiple chunks.
+
+
+    // Load Project Details & Versions when Selected
+    useEffect(() => {
+        if (!selectedProject || !window.electronAPI) return;
+
+        const loadDetails = async () => {
+            setIsLoadingDetails(true);
+            setProjectDetails(null);
+            setVersions([]);
+            setDependencies([]);
+            // Don't reset activeTab here so user can stay on 'versions' if browsing multiple mods? 
+            // Actually usually better to reset to description.
+            setActiveTab('description');
+
+            try {
+                const projectId = selectedProject.project_id;
+
+                // 1. Fetch Project Body/Details
+                const pRes = await window.electronAPI.modrinthGetProject(projectId);
+                if (pRes.success) {
+                    setProjectDetails(pRes.data);
+                }
+
+                // 2. Fetch Versions
+                // We fetch all versions to ensure the table isn't empty. 
+                // Filters can be applied client-side or we can just highlight compatible ones.
+                const vRes = await window.electronAPI.modrinthGetVersions({ projectId });
+
+                if (vRes.success) {
+                    const allVersions = vRes.data;
+                    setVersions(allVersions);
+
+                    // Auto-select best version for current instance
+                    if (allVersions.length > 0) {
+                        let bestVer = allVersions[0];
+
+                        if (selectedInstance && selectedInstance.version) {
+                            const exactMatch = allVersions.find(v =>
+                                v.game_versions.includes(selectedInstance.version) &&
+                                (selectedInstance.loader === 'Vanilla' || !selectedInstance.loader || v.loaders.includes(selectedInstance.loader.toLowerCase()))
+                            );
+                            if (exactMatch) bestVer = exactMatch;
+                        }
+                        setSelectedVersion(bestVer);
+                    }
+                }
+            } catch (e) {
+                console.error("Failed to load details", e);
+                addToast("Failed to load project details", 'error');
+            } finally {
+                setIsLoadingDetails(false);
+            }
+        };
+
+        loadDetails();
+    }, [selectedProject]);
+
+    // Load Dependencies when Version Changes
+    useEffect(() => {
+        if (!selectedVersion || !window.electronAPI) {
+            setDependencies([]);
+            return;
+        }
+
+        const loadDependencies = async () => {
+            // Dependencies are in the version object
+            if (selectedVersion.dependencies && selectedVersion.dependencies.length > 0) {
+                const depIds = selectedVersion.dependencies
+                    .map(d => d.project_id)
+                    .filter(id => id); // Filter out nulls
+
+                if (depIds.length > 0) {
+                    // Dedup IDs just in case
+                    const uniqueIds = [...new Set(depIds)];
+                    const depRes = await window.electronAPI.modrinthGetProjects(uniqueIds);
+                    if (depRes.success) {
+                        setDependencies(depRes.data);
+                    }
+                } else {
+                    setDependencies([]);
+                }
+            } else {
+                setDependencies([]);
+            }
+        };
+        loadDependencies();
+    }, [selectedVersion]);
+
+    // Search Trigger (Debounced)
+    useEffect(() => {
+        const timeoutId = setTimeout(() => {
+            performSearch(searchQuery);
+        }, 500);
+        return () => clearTimeout(timeoutId);
+    }, [searchQuery, filterVersion, filterCategory, projectType, selectedInstance]);
+
+    const performSearch = async (query = searchQuery, append = false) => {
+        if (!window.electronAPI) return;
+
+        // Context check for cache
+        const isDefaultSearch = !query && !filterVersion && !filterCategory && !append;
+        let currentLoader = null;
+        if (projectType === 'mod' && selectedInstance && selectedInstance.loader && selectedInstance.loader !== 'Vanilla') {
+            currentLoader = selectedInstance.loader.toLowerCase();
+        }
+
+        // Cache Hit Check (Idempotency)
+        if (isDefaultSearch) {
+            const cached = searchCache.current[projectType];
+            let isValid = !!cached;
+            if (isValid && projectType === 'mod' && currentLoader) {
+                if (cached.loader !== currentLoader) isValid = false;
+            }
+
+            if (isValid) {
+                // Even though effect handles this, debounce timer might still fire. 
+                // Ensure we don't re-fetch or re-render unnecessarily.
+                setResults(cached.data);
+                setIsSearching(false);
+                return;
+            }
+        }
+
+        if (!append) {
+            setIsSearching(true);
+            setSearchError(null);
+        } else {
+            setIsLoadingMore(true);
+        }
+
+        try {
+            const offset = append ? results.length : 0;
+
+            const params = {
+                query: query,
+                type: projectType,
+                offset: offset,
+                limit: 20
+            };
+
+            if (filterVersion) params.version = filterVersion;
+            if (filterCategory) params.category = filterCategory;
+
+            if (currentLoader) {
+                params.loader = currentLoader;
+            }
+
+            const res = await window.electronAPI.modrinthSearch(params);
+
+            if (res.success) {
+                if (append) {
+                    setResults(prev => [...prev, ...res.data.hits]);
+                } else {
+                    setResults(res.data.hits);
+                    // Cache Write
+                    if (isDefaultSearch) {
+                        searchCache.current[projectType] = {
+                            data: res.data.hits,
+                            loader: currentLoader
+                        };
+                    }
+                }
+            } else {
+                setSearchError(res.error || "Failed to fetch results");
+            }
+
+        } catch (e) {
+            console.error(e);
+            setSearchError(e.message || "Search failed");
+        } finally {
+            setIsSearching(false);
+            setIsLoadingMore(false);
+        }
+    };
+
+    const handleVersionChange = (val) => {
+        setFilterVersion(val);
+    };
 
     const formatBytes = (bytes, decimals = 2) => {
         if (!+bytes) return '0 Bytes';
         const k = 1024;
         const dm = decimals < 0 ? 0 : decimals;
-        const sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB'];
+        const sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB', 'PB', 'EB', 'ZB', 'YB'];
         const i = Math.floor(Math.log(bytes) / Math.log(k));
         return `${parseFloat((bytes / Math.pow(k, i)).toFixed(dm))} ${sizes[i]}`;
-    };
+    }
 
-    // Helper: Compare Versions (v1 >= v2)
-    const isVersionAtLeast = (v1, v2) => {
-        const p1 = v1.split('.').map(Number);
-        const p2 = v2.split('.').map(Number);
-        for (let i = 0; i < Math.max(p1.length, p2.length); i++) {
-            const n1 = p1[i] || 0;
-            const n2 = p2[i] || 0;
-            if (n1 > n2) return true;
-            if (n1 < n2) return false;
-        }
-        return true;
-    };
-
-    // Initial Filter Load
-    useEffect(() => {
-        const loadFilters = async () => {
-            if (!isReady) return;
-            if (!window.electronAPI?.modrinthGetTags) return;
-            setIsLoadingFilters(true);
-            try {
-                // Fetch Versions
-                const vRes = await window.electronAPI.modrinthGetTags('game_version');
-                if (vRes.success) {
-                    const releases = vRes.data
-                        .filter(v => v.version_type === 'release')
-                        .map(v => v.version)
-                        .filter(v => isVersionAtLeast(v, '1.7.10')); // Limit to >= 1.7.10
-                    setAvailableVersions(releases);
-                }
-
-                // Fetch Categories
-                const cRes = await window.electronAPI.modrinthGetTags('category');
-                if (cRes.success) {
-                    console.log("Categories fetched:", cRes.data); // Debug log
-                    // Map to {label, value}
-                    // Relaxed filtering: just check if 'project_type' matches or is effectively generic
-                    const cats = cRes.data
-                        // .filter(c => !c.header) // Removed potential aggressive filter
-                        .filter(c => {
-                            // Some categories might be purely for display headers in Modrinth UI, but API usually returns flat list
-                            // If 'header' exists, it might be a header item, but let's check name.
-                            // We want items that are selectable categories.
-                            // Modrinth categories usually have an icon too.
-                            return c.project_type === projectType || !c.project_type || c.project_type === 'mod' || c.project_type === 'modpack';
-                        })
-                        .map(c => ({
-                            label: c.name.charAt(0).toUpperCase() + c.name.slice(1),
-                            value: c.name.toLowerCase()
-                        }));
-
-                    // Deduplicate just in case
-                    const uniqueCats = [...new Map(cats.map(item => [item.value, item])).values()];
-                    // Sort alphabetically
-                    uniqueCats.sort((a, b) => a.label.localeCompare(b.label));
-
-                    setAvailableCategories(uniqueCats);
-                }
-
-            } catch (e) {
-                console.error("Failed to load filters", e);
-            } finally {
-                setIsLoadingFilters(false);
-            }
-        };
-        loadFilters();
-    }, [projectType, isReady]); // Reload categories if project type changes? Some categories are specific.
-
-    // -- Effects: Search --
-    const prevQueryRef = useRef(searchQuery);
-    const userHasManuallySetVersion = useRef(false);
-
-    const handleVersionChange = (val) => {
-        setFilterVersion(val);
-        userHasManuallySetVersion.current = true;
-    };
-
-    // Handle View Context Switching (Mods <-> Modpacks)
-    useEffect(() => {
-        if (projectType === 'modpack') {
-            // When switching to Modpacks, default to "All Versions" if the user hasn't explicitly chosen one.
-            // This prevents the filter from being stuck on the Instance's version.
-            if (!userHasManuallySetVersion.current) {
-                setFilterVersion('');
-            }
-        } else if (projectType === 'mod' && selectedInstance) {
-            // When switching to Mods, we must lock to the instance version.
-            // We consider this an "automatic" system set, so we reset the manual flag.
-            setFilterVersion(selectedInstance.version);
-            userHasManuallySetVersion.current = false;
-        }
-    }, [projectType, selectedInstance]);
-
-    useEffect(() => {
-        const isTextChange = prevQueryRef.current !== searchQuery;
-        prevQueryRef.current = searchQuery;
-
-        if (isTextChange) {
-            // Debounce text search
-            const timer = setTimeout(() => {
-                if (isReady) performSearch(searchQuery);
-            }, 300);
-            return () => clearTimeout(timer);
-        } else {
-            // Immediate update for filters or mount
-            if (!isSearching && isReady) {
-                performSearch(searchQuery);
-            }
-        }
-    }, [searchQuery, projectType, filterVersion, filterCategory, isReady]);
-
-    // -- Effects: Load Details --
-    useEffect(() => {
-        if (selectedProject) {
-            loadProjectDetails(selectedProject);
-        } else {
-            setProjectDetails(null);
-            setVersions([]);
-            setSelectedVersion(null); // Reset
-            setDependencies([]);
-            setActiveTab('description');
-        }
-    }, [selectedProject]);
-
-
-    // -- Actions --
-
-    const [offset, setOffset] = useState(0);
-
-    // -- Actions --
-
-    const performSearch = async (query, isLoadMore = false) => {
-        if (!window.electronAPI?.modrinthSearch) return;
-        setIsSearching(true);
-        setSearchError(null);
-
-        const currentOffset = isLoadMore ? offset : 0;
-        const limit = 24;
-
+    const loadInstalledMods = async () => {
+        if (!selectedInstance || !window.electronAPI) return;
         try {
-            // Determine loader filter
-            let loaderFilter = undefined;
-            if (projectType === 'mod' && selectedInstance && selectedInstance.loader && selectedInstance.loader !== 'Vanilla') {
-                loaderFilter = selectedInstance.loader.toLowerCase();
-            }
-
-            const response = await window.electronAPI.modrinthSearch({
-                query: query,
-                type: projectType,
-                version: filterVersion || undefined,
-                category: filterCategory || undefined,
-                loader: loaderFilter,
-                limit: limit,
-                offset: currentOffset
-            });
-            if (response.success) {
-                if (isLoadMore) {
-                    setResults(prev => [...prev, ...(response.data.hits || [])]);
-                    setOffset(prev => prev + limit);
-                } else {
-                    setResults(response.data.hits || []);
-                    setOffset(limit);
-                }
-            } else {
-                setSearchError(response.error);
-            }
+            const mods = await window.electronAPI.getInstanceMods(selectedInstance.path);
+            setInstalledMods(mods || []);
         } catch (e) {
-            setSearchError(e.message);
-        } finally {
-            setIsSearching(false);
+            console.error("Failed to load mods", e);
         }
-    };
+    }
 
-    const loadProjectDetails = async (project) => {
-        setIsLoadingDetails(true);
+    const loadInstalledShaders = async () => {
+        if (!selectedInstance || !window.electronAPI) return;
         try {
-            // 1. Get Full Project Details (Body, etc.)
-            const detailsRes = await window.electronAPI.modrinthGetProject(project.project_id);
-            if (detailsRes.success) setProjectDetails(detailsRes.data);
-
-            // 2. Get Versions
-            let targetLoaders = [];
-            let targetGameVersions = [];
-
-            if (projectType === 'mod' && selectedInstance) {
-                if (selectedInstance.loader && selectedInstance.loader !== 'Vanilla') {
-                    targetLoaders.push(selectedInstance.loader.toLowerCase());
-                }
-                if (selectedInstance.version) {
-                    targetGameVersions.push(selectedInstance.version);
-                }
-            }
-
-            const versionsRes = await window.electronAPI.modrinthGetVersions({
-                projectId: project.project_id,
-                loaders: targetLoaders,
-                gameVersions: targetGameVersions
-            });
-
-            let fetchedVersions = [];
-            if (versionsRes.success) {
-                fetchedVersions = versionsRes.data;
-                setVersions(fetchedVersions);
-
-                // Auto-select latest version
-                if (fetchedVersions.length > 0) {
-                    setSelectedVersion(fetchedVersions[0]);
-                }
-            }
-
-            // 3. Resolve Dependencies (if modpack)
-            // We'll take dependencies from the latest version (first in list)
-            if (projectType === 'modpack' && fetchedVersions.length > 0) {
-                const latest = fetchedVersions[0];
-                const deps = latest.dependencies || [];
-                // Collect project IDs
-                const depProjectIds = deps.map(d => d.project_id).filter(Boolean);
-
-                if (depProjectIds.length > 0) {
-                    const depsRes = await window.electronAPI.modrinthGetProjects(depProjectIds);
-                    if (depsRes.success) {
-                        setDependencies(depsRes.data);
-                    }
-                }
-            }
+            const shaders = await window.electronAPI.getInstanceShaders(selectedInstance.path);
+            setInstalledShaders(shaders || []);
         } catch (e) {
-            console.error("Failed to load details", e);
-            addToast("Failed to load project details", 'error');
-        } finally {
-            setIsLoadingDetails(false);
+            console.error("Failed to load shaders", e);
         }
-    };
+    }
 
     const handleInstall = async (project, version = null) => {
         if (!selectedInstance && project.project_type !== 'modpack') {
@@ -309,6 +368,43 @@ const ModsView = ({ selectedInstance, instances = [], onInstanceCreated, onSwitc
         const versionId = targetVersion ? targetVersion.id : null;
         const projectId = project.project_id;
 
+
+        // SHADER CHECK
+        if (project.project_type === 'shader') {
+            const status = getInstallStatus(project);
+            if (status.installed) {
+                addToast(`Shader "${project.title}" is already installed as ${status.fileName}`, 'warning');
+                return;
+            }
+
+            const hasIris = installedMods.some(m => m.modId === 'iris' || (m.fileName && m.fileName.toLowerCase().includes('iris')));
+            const hasOculus = installedMods.some(m => m.modId === 'oculus' || (m.fileName && m.fileName.toLowerCase().includes('oculus')));
+            const hasOptifine = installedMods.some(m => (m.fileName && m.fileName.toLowerCase().includes('optifine')));
+
+            let needsDependency = false;
+            const loader = selectedInstance?.loader?.toLowerCase();
+
+            if (loader === 'fabric' || loader === 'quilt') {
+                if (!hasIris && !hasOptifine) needsDependency = true;
+            } else if (loader === 'forge' || loader === 'neoforge') {
+                if (!hasOculus && !hasOptifine) needsDependency = true;
+            }
+
+            if (needsDependency) {
+                setPendingShaderProject(project);
+                setPendingShaderVersion(version);
+                setShowShaderWarning(true);
+                return;
+            }
+        }
+
+        performInstall(project, versionId);
+    };
+
+    const performInstall = async (project, versionId, options = {}) => {
+        const projectId = project.project_id;
+        const { silent = false } = options;
+
         // CHECK IF ALREADY INSTALLED (Modpacks only)
         if (project.project_type === 'modpack' && instances) {
             const existing = instances.find(inst =>
@@ -317,7 +413,7 @@ const ModsView = ({ selectedInstance, instances = [], onInstanceCreated, onSwitc
             );
 
             if (existing) {
-                addToast(`This version is already installed as "${existing.name}"`, 'warning');
+                if (!silent) addToast(`This version is already installed as "${existing.name}"`, 'warning');
                 return;
             }
         }
@@ -327,8 +423,9 @@ const ModsView = ({ selectedInstance, instances = [], onInstanceCreated, onSwitc
 
         try {
             if (project.project_type === 'modpack') {
+                // ... modpack install logic ...
                 const packName = project.title;
-                addToast(`Downloading modpack ${packName}...`, 'info');
+                if (!silent) addToast(`Downloading modpack ${packName}...`, 'info');
 
                 const res = await window.electronAPI.modrinthInstallModpack({
                     project: project,
@@ -337,7 +434,7 @@ const ModsView = ({ selectedInstance, instances = [], onInstanceCreated, onSwitc
                 });
 
                 if (res.success) {
-                    addToast(`Modpack ${packName} installed successfully!`, 'success');
+                    if (!silent) addToast(`Modpack ${packName} installed successfully!`, 'success');
 
                     if (onInstanceCreated) {
                         const gradients = [
@@ -359,28 +456,29 @@ const ModsView = ({ selectedInstance, instances = [], onInstanceCreated, onSwitc
                             status: 'Ready',
                             lastPlayed: null,
                             iconColor: colors[idx],
+                            icon: res.icon,
                             bgGradient: gradients[idx],
                             autoConnect: false,
                             modpackProjectId: projectId,
                             modpackVersionId: versionId
                         };
 
-
                         onInstanceCreated(newInstance);
-                        addToast(`Redirecting to Home...`, 'info');
+                        if (!silent) addToast(`Redirecting to Home...`, 'info');
                     }
                 } else {
                     addToast(`Failed: ${res.error}`, 'error');
                 }
+
             } else {
                 // Mod Installation
                 const loader = selectedInstance.loader ? selectedInstance.loader.toLowerCase() : 'vanilla';
-                if (loader === 'vanilla') {
+                if (loader === 'vanilla' && !silent) {
                     addToast("Warning: Installing mods on Vanilla instances might not work properly.", 'warning');
                 }
                 const gameVersion = selectedInstance.version;
 
-                addToast(`Installing ${project.title}...`, 'info');
+                if (!silent) addToast(`Installing ${project.title}...`, 'info');
                 const res = await window.electronAPI.modrinthInstallMod({
                     project: project,
                     gameVersion: gameVersion,
@@ -390,7 +488,12 @@ const ModsView = ({ selectedInstance, instances = [], onInstanceCreated, onSwitc
                 });
 
                 if (res.success) {
-                    addToast(`Installed ${res.file}`, 'success');
+                    if (!silent) addToast(`Installed ${res.file}`, 'success');
+                    if (project.project_type === 'shader') {
+                        loadInstalledShaders();
+                    } else {
+                        loadInstalledMods();
+                    }
                 } else {
                     addToast(`Failed: ${res.error}`, 'error');
                 }
@@ -405,6 +508,38 @@ const ModsView = ({ selectedInstance, instances = [], onInstanceCreated, onSwitc
                 return next;
             });
         }
+    }
+
+    const confirmShaderInstall = async () => {
+        setShowShaderWarning(false);
+        const loader = selectedInstance?.loader?.toLowerCase();
+
+        // Auto-install dependencies
+        try {
+            if (loader === 'fabric' || loader === 'quilt') {
+                addToast("Installing Iris & Sodium...", "info");
+                // Iris (project_id: iris)
+                await performInstall({ project_id: 'iris', title: 'Iris Shaders', project_type: 'mod' }, null, { silent: true });
+                // Sodium (project_id: sodium) - Iris usually needs Sodium
+                await performInstall({ project_id: 'sodium', title: 'Sodium', project_type: 'mod' }, null, { silent: true });
+                addToast("Installed shader dependencies (Iris & Sodium)", "success");
+            } else if (loader === 'forge' || loader === 'neoforge') {
+                addToast("Installing Oculus...", "info");
+                // Oculus (project_id: oculus)
+                await performInstall({ project_id: 'oculus', title: 'Oculus', project_type: 'mod' }, null, { silent: true });
+                addToast("Installed shader dependency (Oculus)", "success");
+            }
+        } catch (e) {
+            console.error(e);
+            addToast("Failed to install dependencies, proceeding with shader...", "warning");
+        }
+
+        // Install the original shader
+        const targetVersionId = pendingShaderVersion ? pendingShaderVersion.id : null;
+        performInstall(pendingShaderProject, targetVersionId);
+
+        setPendingShaderProject(null);
+        setPendingShaderVersion(null);
     };
 
     const handleCancel = async (projectId) => {
@@ -419,15 +554,36 @@ const ModsView = ({ selectedInstance, instances = [], onInstanceCreated, onSwitc
 
     // Helper to check if a specific version (or project generally) is installed
     const getInstallStatus = (project, version = null) => {
-        if (!instances || project.project_type !== 'modpack') return false;
+        if (project.project_type === 'modpack') {
+            if (!instances) return { installed: false };
+            const projectId = project.project_id;
+            const versionId = version ? version.id : null;
 
-        const projectId = project.project_id;
-        const versionId = version ? version.id : null;
+            if (versionId) {
+                const exactMatch = instances.find(inst => inst.modpackProjectId === projectId && inst.modpackVersionId === versionId);
+                if (exactMatch) return { installed: true, instanceName: exactMatch.name };
+            }
+        } else if (project.project_type === 'mod') {
+            // Check against installed mods in selected instance
+            if (!installedMods) return { installed: false };
+            const slug = project.slug; // Modrinth Slug usually matches internal modId (e.g. 'fabric-api')
 
-        if (versionId) {
-            const exactMatch = instances.find(inst => inst.modpackProjectId === projectId && inst.modpackVersionId === versionId);
-            if (exactMatch) return { installed: true, instanceName: exactMatch.name };
+            // Check by modId (from metadata) or fallback to slug in filename (less reliable)
+            const found = installedMods.find(m => m.modId === slug);
+            if (found) return { installed: true, fileName: found.fileName };
+        } else if (project.project_type === 'shader') {
+            if (!installedShaders) return { installed: false };
+            // Heuristic match for shaders
+            const cleanSlug = project.slug.replace(/[-_]/g, '').toLowerCase();
+            const cleanTitle = project.title.replace(/[^a-zA-Z0-9]/g, '').toLowerCase();
+
+            const found = installedShaders.find(s => {
+                const cleanName = s.name.replace(/[-_ .]/g, '').toLowerCase();
+                return cleanName.includes(cleanSlug) || cleanName.includes(cleanTitle);
+            });
+            if (found) return { installed: true, fileName: found.name };
         }
+
         return { installed: false };
     };
 
@@ -447,6 +603,13 @@ const ModsView = ({ selectedInstance, instances = [], onInstanceCreated, onSwitc
                 backgroundPosition: '0 0, 0 0, 7px 13px, 7px 13px, 15px 22px, 15px 22px'
             }}
         >
+            <ShaderDependencyModal
+                isOpen={showShaderWarning}
+                onClose={() => setShowShaderWarning(false)}
+                onConfirm={confirmShaderInstall}
+                loader={selectedInstance?.loader?.toLowerCase()}
+            />
+
             {selectedProject ? (
                 <ModsDetailView
                     selectedProject={selectedProject}
@@ -482,6 +645,7 @@ const ModsView = ({ selectedInstance, instances = [], onInstanceCreated, onSwitc
                     availableCategories={availableCategories}
                     isLoadingFilters={isLoadingFilters}
                     isSearching={isSearching}
+                    isLoadingMore={isLoadingMore}
                     searchError={searchError}
                     results={results}
                     onProjectSelect={setSelectedProject}

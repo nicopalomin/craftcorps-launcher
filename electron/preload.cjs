@@ -1,4 +1,4 @@
-const { contextBridge, ipcRenderer } = require('electron');
+const { contextBridge, ipcRenderer, webUtils } = require('electron');
 
 console.log('Preload script loaded'); // DEBUG LOG
 
@@ -12,6 +12,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
 
     microsoftLogin: (consent) => ipcRenderer.invoke('microsoft-login', consent),
     microsoftRefresh: (refreshToken) => ipcRenderer.invoke('refresh-microsoft-token', refreshToken),
+    detectLocalAccounts: () => ipcRenderer.invoke('detect-local-accounts'),
     linkProfile: (payload) => ipcRenderer.invoke('link-profile', payload),
     selectFile: () => ipcRenderer.invoke('select-file'),
     openLogsFolder: () => ipcRenderer.invoke('open-logs-folder'),
@@ -95,6 +96,19 @@ contextBridge.exposeInMainWorld('electronAPI', {
     },
     deleteResourcePack: (filePath) => ipcRenderer.invoke('delete-resource-pack', filePath),
 
+    // Shaders
+    getInstanceShaders: (instancePath) => ipcRenderer.invoke('get-instance-shaders', instancePath),
+    selectShaderFiles: () => ipcRenderer.invoke('select-shader-files'),
+    addInstanceShaders: async (instancePath, filePaths) => {
+        try {
+            return await ipcRenderer.invoke('add-instance-shaders', { instancePath, filePaths });
+        } catch (e) {
+            console.error('[Preload] Error invoking add-instance-shaders', e);
+            throw e;
+        }
+    },
+    deleteShader: (filePath) => ipcRenderer.invoke('delete-shader', filePath),
+
     // Instances
     getInstances: () => ipcRenderer.invoke('get-instances'),
     getRunningInstances: () => ipcRenderer.invoke('get-running-instances'),
@@ -151,4 +165,5 @@ contextBridge.exposeInMainWorld('electronAPI', {
 
     // Internal Tools
     captureMarketingShot: () => ipcRenderer.invoke('capture-marketing-shot'),
+    getPathForFile: (file) => webUtils.getPathForFile(file),
 });

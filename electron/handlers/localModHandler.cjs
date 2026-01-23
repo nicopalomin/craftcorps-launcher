@@ -11,6 +11,7 @@ const getModMetadata = (fullPath, buffer = null) => {
     const isEnabled = !file.endsWith('.disabled');
     let name = file;
     let version = '';
+    let modId = null;
 
     try {
         const zip = buffer ? new AdmZip(buffer) : new AdmZip(fullPath);
@@ -23,6 +24,7 @@ const getModMetadata = (fullPath, buffer = null) => {
                 const json = JSON.parse(zip.readAsText(fabricEntry));
                 name = json.name || json.id || file;
                 version = json.version || '';
+                modId = json.id || null;
             } catch (e) { }
         }
         // 2. Forge (META-INF/mods.toml)
@@ -35,6 +37,10 @@ const getModMetadata = (fullPath, buffer = null) => {
                 if (match) name = match[1];
                 const verMatch = text.match(/version\s*=\s*["'](.*?)["']/);
                 if (verMatch) version = verMatch[1];
+
+                // Extract modId
+                const idMatch = text.match(/modId\s*=\s*["'](.*?)["']/);
+                if (idMatch) modId = idMatch[1];
             }
         }
     } catch (e) {
@@ -50,7 +56,8 @@ const getModMetadata = (fullPath, buffer = null) => {
         name: name,
         version: version,
         enabled: isEnabled,
-        path: fullPath
+        path: fullPath,
+        modId: modId
     };
 };
 
@@ -83,16 +90,30 @@ const saveModCacheToDisk = () => {
 loadModCacheFromDisk();
 
 const scanModsDirectory = async (instancePath, modsDir) => {
-    const dirFiles = await fs.promises.readdir(modsDir);
-    const files = dirFiles.filter(f => f.endsWith('.jar') || f.endsWith('.jar.disabled'));
+    const getFilesRecursively = async (dir) => {
+        const dirents = await fs.promises.readdir(dir, { withFileTypes: true });
+        const files = await Promise.all(dirents.map((dirent) => {
+            const res = path.join(dir, dirent.name);
+            return dirent.isDirectory() ? getFilesRecursively(res) : res;
+        }));
+        return files.flat();
+    };
+
+    let allFiles = [];
+    try {
+        allFiles = await getFilesRecursively(modsDir);
+    } catch (e) {
+        return [];
+    }
+
+    const jarFiles = allFiles.filter(f => f.endsWith('.jar') || f.endsWith('.jar.disabled'));
 
     const mods = [];
     const chunkSize = 20;
 
-    for (let i = 0; i < files.length; i += chunkSize) {
-        const chunk = files.slice(i, i + chunkSize);
-        const chunkResults = await Promise.all(chunk.map(async (file) => {
-            const fullPath = path.join(modsDir, file);
+    for (let i = 0; i < jarFiles.length; i += chunkSize) {
+        const chunk = jarFiles.slice(i, i + chunkSize);
+        const chunkResults = await Promise.all(chunk.map(async (fullPath) => {
             try {
                 const buffer = await fs.promises.readFile(fullPath);
                 return getModMetadata(fullPath, buffer);
@@ -101,7 +122,7 @@ const scanModsDirectory = async (instancePath, modsDir) => {
             }
         }));
         chunkResults.forEach(r => { if (r) mods.push(r); });
-        if (files.length > 100) await new Promise(r => setImmediate(r));
+        if (jarFiles.length > 20) await new Promise(r => setImmediate(r));
     }
     return mods;
 };

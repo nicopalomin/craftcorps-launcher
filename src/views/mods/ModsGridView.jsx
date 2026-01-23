@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Package, Box, Search, Loader2, Download, Layers, AlertTriangle } from 'lucide-react';
+import { Package, Box, Search, Loader2, Download, Layers, AlertTriangle, Aperture } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 
 export const ModsGridView = ({
@@ -21,11 +21,12 @@ export const ModsGridView = ({
     setSelectedProject, // Added prop
     selectedInstance, // Added prop
     onLoadMore, // Added prop
+    isLoadingMore, // Added prop
     onSwitchInstance // Added prop
 }) => {
     const { t } = useTranslation();
 
-    const isVanilla = projectType === 'mod' && selectedInstance && (!selectedInstance.loader || selectedInstance.loader.toLowerCase() === 'vanilla');
+    const isVanilla = (projectType === 'mod' || projectType === 'shader') && selectedInstance && (!selectedInstance.loader || selectedInstance.loader.toLowerCase() === 'vanilla');
 
     return (
         <>
@@ -47,18 +48,25 @@ export const ModsGridView = ({
                         >
                             <Package size={16} /> Modpacks
                         </button>
+                        <button
+                            onClick={() => { setProjectType('shader'); setSelectedProject(null); }}
+                            className={`px-4 py-1.5 rounded-md text-sm font-medium transition-colors flex items-center gap-2 ${projectType === 'shader' ? 'bg-cyan-600 text-white shadow-lg' : 'text-slate-400 hover:text-white'}`}
+                            title="Browse Shaders"
+                        >
+                            <Aperture size={16} /> Shaders
+                        </button>
                     </div>
                 </div>
 
                 {/* Instance Indicator */}
-                {projectType === 'mod' && selectedInstance && !isVanilla && (
+                {projectType !== 'modpack' && selectedInstance && !isVanilla && (
                     <div className="bg-emerald-950/20 border border-emerald-500/20 rounded-xl px-4 py-2 flex items-center justify-between gap-3 text-emerald-400 text-sm">
                         <div className="flex items-center gap-3">
                             <div className="p-1.5 bg-emerald-500/10 rounded-lg">
                                 <Box size={14} />
                             </div>
                             <span>
-                                Browsing compatible mods for <span className="font-bold text-emerald-300">{selectedInstance.name}</span>
+                                Browsing generic content for <span className="font-bold text-emerald-300">{selectedInstance.name}</span>
                                 <span className="opacity-50 ml-2 text-xs border-l border-emerald-500/20 pl-2">
                                     {selectedInstance.loader} {selectedInstance.version}
                                 </span>
@@ -73,6 +81,12 @@ export const ModsGridView = ({
                     </div>
                 )}
 
+                {/* Specific msg for mods */}
+                {projectType === 'mod' && selectedInstance && !isVanilla && (
+                    <div className="hidden"></div> // Placeholder if needed, but above covers generic.
+                )}
+
+
                 {!isVanilla && (
                     <div className="flex gap-2 items-center">
                         {/* Search Bar */}
@@ -82,7 +96,7 @@ export const ModsGridView = ({
                                 type="text"
                                 value={searchQuery}
                                 onChange={(e) => setSearchQuery(e.target.value)}
-                                placeholder={`Search ${projectType}s...`}
+                                placeholder={projectType === 'shader' ? "Search shaders..." : `Search ${projectType}s...`}
                                 className="bg-transparent border-none focus:outline-none text-slate-200 w-full placeholder:text-slate-600"
                             />
                         </div>
@@ -102,7 +116,7 @@ export const ModsGridView = ({
                         </select>
 
                         {/* Category Filter */}
-                        {projectType !== 'mod' && (
+                        {projectType !== 'mod' && projectType !== 'shader' && (
                             <select
                                 value={filterCategory}
                                 onChange={(e) => setFilterCategory(e.target.value)}
@@ -126,7 +140,7 @@ export const ModsGridView = ({
             </div>
 
             {/* Main Content Area: Warning OR Search/Grid */}
-            {isVanilla && projectType === 'mod' ? (
+            {isVanilla && (projectType === 'mod' || projectType === 'shader') ? (
                 <div className="flex-1 flex flex-col items-center justify-center text-center p-12 animate-in fade-in zoom-in duration-300">
                     <div className="w-24 h-24 bg-amber-500/10 rounded-full flex items-center justify-center mb-6 ring-1 ring-amber-500/20 shadow-[0_0_30px_-5px_theme(colors.amber.500/0.2)]">
                         <AlertTriangle size={48} className="text-amber-500" />
@@ -134,7 +148,11 @@ export const ModsGridView = ({
                     <h3 className="text-2xl font-bold text-slate-200 mb-2">Vanilla Instance Selected</h3>
                     <p className="text-slate-400 max-w-md mx-auto mb-8 leading-relaxed">
                         You are currently using <span className="text-amber-400 font-medium">{selectedInstance?.name}</span>, which is a vanilla instance.
-                        Mods require a mod loader like Fabric, Forge, or Quilt to function.
+                        {projectType === 'shader' ? (
+                            <span>
+                                To use Shaders, you must use a modded instance (e.g. <span className="text-emerald-400 font-bold">Fabric</span>, <span className="text-emerald-400 font-bold">Quilt</span>, <span className="text-emerald-400 font-bold">Forge</span>, or <span className="text-emerald-400 font-bold">NeoForge</span>). Vanilla Minecraft does not support shaders directly in this launcher.
+                            </span>
+                        ) : 'Mods require a mod loader like Fabric, Forge, or Quilt to function.'}
                     </p>
                     <button
                         onClick={onSwitchInstance}
@@ -151,11 +169,28 @@ export const ModsGridView = ({
                         </div>
                     )}
 
-                    {results.length === 0 && !isSearching ? (
-                        <div className="text-center py-20 text-slate-500">
-                            <Package size={64} className="mx-auto mb-4 opacity-20" />
-                            <p>{searchQuery ? 'No results found.' : 'Start typing to search Modrinth.'}</p>
-                        </div>
+                    {results.length === 0 ? (
+                        isSearching ? (
+                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 animate-pulse">
+                                {[...Array(12)].map((_, i) => (
+                                    <div key={i} className="bg-slate-900 border border-slate-800 rounded-xl p-4 h-32 flex flex-col gap-3">
+                                        <div className="flex items-start gap-3">
+                                            <div className="w-16 h-16 bg-slate-800 rounded-lg shrink-0" />
+                                            <div className="flex-1 min-w-0 space-y-2">
+                                                <div className="h-4 bg-slate-800 rounded w-3/4" />
+                                                <div className="h-3 bg-slate-800 rounded w-1/2" />
+                                                <div className="h-8 bg-slate-800 rounded w-full" />
+                                            </div>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        ) : (
+                            <div className="text-center py-20 text-slate-500">
+                                <Package size={64} className="mx-auto mb-4 opacity-20" />
+                                <p>{searchQuery ? 'No results found.' : 'Loading recommendations...'}</p>
+                            </div>
+                        )
                     ) : (
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
                             {results.map((project) => (
@@ -173,11 +208,11 @@ export const ModsGridView = ({
                         <div className="flex justify-center mt-8 pb-8">
                             <button
                                 onClick={onLoadMore}
-                                disabled={isSearching}
-                                className="bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-slate-200 px-6 py-3 rounded-xl font-medium transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                                disabled={isLoadingMore}
+                                className={`px-6 py-3 rounded-xl font-medium transition-all active:scale-95 disabled:cursor-not-allowed flex items-center gap-2 ${isLoadingMore ? 'bg-slate-700 text-slate-400 cursor-not-allowed' : 'bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-slate-200'}`}
                             >
-                                {isSearching ? <Loader2 size={16} className="animate-spin" /> : null}
-                                {isSearching ? 'Loading...' : 'Load More'}
+                                {isLoadingMore ? <Loader2 size={16} className="animate-spin" /> : null}
+                                {isLoadingMore ? 'Loading...' : 'Load More'}
                             </button>
                         </div>
                     )}

@@ -405,6 +405,51 @@ const deleteInstanceFolder = async (event, folderPath) => {
     }
 };
 
+const FabricHandler = require('../launcher/FabricHandler.cjs');
+const ForgeHandler = require('../launcher/ForgeHandler.cjs');
+const NeoForgeHandler = require('../launcher/NeoForgeHandler.cjs');
+const QuiltHandler = require('../launcher/QuiltHandler.cjs');
+
+const ensureLoaderInstalled = async (instanceData) => {
+    if (!instanceData.loader || instanceData.loader === 'Vanilla') return;
+
+    try {
+        const os = process.platform;
+        const home = process.env.HOME || process.env.USERPROFILE;
+        let commonRoot;
+        if (os === 'win32') commonRoot = path.join(process.env.APPDATA, '.minecraft');
+        else if (os === 'darwin') commonRoot = path.join(home, 'Library', 'Application Support', 'minecraft');
+        else commonRoot = path.join(home, '.minecraft');
+
+        const options = {
+            loader: instanceData.loader,
+            version: instanceData.version,
+            loaderVersion: instanceData.loaderVersion
+        };
+
+        const launchOptions = {
+            root: commonRoot,
+            version: { number: instanceData.version }
+        };
+
+        const emit = (type, data) => {
+            const msg = data && data.message ? data.message : data; // Handle object or string
+            log.info(`[LoaderSetup] ${msg}`);
+        };
+
+        const lower = instanceData.loader.toLowerCase();
+        log.info(`[LoaderSetup] optimizing ${lower} setup for ${instanceData.version}...`);
+
+        if (lower.includes('fabric')) await FabricHandler.prepare(options, launchOptions, emit);
+        else if (lower.includes('neoforge')) await NeoForgeHandler.prepare(options, launchOptions, emit);
+        else if (lower.includes('forge')) await ForgeHandler.prepare(options, launchOptions, emit);
+        else if (lower.includes('quilt')) await QuiltHandler.prepare(options, launchOptions, emit);
+
+    } catch (e) {
+        log.error(`[LoaderSetup] Failed to install loader: ${e.message}`);
+    }
+};
+
 const saveInstance = async (event, instanceData) => {
     if (!instanceData || !instanceData.path) return { success: false, error: 'Invalid instance data' };
 
@@ -414,6 +459,10 @@ const saveInstance = async (event, instanceData) => {
         }
         const jsonPath = path.join(instanceData.path, 'instance.json');
         fs.writeFileSync(jsonPath, JSON.stringify(instanceData, null, 4));
+
+        // Ensure Loader is Ready (Backgroud-ish but awaited for safety)
+        await ensureLoaderInstalled(instanceData);
+
         return { success: true };
     } catch (e) {
         log.error(`[Instance] Failed to save instance: ${e.message}`);

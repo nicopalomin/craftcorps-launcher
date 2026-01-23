@@ -104,9 +104,12 @@ const installMod = async (event, { project, instancePath, gameVersion, loader, v
             else if (os === 'darwin') targetDir = path.join(home, 'Library', 'Application Support', 'minecraft');
             else targetDir = path.join(home, '.minecraft');
         }
-        const modsDir = path.join(targetDir, 'mods');
-        if (!fs.existsSync(modsDir)) {
-            fs.mkdirSync(modsDir, { recursive: true });
+
+        const isShader = project.project_type === 'shader';
+        const installDir = path.join(targetDir, isShader ? 'shaderpacks' : 'mods');
+
+        if (!fs.existsSync(installDir)) {
+            fs.mkdirSync(installDir, { recursive: true });
         }
 
         let bestVersion;
@@ -115,13 +118,25 @@ const installMod = async (event, { project, instancePath, gameVersion, loader, v
             const versions = await client.getProjectVersionsById([versionId]);
             bestVersion = versions[0];
         } else {
-            const versions = await client.getProjectVersions(projectId, {
-                loaders: [loader || 'fabric'],
+            // detailed version query
+            const searchOptions = {
                 gameVersions: [gameVersion]
-            });
+            };
+
+            // For mods, we filter by specific loader.
+            // For shaders, we usually want to be permissive or look for 'iris'/'optifine'
+            // but often shaders don't have loader metadata set, or set to 'minecraft'.
+            // Passing undefined/null for loaders allows fetching all.
+            if (!isShader) {
+                searchOptions.loaders = [loader || 'fabric'];
+            }
+
+            const versions = await client.getProjectVersions(projectId, searchOptions);
 
             if (!versions || versions.length === 0) {
-                throw new Error(`No compatible version found for ${gameVersion} (${loader})`);
+                // Formatting error message
+                const loaderMsg = isShader ? "any" : (loader || 'fabric');
+                throw new Error(`No compatible version found for ${gameVersion} (${loaderMsg})`);
             }
             bestVersion = versions[0];
         }
@@ -134,9 +149,9 @@ const installMod = async (event, { project, instancePath, gameVersion, loader, v
 
         if (task.cancelled) throw new Error("Cancelled by user");
 
-        log.info(`[Modrinth] Downloading ${primaryFile.filename} to ${modsDir}`);
+        log.info(`[Modrinth] Downloading ${primaryFile.filename} to ${installDir}`);
 
-        const dl = new DownloaderHelper(primaryFile.url, modsDir, {
+        const dl = new DownloaderHelper(primaryFile.url, installDir, {
             fileName: primaryFile.filename,
             override: true
         });
@@ -374,6 +389,7 @@ const installModpack = async (event, { project, instanceName, versionId }) => {
         }
 
         // Download Icon if available
+        let base64Icon = null;
         if (project.icon_url && !task.cancelled) {
             try {
                 log.info(`[Modrinth] Downloading modpack icon...`);
@@ -382,7 +398,9 @@ const installModpack = async (event, { project, instanceName, versionId }) => {
                 const res = await fetch(iconUrl);
                 if (res.ok) {
                     const buffer = await res.arrayBuffer();
-                    fs.writeFileSync(iconPath, Buffer.from(buffer));
+                    const nodeBuffer = Buffer.from(buffer);
+                    fs.writeFileSync(iconPath, nodeBuffer);
+                    base64Icon = `data:image/png;base64,${nodeBuffer.toString('base64')}`;
                 }
             } catch (e) {
                 log.warn(`[Modrinth] Failed to download pack icon: ${e.message}`);
@@ -434,6 +452,7 @@ const installModpack = async (event, { project, instanceName, versionId }) => {
             instanceName: finalName,
             version: gVersion,
             loader: bestVersion.loaders[0],
+            icon: base64Icon, // Return base64 icon
             id: instanceId, // Return ID so frontend can use it if it wants
             ...instanceData
         };

@@ -144,7 +144,7 @@ export const ModsDetailView = ({
 
                     {isInstalled && (
                         <div className="text-xs text-emerald-500 font-medium">
-                            Instance: {installStatus.instanceName}
+                            {installStatus.instanceName ? `Instance: ${installStatus.instanceName}` : (installStatus.fileName ? `File: ${installStatus.fileName}` : 'Installed')}
                         </div>
                     )}
 
