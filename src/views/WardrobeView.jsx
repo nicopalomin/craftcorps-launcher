@@ -183,9 +183,29 @@ const WardrobeView = ({ theme, activeAccount }) => {
                 };
             });
 
-            console.log('[Wardrobe] Enriched cosmetics:', enriched.length);
+            // INJECT TEST ITEM
+            enriched.unshift({
+                id: 'test_beaver_hat',
+                cosmeticId: 'test_beaver_hat',
+                name: 'Beaver Hat',
+                type: 'HAT', // Will map to 'Hats' category
+                texture: '/example_renderable/beaver_hat.png',
+                model: '/example_renderable/beaver_hat.json',
+                isOwned: true
+            });
 
+            console.log('[Wardrobe] Enriched cosmetics:', enriched.length);
             setOwnedCosmetics(enriched);
+
+            // AUTO-EQUIP TEST HAT FOR DEBUGGING
+            const testHat = enriched.find(c => c.id === 'test_beaver_hat');
+            if (testHat) {
+                console.log('[Wardrobe] Auto-equipping test hat');
+                setActiveCosmetics(prev => {
+                    if (prev.find(c => c.id === testHat.id)) return prev;
+                    return [...prev, testHat];
+                });
+            }
 
             // Sync Active Cosmetics from Server State
             // Only update if we actually found ownership data (to rely on server state)
@@ -283,10 +303,13 @@ const WardrobeView = ({ theme, activeAccount }) => {
             }
 
             // Create Skin Object
+            // Normalize on import to match backup behavior
+            const normalizedDataUri = await normalizeSkin(fileData.dataUri);
+
             const newSkin = {
                 id: uuidv4(),
                 name: `Imported Skin ${savedSkins.length + 1}`,
-                skinUrl: fileData.dataUri, // Base64 for viewing
+                skinUrl: normalizedDataUri,
                 filePath: filePath, // For uploading
                 model: 'classic', // Default, maybe ask user?
                 type: 'Classic',
@@ -309,6 +332,23 @@ const WardrobeView = ({ theme, activeAccount }) => {
         }
     };
 
+    const normalizeSkin = (dataUri) => {
+        return new Promise((resolve) => {
+            const img = new Image();
+            img.crossOrigin = "Anonymous";
+            img.onload = () => {
+                const canvas = document.createElement('canvas');
+                canvas.width = img.width;
+                canvas.height = img.height;
+                const ctx = canvas.getContext('2d');
+                ctx.drawImage(img, 0, 0);
+                resolve(canvas.toDataURL());
+            };
+            img.onerror = () => resolve(dataUri);
+            img.src = dataUri;
+        });
+    };
+
     const backupCurrentSkin = async () => {
         if (!currentSkin?.skinUrl) return;
 
@@ -325,14 +365,43 @@ const WardrobeView = ({ theme, activeAccount }) => {
                 reader.readAsDataURL(blob);
             });
 
-            // Check duplicates
-            const isDuplicate = savedSkins.some(s => s.skinUrl === base64);
+            // Normalize for consistent comparison
+            const normalizedBase64 = await normalizeSkin(base64);
+
+            // Check duplicates (Compare against both raw and normalized to catch all)
+            // We use a async-friendly approach for "some" with normalization if needed, 
+            // but for performance assume savedSkins are either raw or normalized.
+            // Best effort: Compare normalized to normalized.
+
+            // Note: normalizing ALL saved skins on every backup is heavy if list is huge. 
+            // But usually list is small (<50).
+            let isDuplicate = false;
+            for (const s of savedSkins) {
+                if (s.skinUrl === base64 || s.skinUrl === normalizedBase64) {
+                    isDuplicate = true;
+                    break;
+                }
+                // Deep check: normalize saved skin if it looks different but might match
+                // Only do this if we really suspect duplicates are slipping through.
+                // For now, let's try direct comparison first.
+                // If the saved skin was imported via handleImportSkin (which we will also update to normalize),
+                // then normalizedBase64 === s.skinUrl should match.
+
+                // If s.skinUrl is "raw" from old import, different compression might mismatch.
+                // Let's normalize s.skinUrl on the fly.
+                const normS = await normalizeSkin(s.skinUrl);
+                if (normS === normalizedBase64) {
+                    isDuplicate = true;
+                    break;
+                }
+            }
+
             if (isDuplicate) return;
 
             const newSkin = {
                 id: uuidv4(),
                 name: `Previous Skin (${new Date().toLocaleDateString()})`,
-                skinUrl: base64,
+                skinUrl: normalizedBase64, // Save normalized
                 model: currentSkin.model,
                 type: currentSkin.model === 'slim' ? 'Slim' : 'Classic',
                 dateAdded: Date.now(),
@@ -407,29 +476,55 @@ const WardrobeView = ({ theme, activeAccount }) => {
 
     // Group cosmetics by type
     const categorizedCosmetics = useMemo(() => {
+        const order = [
+            'Capes',
+            'Name Tags',
+            'Hats',
+            'Glasses',
+            'Wings',
+            'Item Skins',
+            'Emotes',
+            'UI & HUD Enchantments',
+            'Kill Effects'
+        ];
+
         const groups = {};
+        order.forEach(cat => groups[cat] = []);
+
         ownedCosmetics.forEach(item => {
             const rawType = item.type || 'Cosmetic';
-            // Normalize type - 'CAPE' -> 'Capes'
-            let typeKey = rawType.toUpperCase();
-            if (typeKey === 'CAPE') typeKey = 'Capes';
-            else if (typeKey === 'WING') typeKey = 'Wings';
-            else if (typeKey === 'HEAD') typeKey = 'Heads';
-            else if (typeKey === 'JACKET') typeKey = 'Jackets';
-            else typeKey = typeKey.charAt(0) + typeKey.slice(1).toLowerCase() + 's';
+            let typeKey = rawType;
+
+            // Normalize
+            const upper = rawType.toUpperCase();
+            if (upper === 'CAPE') typeKey = 'Capes';
+            else if (upper === 'WING') typeKey = 'Wings';
+            else if (upper === 'HAT' || upper === 'HEAD') typeKey = 'Hats';
+            else if (upper === 'NAMETAG' || upper === 'NAME TAG') typeKey = 'Name Tags';
+            else if (upper === 'GLASS' || upper === 'GLASSES') typeKey = 'Glasses';
+            else if (upper === 'ITEMSKIN' || upper === 'ITEM SKIN') typeKey = 'Item Skins';
+            else if (upper === 'EMOTE') typeKey = 'Emotes';
+            else if (upper === 'HUD' || upper === 'UI & HUD' || upper === 'UI & HUD ENCHANTMENTS') typeKey = 'UI & HUD Enchantments';
+            else if (upper === 'KILLEFFECT' || upper === 'KILL EFFECT') typeKey = 'Kill Effects';
+            else {
+                typeKey = rawType.charAt(0).toUpperCase() + rawType.slice(1).toLowerCase() + 's';
+            }
 
             if (!groups[typeKey]) groups[typeKey] = [];
             groups[typeKey].push(item);
         });
-        // Sort keys to have Capes first
-        return Object.keys(groups).sort((a, b) => {
-            if (a === 'Capes') return -1;
-            if (b === 'Capes') return 1;
-            return a.localeCompare(b);
-        }).reduce((acc, key) => {
-            acc[key] = groups[key];
-            return acc;
-        }, {});
+
+        const result = {};
+        order.forEach(key => {
+            result[key] = groups[key] || [];
+            delete groups[key];
+        });
+
+        Object.keys(groups).sort().forEach(key => {
+            result[key] = groups[key];
+        });
+
+        return result;
     }, [ownedCosmetics]);
 
     // Determine what to show in viewer
@@ -475,10 +570,13 @@ const WardrobeView = ({ theme, activeAccount }) => {
 
                 {/* Left Column: Preview */}
                 <div className="lg:w-2/5 flex flex-col gap-6">
-                    <div className="flex-1 flex flex-col items-center justify-center relative group min-h-[450px] bg-slate-900/40 rounded-[2rem] border border-white/5 overflow-hidden shadow-inner">
+                    <div className="flex-1 flex flex-col items-center justify-center relative group min-h-[450px] bg-slate-900/40 rounded-[2rem] border border-white/5 overflow-hidden shadow-inner group/card">
+                        {/* Slow Background Shine */}
+                        <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/[0.03] to-transparent animate-slow-sweep pointer-events-none" />
 
-                        {/* Dramatic Spotlight behind character */}
-                        <div className="skin-spotlight scale-150 opacity-40 top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2" />
+                        {/* Shimmer and Glow */}
+                        <div className="absolute inset-0 bg-gradient-to-br from-white/[0.05] via-transparent to-transparent opacity-50 pointer-events-none" />
+                        <div className="absolute inset-0 animate-shimmer opacity-[0.03] pointer-events-none" />
 
                         {/* 3D Model Viewer */}
                         <div className="relative z-10 w-full h-full flex items-center justify-center">
@@ -516,7 +614,15 @@ const WardrobeView = ({ theme, activeAccount }) => {
                 </div>
 
                 {/* Right Column: Library */}
-                <div className={`flex-1 rounded-[2rem] border p-8 flex flex-col min-h-0 ${theme === 'white' ? 'bg-white/60 border-slate-200 shadow-xl' : 'bg-slate-900/40 border-white/5 shadow-2xl backdrop-blur-xl'}`}>
+                <div className={`flex-1 rounded-[2rem] border p-8 flex flex-col min-h-0 relative overflow-hidden group/card ${theme === 'white' ? 'bg-white/60 border-slate-200 shadow-xl' : 'bg-slate-900/40 border-white/10 shadow-2xl backdrop-blur-xl'}`}>
+                    {/* Border Glow (Orders) */}
+                    <div className="absolute -inset-[2px] bg-gradient-to-br from-emerald-500/20 via-transparent to-emerald-500/20 rounded-[2rem] blur-sm animate-slow-pulse pointer-events-none" />
+
+                    {/* Slow Background Shine */}
+                    <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/[0.02] to-transparent animate-slow-sweep pointer-events-none" />
+
+                    <div className="absolute inset-0 bg-gradient-to-br from-white/[0.03] via-transparent to-transparent opacity-50 pointer-events-none" />
+                    <div className="absolute inset-0 animate-shimmer opacity-[0.02] pointer-events-none" />
 
                     {/* Tabs */}
                     <div className="flex gap-8 mb-8 border-b border-white/5 pb-0">
@@ -550,9 +656,10 @@ const WardrobeView = ({ theme, activeAccount }) => {
                                 {currentSkin.skinUrl && (
                                     <div
                                         onClick={() => setSelectedSkin(currentSkin)}
-                                        className={`group relative rounded-3xl p-4 border transition-all cursor-pointer card-premium ${theme === 'white' ? (currentSkin.id === selectedSkin?.id ? 'bg-slate-50 border-emerald-500 ring-1 ring-emerald-500/20' : 'bg-white border-slate-200 hover:border-slate-300') : (currentSkin.id === selectedSkin?.id ? 'bg-slate-800/60 border-emerald-500' : 'bg-slate-800/40 border-white/5 hover:border-white/10')}`}
+                                        className={`group relative rounded-3xl p-4 border transition-all cursor-pointer overflow-hidden ${theme === 'white' ? (currentSkin.id === selectedSkin?.id ? 'bg-slate-50 border-emerald-500 ring-1 ring-emerald-500/20' : 'bg-white border-slate-200 hover:border-slate-300') : (currentSkin.id === selectedSkin?.id ? 'bg-slate-800/60 border-emerald-500' : 'bg-slate-800/40 border-white/5 hover:border-white/10')}`}
                                     >
-                                        <div className={`aspect-[3/4] rounded-2xl bg-emerald-950/20 mb-4 flex items-center justify-center relative overflow-hidden p-2`}>
+                                        <div className="absolute inset-0 bg-gradient-to-tr from-transparent via-white/[0.05] to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000 ease-in-out pointer-events-none" />
+                                        <div className={`aspect-[3/4] rounded-2xl bg-emerald-950/20 mb-4 flex items-center justify-center relative p-2`}>
                                             {/* Pulse ring for equipped */}
                                             <div className="equipped-pulse-ring" />
 
@@ -562,7 +669,7 @@ const WardrobeView = ({ theme, activeAccount }) => {
                                                 scale={6}
                                                 className="w-full h-full object-contain drop-shadow-[0_12px_12px_rgba(0,0,0,0.6)] relative z-10"
                                             />
-                                            <div className="absolute top-4 right-4 bg-emerald-500 text-black text-[9px] font-black px-2.5 py-1 rounded-full shadow-lg z-20 flex items-center gap-1">
+                                            <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-emerald-500 text-black text-[9px] font-black px-3 py-1 rounded-full shadow-lg z-20 flex items-center gap-1.5 whitespace-nowrap">
                                                 <Check size={10} strokeWidth={4} /> EQUIPPED
                                             </div>
                                         </div>
@@ -577,8 +684,9 @@ const WardrobeView = ({ theme, activeAccount }) => {
                                     <div
                                         key={skin.id}
                                         onClick={() => setSelectedSkin(skin)}
-                                        className={`group relative rounded-3xl p-4 border transition-all cursor-pointer card-premium ${theme === 'white' ? (skin.id === selectedSkin?.id ? 'bg-slate-50 border-emerald-500' : 'bg-white border-slate-200 hover:border-slate-300') : (skin.id === selectedSkin?.id ? 'bg-slate-800/60 border-emerald-500' : 'bg-slate-800/40 border-white/5 hover:border-white/10')}`}
+                                        className={`group relative rounded-3xl p-4 border transition-all cursor-pointer overflow-hidden ${theme === 'white' ? (skin.id === selectedSkin?.id ? 'bg-slate-50 border-emerald-500' : 'bg-white border-slate-200 hover:border-slate-300') : (skin.id === selectedSkin?.id ? 'bg-slate-800/60 border-emerald-500' : 'bg-slate-800/40 border-white/5 hover:border-white/10')}`}
                                     >
+                                        <div className="absolute inset-0 bg-gradient-to-tr from-transparent via-white/[0.05] to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000 ease-in-out pointer-events-none" />
                                         <div className="aspect-[3/4] rounded-2xl bg-slate-900/60 mb-4 flex items-center justify-center relative border border-white/5 overflow-hidden p-2">
                                             <Skin2DRender
                                                 skinUrl={skin.skinUrl}
@@ -662,109 +770,113 @@ const WardrobeView = ({ theme, activeAccount }) => {
                                                     <h3 className="text-xs font-black text-white tracking-widest uppercase bg-slate-800 border border-white/10 px-4 py-1.5 rounded-full shadow-lg">
                                                         {category}
                                                     </h3>
+                                                    {items.length === 0 && (
+                                                        <div className="flex items-center gap-1.5 px-3 py-1 bg-emerald-500/10 border border-emerald-500/20 rounded-lg text-[9px] font-black text-emerald-400 animate-pulse">
+                                                            <Sparkles size={10} />
+                                                            <span>COMING SOON...</span>
+                                                        </div>
+                                                    )}
                                                     <div className="flex-1 h-[1px] bg-gradient-to-r from-white/10 to-transparent" />
                                                     <span className="text-[10px] font-black text-slate-600 tracking-tighter">{items.length} ITEMS</span>
                                                 </div>
 
                                                 <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-                                                    {items.map((item) => {
-                                                        const isOwned = item.isOwned === true;
-                                                        const isEquipped = activeCosmetics.find(c => c.id === item.id);
-                                                        const isFounder = item.id === 'cape_founder';
+                                                    {items.length > 0 ? (
+                                                        items.map((item) => {
+                                                            const isOwned = item.isOwned === true;
+                                                            const isEquipped = activeCosmetics.find(c => c.id === item.id);
+                                                            const isFounder = item.id === 'cape_founder';
 
-                                                        let cardBgClass = '';
-                                                        if (theme === 'white') {
-                                                            cardBgClass = isEquipped
-                                                                ? 'bg-slate-50 border-emerald-500'
-                                                                : 'bg-white border-slate-200 hover:border-slate-300';
-                                                        } else {
-                                                            cardBgClass = isEquipped
-                                                                ? 'bg-slate-800/60 border-emerald-500 shadow-[0_0_20px_rgba(16,185,129,0.1)]'
-                                                                : 'bg-slate-800/40 border-white/5 hover:border-white/10';
-                                                        }
+                                                            let cardBgClass = '';
+                                                            if (theme === 'white') {
+                                                                cardBgClass = isEquipped
+                                                                    ? 'bg-slate-50 border-emerald-500'
+                                                                    : 'bg-white border-slate-200 hover:border-slate-300';
+                                                            } else {
+                                                                cardBgClass = isEquipped
+                                                                    ? 'bg-slate-800/60 border-emerald-500 shadow-[0_0_20px_rgba(16,185,129,0.1)]'
+                                                                    : 'bg-slate-800/40 border-white/5 hover:border-white/10';
+                                                            }
 
-                                                        if (isFounder) {
-                                                            cardBgClass = isEquipped
-                                                                ? 'bg-gradient-to-br from-amber-900/40 to-purple-900/40 border-amber-500 shadow-[0_0_25px_rgba(245,158,11,0.2)]'
-                                                                : 'bg-gradient-to-br from-amber-900/10 to-purple-900/10 border-amber-500/30 hover:border-amber-400';
-                                                        }
+                                                            if (isFounder) {
+                                                                cardBgClass = isEquipped
+                                                                    ? 'bg-gradient-to-br from-amber-900/40 to-purple-900/40 border-amber-500 shadow-[0_0_25px_rgba(245,158,11,0.2)]'
+                                                                    : 'bg-gradient-to-br from-amber-900/10 to-purple-900/10 border-amber-500/30 hover:border-amber-400';
+                                                            }
 
-                                                        if (!isOwned) {
-                                                            cardBgClass = theme === 'white'
-                                                                ? 'bg-slate-100 border-slate-200 opacity-60'
-                                                                : 'bg-slate-900/30 border-white/5 opacity-50';
-                                                        }
+                                                            if (!isOwned) {
+                                                                cardBgClass = theme === 'white'
+                                                                    ? 'bg-slate-100 border-slate-200 opacity-60'
+                                                                    : 'bg-slate-900/30 border-white/5 opacity-50';
+                                                            }
 
-                                                        return (
-                                                            <div
-                                                                key={item.id}
-                                                                onClick={() => isOwned && toggleCosmetic(item)}
-                                                                className={`group relative rounded-3xl p-4 border transition-all card-premium ${isOwned ? 'cursor-pointer' : 'cursor-not-allowed'} ${cardBgClass}`}
-                                                            >
-                                                                {isEquipped && <div className="equipped-pulse-ring rounded-3xl" />}
+                                                            return (
+                                                                <div
+                                                                    key={item.id}
+                                                                    onClick={() => isOwned && toggleCosmetic(item)}
+                                                                    className={`group relative rounded-3xl p-4 border transition-all overflow-hidden ${isOwned ? 'cursor-pointer' : 'cursor-not-allowed'} ${cardBgClass}`}
+                                                                >
+                                                                    <div className="absolute inset-0 bg-gradient-to-tr from-transparent via-white/[0.05] to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000 ease-in-out pointer-events-none" />
+                                                                    {isEquipped && <div className="equipped-pulse-ring rounded-3xl" />}
 
-                                                                <div className={`aspect-square rounded-2xl mb-4 flex items-center justify-center relative overflow-hidden z-10 ${isFounder ? 'bg-gradient-to-br from-black/80 via-purple-950/40 to-amber-950/40' : 'bg-slate-950 shadow-inner'}`}>
-                                                                    {!isOwned && (
-                                                                        <div className="absolute inset-0 z-20 bg-black/60 backdrop-blur-[2px] flex flex-col items-center justify-center gap-2">
-                                                                            <Lock size={18} className="text-white/40" />
-                                                                            <span className="text-[8px] font-black tracking-widest text-white/40 uppercase">Locked</span>
-                                                                        </div>
-                                                                    )}
-
-                                                                    {item.texture ? (
-                                                                        item.type?.toLowerCase() === 'cape' ? (
-                                                                            <div className={`w-full h-full flex items-center justify-center p-6 transition-transform duration-700 ${isOwned ? 'group-hover:scale-115' : ''}`}>
-                                                                                <Cape2DRender
-                                                                                    capeUrl={item.texture}
-                                                                                    className={`w-auto h-full max-h-[85%] drop-shadow-[0_15px_15px_rgba(0,0,0,0.8)] ${isFounder ? 'founder-cape-glow' : ''}`}
-                                                                                />
+                                                                    <div className={`aspect-square rounded-2xl mb-4 flex items-center justify-center relative overflow-hidden z-10 ${isFounder ? 'bg-gradient-to-br from-black/80 via-purple-950/40 to-amber-950/40' : 'bg-slate-950 shadow-inner'}`}>
+                                                                        {!isOwned && (
+                                                                            <div className="absolute inset-0 z-20 bg-black/60 backdrop-blur-[2px] flex flex-col items-center justify-center gap-2">
+                                                                                <Lock size={18} className="text-white/40" />
+                                                                                <span className="text-[8px] font-black tracking-widest text-white/40 uppercase">Locked</span>
                                                                             </div>
+                                                                        )}
+
+                                                                        {item.texture ? (
+                                                                            item.type?.toLowerCase() === 'cape' ? (
+                                                                                <div className={`w-full h-full flex items-center justify-center p-6 transition-transform duration-700 ${isOwned ? 'group-hover:scale-115' : ''}`}>
+                                                                                    <Cape2DRender
+                                                                                        capeUrl={item.texture}
+                                                                                        className={`w-auto h-full max-h-[85%] drop-shadow-[0_15px_15px_rgba(0,0,0,0.8)] ${isFounder ? 'founder-cape-glow' : ''}`}
+                                                                                    />
+                                                                                </div>
+                                                                            ) : (
+                                                                                <img src={item.texture} alt={item.name} className="w-20 h-20 object-contain drop-shadow-2xl transition-transform duration-700 group-hover:scale-115" />
+                                                                            )
                                                                         ) : (
-                                                                            <img src={item.texture} alt={item.name} className="w-20 h-20 object-contain drop-shadow-2xl transition-transform duration-700 group-hover:scale-115" />
-                                                                        )
-                                                                    ) : (
-                                                                        <Sparkles size={24} className="text-slate-800" />
-                                                                    )}
+                                                                            <Sparkles size={24} className="text-slate-800" />
+                                                                        )}
 
-                                                                    {isEquipped && (
-                                                                        <div className="absolute top-3 right-3 bg-emerald-500 text-black p-1.5 rounded-full shadow-xl z-20 animate-in zoom-in duration-500">
-                                                                            <Check size={8} strokeWidth={5} />
-                                                                        </div>
-                                                                    )}
-                                                                </div>
-
-                                                                <div>
-                                                                    <h4 className={`text-sm font-bold truncate ${isFounder ? 'text-amber-400' : (theme === 'white' ? 'text-slate-700' : 'text-slate-200')}`}>
-                                                                        {item.name}
-                                                                    </h4>
-                                                                    <div className="flex items-center justify-between mt-1 opacity-60">
-                                                                        <span className="text-[9px] font-black uppercase tracking-widest">
-                                                                            {item.type || 'Cosmetic'}
-                                                                        </span>
-                                                                        {isFounder && (
-                                                                            <Crown size={12} className="text-amber-500" />
+                                                                        {isEquipped && (
+                                                                            <div className="absolute top-3 right-3 bg-emerald-500 text-black p-1.5 rounded-full shadow-xl z-20 animate-in zoom-in duration-500">
+                                                                                <Check size={8} strokeWidth={5} />
+                                                                            </div>
                                                                         )}
                                                                     </div>
+
+                                                                    <div>
+                                                                        <h4 className={`text-sm font-bold truncate ${isFounder ? 'text-amber-400' : (theme === 'white' ? 'text-slate-700' : 'text-slate-200')}`}>
+                                                                            {item.name}
+                                                                        </h4>
+                                                                        <div className="flex items-center justify-between mt-1 opacity-60">
+                                                                            <span className="text-[9px] font-black uppercase tracking-widest">
+                                                                                {item.type || 'Cosmetic'}
+                                                                            </span>
+                                                                            {isFounder && (
+                                                                                <Crown size={12} className="text-amber-500" />
+                                                                            )}
+                                                                        </div>
+                                                                    </div>
                                                                 </div>
+                                                            );
+                                                        })
+                                                    ) : (
+                                                        <div className="group relative rounded-3xl p-4 border border-dashed border-white/5 bg-white/[0.02] opacity-20 transition-all">
+                                                            <div className="aspect-square rounded-2xl mb-4 flex items-center justify-center relative overflow-hidden bg-black/40 border border-dashed border-white/5">
+                                                                <Shirt size={24} className="text-white/20" />
                                                             </div>
-                                                        );
-                                                    })}
+                                                            <div className="h-3 w-2/3 bg-white/10 rounded-full mb-2" />
+                                                            <div className="h-2 w-1/3 bg-white/5 rounded-full" />
+                                                        </div>
+                                                    )}
                                                 </div>
                                             </div>
                                         ))}
-
-                                        {/* Silhouettes for empty slots */}
-                                        <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 pt-4">
-                                            {unequippedCosmeticSlots.map(type => (
-                                                <div key={`empty-${type}`} className="group relative rounded-3xl p-4 border border-dashed border-white/5 bg-white/[0.02] opacity-20 transition-all">
-                                                    <div className="aspect-square rounded-2xl mb-4 flex items-center justify-center relative overflow-hidden bg-black/40 border border-dashed border-white/5">
-                                                        <Shirt size={24} className="text-white/20" />
-                                                    </div>
-                                                    <div className="h-3 w-2/3 bg-white/10 rounded-full mb-2" />
-                                                    <div className="h-2 w-1/3 bg-white/5 rounded-full" />
-                                                </div>
-                                            ))}
-                                        </div>
                                     </>
                                 )}
                             </div>
