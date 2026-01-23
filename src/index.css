@@ -107,6 +107,38 @@
     animation: bounce-slow 2s ease-in-out infinite;
   }
 
+  @keyframes slow-sweep {
+    0% {
+      transform: translateX(-150%) skewX(-25deg);
+    }
+
+    100% {
+      transform: translateX(150%) skewX(-25deg);
+    }
+  }
+
+  .animate-slow-sweep {
+    animation: slow-sweep 10s ease-in-out infinite;
+  }
+
+  @keyframes slow-pulse {
+
+    0%,
+    100% {
+      opacity: 0.3;
+      filter: blur(40px);
+    }
+
+    50% {
+      opacity: 0.6;
+      filter: blur(60px);
+    }
+  }
+
+  .animate-slow-pulse {
+    animation: slow-pulse 8s ease-in-out infinite;
+  }
+
   /* Electron Drag Regions */
   .drag {
     -webkit-app-region: drag;
