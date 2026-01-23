@@ -88,6 +88,54 @@ async function getDiscoverMetadata(event) {
     }
 }
 
+async function createServer(event, { ip }) {
+    try {
+        const url = `${API_BASE}/servers/create`;
+        const response = await authService.fetchAuthenticated(url, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ ip })
+        });
+        if (!response.ok) throw new Error('Failed to create server');
+        return await response.json();
+    } catch (error) {
+        log.error('[Discovery] Create server failed', error);
+        return { success: false, error: error.message };
+    }
+}
+
+async function verifyServer(event, { ownerUuid, verificationCode }) {
+    try {
+        const url = `${API_BASE}/servers/verify`;
+        const response = await authService.fetchAuthenticated(url, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ ownerUuid, verificationCode })
+        });
+        if (!response.ok) throw new Error('Failed to verify server');
+        return await response.json();
+    } catch (error) {
+        log.error('[Discovery] Verify server failed', error);
+        return { success: false, error: error.message };
+    }
+}
+
+async function voteServer(event, { serverId, voterUuid, verificationString }) {
+    try {
+        const url = `${API_BASE}/servers/vote`;
+        const response = await authService.fetchAuthenticated(url, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ serverId, voterUuid, verificationString })
+        });
+        if (!response.ok) throw new Error('Failed to vote server');
+        return await response.json();
+    } catch (error) {
+        log.error('[Discovery] Vote server failed', error);
+        return { success: false, error: error.message };
+    }
+}
+
 /**
  * Smart join handler - uses the comprehensive smart join flow
  */
@@ -265,12 +313,18 @@ function setupDiscoveryHandlers() {
     ipcMain.removeHandler('join-server');
     ipcMain.removeHandler('get-discover-metadata');
     ipcMain.removeHandler('smart-join-server');
+    ipcMain.removeHandler('create-server');
+    ipcMain.removeHandler('verify-server');
+    ipcMain.removeHandler('vote-server');
 
     ipcMain.handle('get-discover-servers', getDiscoverServers);
     ipcMain.handle('get-discover-categories', getDiscoverCategories);
     ipcMain.handle('join-server', joinServer);
     ipcMain.handle('get-discover-metadata', getDiscoverMetadata);
     ipcMain.handle('smart-join-server', smartJoinServer);
+    ipcMain.handle('create-server', createServer);
+    ipcMain.handle('verify-server', verifyServer);
+    ipcMain.handle('vote-server', voteServer);
 }
 
 module.exports = { setupDiscoveryHandlers };

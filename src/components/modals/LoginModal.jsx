@@ -71,16 +71,18 @@ const LoginModal = ({ isOpen, onClose, onAddAccount, isAutoRefreshing }) => {
                     let key = 'auth_err_unknown';
                     const err = result.error;
 
-                    if (err.includes('AUTH_MS_TOKEN_FAILED')) key = 'auth_err_ms_token';
-                    else if (err.includes('AUTH_XBOX_LIVE_FAILED')) key = 'auth_err_xbox_live';
-                    else if (err.includes('AUTH_NO_XBOX_ACCOUNT')) key = 'auth_err_no_xbox';
-                    else if (err.includes('AUTH_CHILD_ACCOUNT')) key = 'auth_err_child';
-                    else if (err.includes('AUTH_XSTS_FAILED')) key = 'auth_err_xsts';
-                    else if (err.includes('AUTH_MC_LOGIN_FAILED')) key = 'auth_err_mc_login';
-                    else if (err.includes('AUTH_NO_MINECRAFT')) key = 'auth_err_no_mc';
-                    else if (err.includes('AUTH_PROFILE_FAILED')) key = 'auth_err_profile';
-                    else if (err.includes('AUTH_INVALID_APP_CONFIG')) key = 'auth_err_invalid_app_config';
-                    else if (err.includes('ENOTFOUND')) key = 'auth_err_network';
+                    if (typeof err === 'string') {
+                        if (err.includes('AUTH_MS_TOKEN_FAILED')) key = 'auth_err_ms_token';
+                        else if (err.includes('AUTH_XBOX_LIVE_FAILED')) key = 'auth_err_xbox_live';
+                        else if (err.includes('AUTH_NO_XBOX_ACCOUNT')) key = 'auth_err_no_xbox';
+                        else if (err.includes('AUTH_CHILD_ACCOUNT')) key = 'auth_err_child';
+                        else if (err.includes('AUTH_XSTS_FAILED')) key = 'auth_err_xsts';
+                        else if (err.includes('AUTH_MC_LOGIN_FAILED')) key = 'auth_err_mc_login';
+                        else if (err.includes('AUTH_NO_MINECRAFT')) key = 'auth_err_no_mc';
+                        else if (err.includes('AUTH_PROFILE_FAILED')) key = 'auth_err_profile';
+                        else if (err.includes('AUTH_INVALID_APP_CONFIG')) key = 'auth_err_invalid_app_config';
+                        else if (err.includes('ENOTFOUND')) key = 'auth_err_network';
+                    }
 
                     setErrorMsg(t(key));
                     setIsLoading(false);
@@ -134,15 +136,7 @@ const LoginModal = ({ isOpen, onClose, onAddAccount, isAutoRefreshing }) => {
                     consent
                 });
 
-                // Even if link fails (e.g. backend offline), we might want to let them play offline?
-                // But USER requirement says "check locally... let user start game if consent endpoint accepts".
-                // So strict mode: if link/consent fails, no play? 
-                // "right before generating the device fingerprint ping the consent endpoint... if consent endpoint accepts... let user start"
-
                 if (!result.success) {
-                    // If backend rejects consent or link, we stop?
-                    // User said "User must agree to terms... check locally... let user start... if consent endpoint accepts"
-                    // This implies we rely on backend for validation now.
                     throw new Error(result.error?.message || result.error || "Failed to register offline profile");
                 }
                 console.log('[LoginModal] Offline Profile Linked Successfully');

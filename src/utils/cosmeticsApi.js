@@ -1,26 +1,20 @@
 const BASE_URL = 'https://api.craftcorps.net';
 
 /**
- * Fetch cosmetics owned by a player
+ * Fetch active cape for a specific player (Client rendering)
  * @param {string} playerUuid - The Minecraft Player UUID
- * @returns {Promise<Array>} - List of cosmetic objects
- */
-/**
- * Fetch cosmetics owned by a player
- * @param {string} playerUuid - The Minecraft Player UUID
- * @returns {Promise<Array>} - List of cosmetic IDs
+ * @returns {Promise<Array>} - List of cosmetic IDs (legacy format) or object
  */
 export const fetchPlayerCosmetics = async (playerUuid) => {
     try {
         const response = await fetch(`${BASE_URL}/cosmetics/capes?uuid=${playerUuid}`);
         if (!response.ok) {
-            if (response.status === 404) return []; // User has no cosmetics
+            if (response.status === 404) return [];
             throw new Error('Failed to fetch cosmetics');
         }
         const data = await response.json();
         // API returns: { "capes": ["cape_fire"], "activeCapeId": "..." }
-        // For partial compatibility, we return just the array here, or we could return the object.
-        // But the legacy code expects array.
+        // Return capes array for compatibility
         return data.capes || [];
     } catch (error) {
         console.error('Error fetching cosmetics:', error);
@@ -29,7 +23,7 @@ export const fetchPlayerCosmetics = async (playerUuid) => {
 };
 
 /**
- * Fetch Detailed User Cosmetics (Authenticated)
+ * Fetch Cosmetics owned/active for the authenticated user
  * @param {string} token 
  * @param {string} uuid 
  */
@@ -55,28 +49,17 @@ export const fetchDetailedCosmetics = async (token, uuid) => {
 
 
 /**
- * Fetch ALL available cosmetics (Catalog)
+ * Fetch Available Cosmetics (Catalog)
  * @returns {Promise<Array>}
  */
 export const fetchAllCosmetics = async () => {
     try {
-        // Try the catalog endpoint first, with fallbacks
-        const endpoints = ['/cosmetics/catalog', '/cosmetics/list', '/cosmetics/all', '/store/cosmetics'];
-
-        for (const endpoint of endpoints) {
-            try {
-                const response = await fetch(`${BASE_URL}${endpoint}`);
-                if (response.ok) {
-                    const data = await response.json();
-                    // API returns array of: { cosmeticId, name, type, description, textureUrl }
-                    return data;
-                }
-            } catch (e) {
-                continue; // Try next endpoint
-            }
+        const response = await fetch(`${BASE_URL}/cosmetics/catalog`);
+        if (response.ok) {
+            const data = await response.json();
+            return data;
         }
-
-        console.warn('All catalog endpoints failed, catalog may not be deployed yet');
+        console.warn('Catalog endpoint failed');
         return [];
     } catch (error) {
         console.error('Error fetching catalog:', error);
@@ -86,19 +69,20 @@ export const fetchAllCosmetics = async () => {
 
 /**
  * Equip a cosmetic
- * @param {string} token - User Token (likely Minecraft Access Token or internal auth token)
+ * @param {string} token - User Token
  * @param {string} capeId - The ID of the cape to equip
+ * @param {string} playerUuid - The UUID of the player
  * @returns {Promise<boolean>} - Success status
  */
-export const equipCosmetic = async (token, capeId) => {
+export const equipCosmetic = async (token, capeId, playerUuid) => {
     try {
         const response = await fetch(`${BASE_URL}/cosmetics/equip`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
-                'Authorization': `Bearer ${token}` // Assuming Bearer token
+                'Authorization': `Bearer ${token}`
             },
-            body: JSON.stringify({ capeId })
+            body: JSON.stringify({ capeId, playerUuid })
         });
 
         if (!response.ok) {

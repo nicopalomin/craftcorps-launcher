@@ -17,14 +17,13 @@ class AuthService {
         this.userId = null;
         this.token = null;
         this.refreshToken = null;
-        this.tokenExpiry = null;
     }
 
     init(store) {
         log.info('[AuthService] Initializing...');
         this.store = store;
 
-        // 1. Load or Generate Install ID (Random UUID for Account)
+        // 1. Load or Generate Install ID
         this.installId = this.store.get(STORE_KEY_INSTALL_ID);
         if (!this.installId) {
             this.installId = uuidv4();
@@ -42,112 +41,99 @@ class AuthService {
             this.userId = this.store.get(STORE_KEY_USER_ID);
         }
 
-        // 3. Auto-Login / Refresh (Bootstrap)
-        // We don't block validation here, just kick it off
+        // 3. Attempt Refresh or Anon Login on Init
         this.getToken().catch(err => log.error('[AuthService] Bootstrap auth failed:', err));
     }
 
-    // Lazy load Device ID (Hardware Fingerprint) only when needed (Linking)
     _ensureDeviceId() {
         if (this.deviceId) return this.deviceId;
-
-        log.info('[AuthService] Checking for Device ID...');
         this.deviceId = this.store.get(STORE_KEY_DEVICE_ID);
         if (!this.deviceId) {
-            log.info('[AuthService] Generating New Device ID...');
             try {
                 const { machineIdSync } = require('node-machine-id');
                 this.deviceId = machineIdSync({ original: true });
             } catch (e) {
-                log.warn('[AuthService] Failed to get machine-id, falling back to UUID', e);
                 this.deviceId = uuidv4();
             }
             this.store.set(STORE_KEY_DEVICE_ID, this.deviceId);
-            log.info(`[AuthService] Device ID Generated: ${this.deviceId}`);
-        } else {
-            log.info(`[AuthService] Loaded Existing Device ID: ${this.deviceId}`);
         }
         return this.deviceId;
     }
 
-    async authenticate() {
+    // --- Public Auth Endpoints ---
+
+    async register(email, password, username) {
+        log.info(`[AuthService] Registering ${email}...`);
+        const res = await fetch(`${AUTH_BASE}/auth/register`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email, password, username })
+        });
+
+        if (!res.ok) throw new Error(`Registration failed: ${res.status}`);
+        return true;
+    }
+
+    async login(email, password) {
+        log.info(`[AuthService] Logging in ${email}...`);
+        const res = await fetch(`${AUTH_BASE}/auth/login`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                email,
+                password,
+                installId: this.installId,
+                clientType: 'launcher'
+            })
+        });
+
+        if (!res.ok) throw new Error(`Login failed: ${res.status}`);
+        const data = await res.json();
+        this._handleAuthResponse(data);
+        return data;
+    }
+
+    async loginMicrosoft(accessToken) {
+        log.info('[AuthService] Logging in with Microsoft...');
+        const res = await fetch(`${AUTH_BASE}/auth/login/microsoft`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ accessToken })
+        });
+
+        if (!res.ok) throw new Error(`Microsoft Login failed: ${res.status}`);
+        const data = await res.json();
+        this._handleAuthResponse(data);
+        return data;
+    }
+
+    async loginAnonymous() {
+        log.info(`[AuthService] Login Anonymous InstallID ${this.installId}...`);
         try {
-            log.info(`[AuthService] Syncing Anonymous Session for InstallID ${this.installId}...`);
-            // Use installId for anonymous account creation
             const res = await fetch(`${AUTH_BASE}/auth/anonymous`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    installId: this.installId, // Changed from deviceId
-                    appVersion: app.getVersion()
-                })
+                body: JSON.stringify({ installId: this.installId })
             });
 
-            if (!res.ok) throw new Error(`Auth failed: ${res.status}`);
-
+            if (!res.ok) throw new Error(`Anonymous Auth failed: ${res.status}`);
             const data = await res.json();
             this._handleAuthResponse(data);
-
-            log.info(`[AuthService] Session Synced. User: ${this.userId}`);
             return true;
         } catch (e) {
-            log.error('[AuthService] Authentication error:', e);
+            log.warn(`[AuthService] Anonymous login failed (offline?): ${e.message}`);
             return false;
         }
     }
 
-    async linkProfile(profile) {
-        // profile: { uuid, name, authType }
-        try {
-            const deviceId = this._ensureDeviceId();
-            log.info(`[AuthService] Linking Profile ${profile.name} to User ${this.userId} with DeviceID ${deviceId}...`);
-
-            const res = await this.fetchAuthenticated(`${AUTH_BASE}/auth/link/profile`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    deviceId: deviceId,
-                    profile: profile
-                })
-            });
-
-            if (!res.ok) throw new Error(`Link failed: ${res.status}`);
-            log.info('[AuthService] Profile Linked Successfully.');
-            return true;
-        } catch (e) {
-            log.error('[AuthService] Failed to link profile:', e);
-            return false;
-        }
-    }
-
-    async recordConsent(agreement) {
-        // agreement: { type: 'EULA'|'TOS', version: '1.0' }
-        try {
-            log.info(`[AuthService] Sending user consent: ${agreement.type} v${agreement.version}...`);
-
-            const res = await this.fetchAuthenticated(`${AUTH_BASE}/auth/consent`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    agreementType: agreement.type,
-                    agreementVersion: agreement.version
-                })
-            });
-
-            if (!res.ok) throw new Error(`Consent record failed: ${res.status}`);
-
-            log.info('[AuthService] Consent Accepted by Backend.');
-            return true;
-        } catch (e) {
-            log.error('[AuthService] Failed to record consent:', e);
-            throw e; // Propagate error to block login if consent fails
-        }
+    // Alias for backward compatibility if needed, or replace usages
+    async authenticate() {
+        return this.loginAnonymous();
     }
 
     async refreshSession() {
         if (!this.refreshToken) return false;
         try {
-            log.info('[AuthService] Refreshing Session...');
             const res = await fetch(`${AUTH_BASE}/auth/refresh`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -155,21 +141,16 @@ class AuthService {
             });
 
             if (!res.ok) {
-                // If refresh fails (401/403), we must re-login
                 if (res.status === 401 || res.status === 403) {
-                    this.refreshToken = null;
-                    this.store.delete(STORE_KEY_REFRESH_TOKEN);
+                    this.invalidateSession();
                 }
                 throw new Error(`Refresh failed: ${res.status}`);
             }
 
             const data = await res.json();
-            // Refresh endpoint usually returns just accessToken, or both.
-            // Adjust based on your backend.
             if (data.accessToken) {
                 this.token = data.accessToken;
                 this.store.set(STORE_KEY_AUTH_TOKEN, this.token);
-                // If backend rotates refresh token, handle it:
                 if (data.refreshToken) {
                     this.refreshToken = data.refreshToken;
                     this.store.set(STORE_KEY_REFRESH_TOKEN, this.refreshToken);
@@ -183,23 +164,80 @@ class AuthService {
         }
     }
 
+    // --- Authenticated User Endpoints ---
+
+    async logout() {
+        try {
+            await this.fetchAuthenticated(`${AUTH_BASE}/auth/logout`, { method: 'POST' });
+        } catch (e) {
+            log.warn('[AuthService] Logout failed on server, clearing local anyway', e);
+        }
+        this.invalidateSession();
+    }
+
+    async linkCredentials(email, password) {
+        log.info(`[AuthService] Linking credentials for ${email}...`);
+        const res = await this.fetchAuthenticated(`${AUTH_BASE}/auth/link/credentials`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email, password })
+        });
+        if (!res.ok) throw new Error(`Link Credentials failed: ${res.status}`);
+        return true;
+    }
+
+    async linkProfile(profile) {
+        const deviceId = this._ensureDeviceId();
+        // profile: { uuid, name, authType }
+        const res = await this.fetchAuthenticated(`${AUTH_BASE}/auth/link/profile`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                deviceId,
+                profile
+            })
+        });
+        if (!res.ok) throw new Error(`Link Profile failed: ${res.status}`);
+        return true;
+    }
+
+    async linkMicrosoft(accessToken) {
+        log.info('[AuthService] Linking Microsoft Account...');
+        const res = await this.fetchAuthenticated(`${AUTH_BASE}/auth/link/microsoft`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ accessToken })
+        });
+        if (!res.ok) throw new Error(`Link Microsoft failed: ${res.status}`);
+        return true;
+    }
+
+    async recordConsent(agreement) {
+        const res = await this.fetchAuthenticated(`${AUTH_BASE}/auth/consent`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                agreementType: agreement.type,
+                agreementVersion: agreement.version
+            })
+        });
+        if (!res.ok) throw new Error(`Consent failed: ${res.status}`);
+        return true;
+    }
+
+    // --- Helpers ---
+
     async getToken() {
-        // 1. Check if we have a token
         if (!this.token) {
-            await this.authenticate();
+            await this.loginAnonymous();
             return this.token;
         }
-
-        // 2. Check Expiry
         if (this._isTokenExpired(this.token)) {
-            log.info('[AuthService] Token expired, attempting refresh...');
             const refreshed = await this.refreshSession();
             if (!refreshed) {
-                log.info('[AuthService] Refresh failed, performing full login...');
-                await this.authenticate();
+                await this.loginAnonymous();
             }
         }
-
         return this.token;
     }
 
@@ -207,14 +245,13 @@ class AuthService {
         this.token = data.accessToken;
         this.refreshToken = data.refreshToken || null;
 
-        // Extract User ID
+        // Decoding logic ...
         if (data.user && data.user.id) {
             this.userId = data.user.id;
         } else {
             this.userId = this._decodeUserId(this.token);
         }
 
-        // Persist
         this.store.set(STORE_KEY_AUTH_TOKEN, this.token);
         this.store.set(STORE_KEY_USER_ID, this.userId);
         if (this.refreshToken) {
@@ -222,26 +259,22 @@ class AuthService {
         }
     }
 
-    getUserId() {
-        return this.userId;
-    }
+    async getUserId() { return this.userId; } // Existing
 
-    getDeviceId() {
-        return this.deviceId;
+    async getUserProfile() {
+        log.info('[AuthService] Fetching user profile...');
+        const res = await this.fetchAuthenticated(`${AUTH_BASE}/auth/me`);
+        if (!res.ok) throw new Error('Failed to fetch profile');
+        return await res.json();
     }
+    getDeviceId() { return this.deviceId; }
 
     _isTokenExpired(token) {
         try {
             const payload = this._decodeToken(token);
-            if (!payload || !payload.exp) return true; // Assume expired if invalid
-            // exp is in seconds, Date.now() is ms
-            const expiresAt = payload.exp * 1000;
-            const now = Date.now();
-            // Buffer of 60s
-            return now > (expiresAt - 60000);
-        } catch (e) {
-            return true;
-        }
+            if (!payload || !payload.exp) return true;
+            return Date.now() > (payload.exp * 1000 - 60000);
+        } catch (e) { return true; }
     }
 
     _decodeUserId(token) {
@@ -261,26 +294,20 @@ class AuthService {
             return null;
         }
     }
+
     async fetchAuthenticated(url, options = {}, retried = false) {
         const token = await this.getToken();
-        const headers = {
-            ...options.headers,
-            'Authorization': `Bearer ${token}`
-        };
-
+        const headers = { ...options.headers, 'Authorization': `Bearer ${token}` };
         const response = await fetch(url, { ...options, headers });
 
         if (response.status === 401 && !retried) {
-            log.warn(`[AuthService] 401 at ${url}. Invalidating session and retrying.`);
             this.invalidateSession();
             return this.fetchAuthenticated(url, options, true);
         }
-
         return response;
     }
 
     invalidateSession() {
-        log.info('[AuthService] Invalidating session...');
         this.token = null;
         this.refreshToken = null;
         this.userId = null;

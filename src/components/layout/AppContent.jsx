@@ -152,7 +152,7 @@ const AppContent = ({
                 </div>
             )}
             {activeTab === 'discover' && <DiscoverView selectedInstance={selectedInstance} activeAccount={activeAccount} />}
-            {activeTab === 'profile' && <ProfileView activeAccount={activeAccount} accounts={accounts} instances={instances} theme={theme} />}
+            {activeTab === 'profile' && <ProfileView activeAccount={activeAccount} accounts={accounts} instances={instances} theme={theme} onLogout={onLogoutWithToast} />}
             {activeTab === 'market' && <MarketView />}
             {activeTab === 'rewards' && <BetaRewardsView theme={theme} selectedInstance={selectedInstance} />}
         </div>

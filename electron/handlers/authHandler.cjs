@@ -7,44 +7,101 @@ const DEFAULT_CONSENT = {
     version: '2026-1-18'
 };
 
+
+
 function setupAuthHandlers(getMainWindow) {
+    // --- Standard Auth ---
+
+    ipcMain.handle('register', async (event, { email, password, username }) => {
+        try {
+            await authService.register(email, password, username);
+            return { success: true };
+        } catch (error) {
+            console.error('[AuthHandler] Register failed:', error);
+            return { success: false, error: error.message };
+        }
+    });
+
+    ipcMain.handle('login', async (event, { email, password }) => {
+        try {
+            const data = await authService.login(email, password);
+            return { success: true, data };
+        } catch (error) {
+            console.error('[AuthHandler] Login failed:', error);
+            return { success: false, error: error.message };
+        }
+    });
+
+    ipcMain.handle('logout', async () => {
+        try {
+            await authService.logout();
+            return { success: true };
+        } catch (error) {
+            console.error('[AuthHandler] Logout failed:', error);
+            return { success: false, error: error.message };
+        }
+    });
+
+    // --- Microsoft Auth ---
+
     ipcMain.handle('microsoft-login', async (event, consent) => {
         try {
-            // Use provided consent or fallback to hardcoded default (Implied Consent)
             const consentToRecord = consent || DEFAULT_CONSENT;
 
-            if (!consentToRecord) {
-                // Should not happen with default, but good for safety
-                throw new Error('User consent (TOS/EULA) is required to login.');
-            }
+            // 1. Authenticate with Microsoft (Get Access Token)
+            const msAccount = await authenticateMicrosoft(getMainWindow());
 
-            // 1. Record Consent first
-            await authService.recordConsent(consentToRecord);
-
-            // 2. Perform Login
-            const account = await authenticateMicrosoft(getMainWindow());
-
-            // 3. Link Profile to User Account
+            // 2. Record Consent (Optional, but good practice before login if needed)
             try {
-                await authService.linkProfile({
-                    uuid: account.uuid,
-                    name: account.name,
-                    authType: 'MOJANG'
-                });
-            } catch (linkErr) {
-                console.error('[AuthHandler] Failed to auto-link profile:', linkErr);
+                await authService.recordConsent(consentToRecord);
+            } catch (ignore) { }
+
+            // 3. Login with Backend using MS Token
+            const data = await authService.loginMicrosoft(msAccount.accessToken);
+
+            return { success: true, data, account: msAccount };
+        } catch (error) {
+            console.error('[AuthHandler] Microsoft Login Failed:', error);
+            return { success: false, error: error.message || error };
+        }
+    });
+
+    ipcMain.handle('link-microsoft', async (event, consent) => {
+        try {
+            const consentToRecord = consent || DEFAULT_CONSENT;
+
+            // 1. Authenticate with Microsoft
+            const msAccount = await authenticateMicrosoft(getMainWindow());
+
+            // 2. Record Consent
+            if (consentToRecord) {
+                await authService.recordConsent(consentToRecord);
             }
 
-            return { success: true, account };
+            // 3. Link with Backend
+            await authService.linkMicrosoft(msAccount.accessToken);
+
+            return { success: true };
         } catch (error) {
-            console.error('Login Failed:', error);
+            console.error('[AuthHandler] Microsoft Link Failed:', error);
             return { success: false, error: error.message || error };
+        }
+    });
+
+    // --- Linking & Profiles ---
+
+    ipcMain.handle('link-credentials', async (event, { email, password }) => {
+        try {
+            await authService.linkCredentials(email, password);
+            return { success: true };
+        } catch (error) {
+            console.error('[AuthHandler] Link Credentials failed:', error);
+            return { success: false, error: error.message };
         }
     });
 
     ipcMain.handle('link-profile', async (event, { profile, consent }) => {
         try {
-            // Always record consent if linking profile, using default if needed
             const consentToRecord = consent || DEFAULT_CONSENT;
             if (consentToRecord) {
                 await authService.recordConsent(consentToRecord);
@@ -56,6 +113,8 @@ function setupAuthHandlers(getMainWindow) {
             return { success: false, error: error.message || error };
         }
     });
+
+    // --- Utils ---
 
     ipcMain.handle('refresh-microsoft-token', async (event, refreshToken) => {
         try {
@@ -106,6 +165,80 @@ function setupAuthHandlers(getMainWindow) {
 
             return { success: false, error: 'NO_LOCAL_ACCOUNTS' };
         } catch (error) {
+            return { success: false, error: error.message };
+        }
+    });
+    // --- Advanced Profile ---
+
+    ipcMain.handle('get-user-profile', async () => {
+        try {
+            const profile = await authService.getUserProfile();
+            return { success: true, profile };
+        } catch (error) {
+            console.error('[AuthHandler] Get Profile failed:', error);
+            return { success: false, error: error.message };
+        }
+    });
+
+    ipcMain.handle('link-discord', async (event) => {
+        try {
+            const { BrowserWindow } = require('electron');
+            const token = await authService.getToken();
+
+            // Backend endpoint that starts the Discord OAuth flow for a logged-in user
+            // We append a custom param to signal the backend to redirect to a launcher-friendly success page
+            const authUrl = `https://api.craftcorps.net/auth/link/discord?client=launcher`;
+
+            return new Promise((resolve) => {
+                const authWindow = new BrowserWindow({
+                    width: 500,
+                    height: 800,
+                    show: true,
+                    parent: getMainWindow(),
+                    modal: true,
+                    autoHideMenuBar: true,
+                    webPreferences: {
+                        nodeIntegration: false,
+                        contextIsolation: true
+                    }
+                });
+
+                let processed = false;
+
+                const checkUrl = (url) => {
+                    if (processed) return;
+
+                    // Check for success signals
+                    // Assuming backend redirects to .../success or returns a JSON with success
+                    // Or we can check if it goes to a specific callback
+                    if (url.includes('success=true') || url.includes('/link/success')) {
+                        processed = true;
+                        authWindow.close();
+                        resolve({ success: true });
+                    }
+                    if (url.includes('error=')) {
+                        processed = true;
+                        authWindow.close();
+                        resolve({ success: false, error: 'Discord interaction failed' });
+                    }
+                };
+
+                // Inject Auth Header
+                authWindow.webContents.on('will-navigate', (event, url) => checkUrl(url));
+                authWindow.webContents.on('did-navigate', (event, url) => checkUrl(url));
+                authWindow.webContents.on('will-redirect', (event, url) => checkUrl(url));
+
+                authWindow.on('closed', () => {
+                    if (!processed) resolve({ success: false, error: 'Cancelled by user' });
+                });
+
+                authWindow.loadURL(authUrl, {
+                    extraHeaders: `Authorization: Bearer ${token}\n`
+                });
+            });
+
+        } catch (error) {
+            console.error('[AuthHandler] Link Discord failed:', error);
             return { success: false, error: error.message };
         }
     });

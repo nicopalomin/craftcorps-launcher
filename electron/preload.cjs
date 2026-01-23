@@ -10,6 +10,15 @@ contextBridge.exposeInMainWorld('electronAPI', {
     show: () => ipcRenderer.send('window-show'),
 
 
+    // Auth
+    register: (payload) => ipcRenderer.invoke('register', payload),
+    login: (payload) => ipcRenderer.invoke('login', payload),
+    logout: () => ipcRenderer.invoke('logout'),
+    linkCredentials: (payload) => ipcRenderer.invoke('link-credentials', payload),
+    linkMicrosoftAccount: (consent) => ipcRenderer.invoke('link-microsoft', consent),
+    getUserProfile: () => ipcRenderer.invoke('get-user-profile'),
+    linkDiscord: () => ipcRenderer.invoke('link-discord'),
+
     microsoftLogin: (consent) => ipcRenderer.invoke('microsoft-login', consent),
     microsoftRefresh: (refreshToken) => ipcRenderer.invoke('refresh-microsoft-token', refreshToken),
     detectLocalAccounts: () => ipcRenderer.invoke('detect-local-accounts'),
@@ -128,6 +137,9 @@ contextBridge.exposeInMainWorld('electronAPI', {
     getDiscoverMetadata: () => ipcRenderer.invoke('get-discover-metadata'),
     joinServer: (payload) => ipcRenderer.invoke('join-server', payload),
     smartJoinServer: (payload) => ipcRenderer.invoke('smart-join-server', payload),
+    createServer: (payload) => ipcRenderer.invoke('create-server', payload),
+    verifyServer: (payload) => ipcRenderer.invoke('verify-server', payload),
+    voteServer: (payload) => ipcRenderer.invoke('vote-server', payload),
     on: (channel, callback) => {
         const validChannels = ['smart-join-progress'];
         if (validChannels.includes(channel)) {
