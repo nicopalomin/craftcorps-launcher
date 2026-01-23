@@ -70,12 +70,13 @@ class GameLauncher extends EventEmitter {
                 ] : []),
                 `-Duser.dir=${gameRoot}`, // Force working directory for old mods (ContentTweaker)
                 // Aikar's Optimization Flags (Client Tuned)
+                // Aikar's Optimization Flags (Client Tuned)
                 '-XX:+UseG1GC',
                 '-XX:+ParallelRefProcEnabled',
                 '-XX:MaxGCPauseMillis=200',
                 '-XX:+UnlockExperimentalVMOptions',
                 '-XX:+DisableExplicitGC',
-                '-XX:+AlwaysPreTouch',
+                // '-XX:+AlwaysPreTouch', // Disabled for faster startup time
                 '-XX:G1NewSizePercent=30',
                 '-XX:G1MaxNewSizePercent=40',
                 '-XX:G1HeapRegionSize=8M',
@@ -88,7 +89,8 @@ class GameLauncher extends EventEmitter {
                 '-XX:SurvivorRatio=32',
                 '-XX:+PerfDisableSharedMem',
                 '-XX:MaxTenuringThreshold=1',
-                '-Dsun.rmi.dgc.server.gcInterval=2147483646'
+                '-Dsun.rmi.dgc.server.gcInterval=2147483646',
+                '-Djava.net.preferIPv4Stack=true'
             ].filter((v, i, a) => a.indexOf(v) === i), // Dedupe just in case
             overrides: {
                 detached: true,
