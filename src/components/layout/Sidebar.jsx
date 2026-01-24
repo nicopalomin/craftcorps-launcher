@@ -94,11 +94,16 @@ const Sidebar = ({ activeTab, onTabChange, theme, onSelectRunningInstance }) => 
         >
             <div className="flex flex-col h-full overflow-hidden p-4" style={{ width: width, minWidth: width }}>
                 {/* Logo area */}
-                <div className="flex items-center mb-8 mt-2 pl-2 select-none pointer-events-none overflow-hidden whitespace-nowrap transition-all duration-500 ease-out">
-                    <div className="w-8 h-8 bg-gradient-to-br from-emerald-400 to-green-600 rounded-lg flex-shrink-0 flex items-center justify-center shadow-lg shadow-emerald-900/50 transition-all duration-500">
-                        <Sprout size={20} className="text-slate-200" />
+                <div className="flex items-center mb-8 mt-2 pl-2 select-none pointer-events-none whitespace-nowrap transition-all duration-500 ease-out">
+                    <div className="w-10 h-10 flex-shrink-0 flex items-center justify-center transition-all duration-500 relative">
+                        <div className="absolute inset-0 bg-emerald-500/20 blur-xl rounded-full scale-110 animate-pulse" />
+                        <img
+                            src="/images/cc-logo.png"
+                            alt="CraftCorps"
+                            className="w-full h-full object-contain scale-[0.8] transform-gpu drop-shadow-[0_0_12px_rgba(16,185,129,0.4)] z-10"
+                        />
                     </div>
-                    <h1 className={`text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-emerald-400 to-green-200 transition-all duration-500 ease-out ${width < 180 || isCollapsed ? 'opacity-0 max-w-0 ml-0' : 'opacity-100 max-w-[200px] ml-3'}`}>
+                    <h1 className={`text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-emerald-400 to-green-200 transition-all duration-500 ease-out overflow-hidden ${width < 180 || isCollapsed ? 'opacity-0 max-w-0 ml-0' : 'opacity-100 max-w-[200px] ml-3'}`}>
                         CraftCorps
                     </h1>
                 </div>

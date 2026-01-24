@@ -97,8 +97,8 @@ let store;
 async function createWindow() {
     console.time('[MAIN] createWindow');
     const iconPath = process.env.NODE_ENV === 'development'
-        ? path.join(__dirname, '../public/icon.png')
-        : path.join(__dirname, '../dist/icon.png');
+        ? path.join(__dirname, '../public/images/cc-logo.png')
+        : path.join(__dirname, '../dist/images/cc-logo.png');
 
     // Dynamic import for ESM module support
     // Dynamic import for ESM module support
@@ -222,7 +222,6 @@ app.whenReady().then(async () => {
     }
 
     console.time('[MAIN] registerHandlers');
-    await createWindow();
 
     // Critical Handlers - Load immediately
     const { setupWindowHandlers } = require('./handlers/windowHandler.cjs');
@@ -359,6 +358,7 @@ app.whenReady().then(async () => {
     });
 
 
+
     // Lazy: Game Launch
     // Lazy: Game Launch
     ipcMain.on('launch-game', (event, ...args) => {
@@ -481,6 +481,7 @@ app.whenReady().then(async () => {
         }
     });
 
+    await createWindow();
     console.timeEnd('[MAIN] registerHandlers');
     console.timeEnd('[MAIN] boot');
 
