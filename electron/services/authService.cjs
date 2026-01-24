@@ -234,6 +234,13 @@ class AuthService {
         }
         if (this._isTokenExpired(this.token)) {
             const refreshed = await this.refreshSession();
+
+            // Fix: If refresh failed (e.g. network error) but we still have a refresh token (session not invalidated),
+            // do NOT fall back to anonymous. This preserves the user's identity while offline.
+            if (!refreshed && this.refreshToken) {
+                return this.token;
+            }
+
             if (!refreshed) {
                 await this.loginAnonymous();
             }
