@@ -63,7 +63,7 @@ const WardrobeLibrary = ({
                 {/* 2D/3D Toggle */}
                 {activeTab === 'cosmetics' && (
                     <div className="flex items-center gap-2 pb-4">
-                        <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Cape Preview:</span>
+                        <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">3D Preview:</span>
                         <button
                             onClick={() => setCape3DMode(!cape3DMode)}
                             className={`relative px-3 py-1.5 rounded-lg text-[10px] font-black tracking-wider uppercase transition-all ${cape3DMode
@@ -82,7 +82,7 @@ const WardrobeLibrary = ({
 
             <div className="flex-1 overflow-y-auto pr-2 custom-scrollbar">
                 {activeTab === 'skins' ? (
-                    <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 pb-8">
+                    <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 pt-4 pb-8">
                         {/* Current Equipped Card */}
                         {currentSkin.skinUrl && (
                             <SkinCard

@@ -34,7 +34,7 @@ const SkinCard = ({
             className={`group relative rounded-3xl p-4 border transition-all cursor-pointer overflow-hidden ${cardClass}`}
         >
             <div className="absolute inset-0 bg-gradient-to-tr from-transparent via-white/[0.05] to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000 ease-in-out pointer-events-none" />
-            <div className={`aspect-[3/4] rounded-2xl ${isCurrentMojang ? 'bg-emerald-950/20' : 'bg-slate-900/60'} mb-4 flex items-center justify-center relative border border-white/5 overflow-hidden p-2`}>
+            <div className={`aspect-[3/4] rounded-2xl ${isCurrentMojang ? 'bg-emerald-950/20' : 'bg-slate-900/60'} mb-4 flex items-center justify-center relative border border-white/5 p-2`}>
                 {isCurrentMojang && <div className="equipped-pulse-ring" />}
 
                 <Skin2DRender

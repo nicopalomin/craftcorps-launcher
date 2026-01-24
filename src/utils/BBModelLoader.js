@@ -1,16 +1,5 @@
-
 import * as THREE from 'three';
-
-/**
- * BBModel Loader for Three.js
- * Loads Blockbench (.bbmodel) JSON files and creates Three.js geometry
- * 
- * Key features:
- * - Supports zero-width faces (planes)
- * - Creates per-face textures with proper UV mapping
- * - Uses BoxGeometry with multi-material approach
- * - Centers model at (0,0,0) in Minecraft coordinate space
- */
+import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader';
 
 // Three.js BoxGeometry material groups (when using material array):
 // Index 0: Right face (+X) = east
@@ -26,7 +15,7 @@ const FACE_ORDER = ['east', 'west', 'up', 'down', 'south', 'north'];
  */
 function createFaceTexture(image, face, texWidth, texHeight, direction) {
     if (!face || !face.uv) {
-        return null; // Return null so caller can create invisible material
+        return null;
     }
 
     const canvas = document.createElement('canvas');
@@ -34,49 +23,27 @@ function createFaceTexture(image, face, texWidth, texHeight, direction) {
 
     let [u1, v1, u2, v2] = face.uv;
 
-    // Calculate dimensions
-    const width = Math.abs(u2 - u1);
-    const height = Math.abs(v2 - v1);
+    // User logic: [Offset Horizontal, Offset Vertical, Size Horizontal, Size Vertical]
+    const width = u2;
+    const height = v2;
 
     if (width < 0.01 || height < 0.01) {
-        console.log(`      → ${direction}: ZERO-SIZE UV (${width.toFixed(2)}x${height.toFixed(2)}) - will be invisible`);
-        return null; // Return null so caller can create invisible material
+        return null;
     }
 
     canvas.width = Math.ceil(width);
     canvas.height = Math.ceil(height);
     ctx.imageSmoothingEnabled = false;
 
-    // Handle UV flipping
-    let flipX = u1 > u2;
-    let flipY = v1 > v2;
-
-    // Special case for down face
-    if (direction === 'down') {
-        flipX = !flipX;
-    }
-
-    console.log(`      → ${direction}: Canvas ${canvas.width}x${canvas.height}, flipX=${flipX}, flipY=${flipY}, rot=${face.rotation || 0}`);
-
-    // Apply transformations
     if (face.rotation) {
         ctx.translate(canvas.width / 2, canvas.height / 2);
         ctx.rotate((face.rotation * Math.PI) / 180);
         ctx.translate(-canvas.width / 2, -canvas.height / 2);
     }
 
-    if (flipX) {
-        ctx.translate(canvas.width, 0);
-        ctx.scale(-1, 1);
-    }
-    if (flipY) {
-        ctx.translate(0, canvas.height);
-        ctx.scale(1, -1);
-    }
-
-    // Draw texture region
-    const srcX = Math.min(u1, u2);
-    const srcY = Math.min(v1, v2);
+    // No automatic flipping based on coordinates, using start positions directly
+    const srcX = u1;
+    const srcY = v1;
 
     ctx.drawImage(
         image,
@@ -92,208 +59,269 @@ function createFaceTexture(image, face, texWidth, texHeight, direction) {
     return texture;
 }
 
-/**
- * Load and parse a BBModel file
- */
-export const loadBBModel = async (url, textureUrl = null) => {
-    console.log('[BBModelLoader] Loading BBModel from:', url);
+const createCubeMesh = (cube, texWidth, texHeight, image) => {
+    const origin = cube.origin || [0, 0, 0];
+    const size = cube.size || [0, 0, 0];
+    const uv = cube.uv || [0, 0];
+    const inflate = cube.inflate || 0;
 
-    try {
-        // Load model JSON
-        const response = await fetch(url);
-        if (!response.ok) {
-            throw new Error(`Failed to load model: ${response.statusText}`);
-        }
-        const modelData = await response.json();
+    const w = size[0] + inflate * 2;
+    const h = size[1] + inflate * 2;
+    const d = size[2] + inflate * 2;
 
-        // Determine texture path
-        let texturePath = textureUrl;
-        if (!texturePath && modelData.textures) {
-            if (Array.isArray(modelData.textures)) {
-                const tex = modelData.textures.find(t => t.source);
-                if (tex) texturePath = tex.source;
-            } else {
-                // Object format - get first non-reference texture
-                for (const key in modelData.textures) {
-                    const value = modelData.textures[key];
-                    if (value && !value.startsWith('#')) {
-                        texturePath = value;
-                        break;
-                    }
-                }
-            }
-        }
+    if (w === 0 && h === 0 && d === 0) return null;
 
-        if (!texturePath) {
-            console.warn('[BBModelLoader] No texture found in model');
-        }
+    const geometry = new THREE.BoxGeometry(w || 0.05, h || 0.05, d || 0.05);
+    const materials = [];
 
-        // Load texture image
-        const image = await new Promise((resolve, reject) => {
-            if (!texturePath) {
-                resolve(null);
-                return;
-            }
-            const img = new Image();
-            img.crossOrigin = 'anonymous';
-            img.onload = () => resolve(img);
-            img.onerror = (e) => {
-                console.warn('[BBModelLoader] Failed to load texture:', e);
-                resolve(null);
-            };
-            img.src = texturePath;
-        });
+    if (Array.isArray(uv)) {
+        const u = uv[0];
+        const v = uv[1];
+        const sw = size[0];
+        const sh = size[1];
+        const sd = size[2];
 
-        // Get texture size
-        const texWidth = modelData.texture_size ? modelData.texture_size[0] : 16;
-        const texHeight = modelData.texture_size ? modelData.texture_size[1] : 16;
+        const faces = [
+            { name: 'east', rx: u + sd + sw, ry: v + sd, rw: sd, rh: sh },
+            { name: 'west', rx: u, ry: v + sd, rw: sd, rh: sh },
+            { name: 'up', rx: u + sd, ry: v, rw: sw, rh: sd },
+            { name: 'down', rx: u + sd + sw, ry: v, rw: sw, rh: sd },
+            { name: 'south', rx: u + sd, ry: v + sd, rw: sw, rh: sh },
+            { name: 'north', rx: u + sd + sw + sd, ry: v + sd, rw: sw, rh: sh },
+        ];
 
-        console.log('[BBModelLoader] Texture size:', texWidth, 'x', texHeight);
-        console.log('[BBModelLoader] Elements:', modelData.elements?.length);
+        faces.forEach(f => {
+            const u1 = f.rx;
+            const v1 = f.ry;
+            const u2 = f.rx + f.rw;
+            const v2 = f.ry + f.rh;
+            const mockFace = { uv: [u1, v1, u2, v2] };
+            const texture = image ? createFaceTexture(image, mockFace, texWidth, texHeight, f.name) : null;
 
-        // Create group to hold all meshes
-        const group = new THREE.Group();
-
-        if (!modelData.elements || modelData.elements.length === 0) {
-            console.warn('[BBModelLoader] No elements in model');
-            return group;
-        }
-
-        // Process each element (cube/plane)
-        modelData.elements.forEach((element, index) => {
-            if (!element.from || !element.to) {
-                console.warn(`[BBModelLoader] Element ${index} missing from/to`);
-                return;
-            }
-
-            const elementName = element.name || `Element_${index}`;
-            console.log(`\n[BBModelLoader] ========== Processing ${elementName} ==========`);
-
-            // Calculate size
-            const size = [
-                element.to[0] - element.from[0],
-                element.to[1] - element.from[1],
-                element.to[2] - element.from[2]
-            ];
-
-            console.log(`[BBModelLoader] Original size: [${size[0]}, ${size[1]}, ${size[2]}]`);
-            console.log(`[BBModelLoader] From: [${element.from.join(', ')}] To: [${element.to.join(', ')}]`);
-
-            // Use small epsilon for zero-width dimensions to prevent degenerate geometry
-            // This creates a very thin box that can still be rendered
-            const EPSILON = 0.05;
-            const width = size[0] || EPSILON;
-            const height = size[1] || EPSILON;
-            const depth = size[2] || EPSILON;
-
-            console.log(`[BBModelLoader] Geometry size: [${width}, ${height}, ${depth}]`);
-
-            // Create box geometry
-            const geometry = new THREE.BoxGeometry(width, height, depth);
-
-            // Create materials for each face
-            const materials = FACE_ORDER.map(direction => {
-                const face = element.faces?.[direction];
-
-                if (!face) {
-                    console.log(`[BBModelLoader]   ${direction}: NO FACE DEFINED`);
-                    // No face defined - use invisible material
-                    return new THREE.MeshBasicMaterial({
-                        visible: false,
-                        transparent: true,
-                        side: THREE.DoubleSide
-                    });
-                }
-
-                console.log(`[BBModelLoader]   ${direction}: UV=[${face.uv?.join(', ') || 'none'}] rotation=${face.rotation || 0}`);
-
-                if (!image) {
-                    // No texture - use colored material
-                    return new THREE.MeshStandardMaterial({
-                        color: 0xFF00FF,
-                        roughness: 1,
-                        metalness: 0,
-                        side: THREE.DoubleSide
-                    });
-                }
-
-                // Create texture for this face
-                const texture = createFaceTexture(image, face, texWidth, texHeight, direction);
-
-                // If texture is null (zero-size UV or invalid), make face invisible
-                if (!texture) {
-                    return new THREE.MeshBasicMaterial({
-                        visible: false,
-                        transparent: true,
-                        side: THREE.DoubleSide
-                    });
-                }
-
-                return new THREE.MeshStandardMaterial({
+            if (texture) {
+                materials.push(new THREE.MeshStandardMaterial({
                     map: texture,
                     transparent: true,
                     alphaTest: 0.1,
-                    roughness: 1,
-                    metalness: 0,
-                    side: THREE.DoubleSide  // Critical for thin/zero-width elements
-                });
-            });
-
-            // Create mesh
-            const mesh = new THREE.Mesh(geometry, materials);
-            mesh.name = elementName;
-
-            // Position: center of the box in Minecraft coordinates
-            // Minecraft uses 0-16 coordinate space, we center at (8, 8, 8)
-            // So we subtract 8 from the midpoint to center at (0, 0, 0)
-            const centerX = (element.from[0] + element.to[0]) / 2 - 8;
-            const centerY = (element.from[1] + element.to[1]) / 2 - 8;
-            const centerZ = (element.from[2] + element.to[2]) / 2 - 8;
-
-            mesh.position.set(centerX, centerY, centerZ);
-
-            console.log(`[BBModelLoader] Mesh position: [${centerX.toFixed(2)}, ${centerY.toFixed(2)}, ${centerZ.toFixed(2)}]`);
-
-            // Handle rotation if specified
-            if (element.rotation) {
-                const { origin, axis, angle } = element.rotation;
-
-                // Pivot point in centered coordinates
-                const pivotX = origin[0] - 8;
-                const pivotY = origin[1] - 8;
-                const pivotZ = origin[2] - 8;
-
-                // Translate to pivot
-                mesh.position.sub(new THREE.Vector3(pivotX, pivotY, pivotZ));
-
-                // Apply rotation
-                const angleRad = (angle * Math.PI) / 180;
-                const rotMatrix = new THREE.Matrix4();
-
-                if (axis === 'x') rotMatrix.makeRotationX(angleRad);
-                else if (axis === 'y') rotMatrix.makeRotationY(angleRad);
-                else if (axis === 'z') rotMatrix.makeRotationZ(angleRad);
-
-                mesh.applyMatrix4(rotMatrix);
-
-                // Translate back from pivot
-                mesh.position.add(new THREE.Vector3(pivotX, pivotY, pivotZ));
+                    side: THREE.DoubleSide
+                }));
+            } else {
+                materials.push(new THREE.MeshStandardMaterial({
+                    color: 0xFFFFFF,
+                    visible: !!image,
+                    transparent: true,
+                    opacity: 0.5
+                }));
             }
-
-            group.add(mesh);
-            console.log(`[BBModelLoader] ✓ Added ${elementName} to group`);
         });
+    } else {
+        for (let i = 0; i < 6; i++) {
+            materials.push(new THREE.MeshBasicMaterial({ color: 0xcccccc, wireframe: true }));
+        }
+    }
 
-        console.log('[BBModelLoader] Loaded', group.children.length, 'elements');
+    const mesh = new THREE.Mesh(geometry, materials);
+    mesh.position.set(
+        origin[0] + w / 2 - inflate,
+        origin[1] + h / 2 - inflate,
+        origin[2] + d / 2 - inflate
+    );
 
-        // NOTE: We do NOT apply display.head transforms here
-        // The JSON only contains model geometry data
-        // Placement/scaling is handled by the parent system (SkinViewer)
+    return mesh;
+};
 
+const parseBones = (bones, texWidth, texHeight, image, group) => {
+    const boneMap = new Map();
+    const rootBones = [];
+
+    bones.forEach(bone => {
+        const boneGroup = new THREE.Group();
+        boneGroup.name = bone.name;
+        boneMap.set(bone.name, boneGroup);
+        boneGroup.userData.pivot = bone.pivot || [0, 0, 0];
+        boneGroup.userData.rotation = bone.rotation || [0, 0, 0];
+
+        if (bone.cubes) {
+            bone.cubes.forEach(cube => {
+                const mesh = createCubeMesh(cube, texWidth, texHeight, image);
+                if (mesh) boneGroup.add(mesh);
+            });
+        }
+    });
+
+    bones.forEach(bone => {
+        const boneGroup = boneMap.get(bone.name);
+        if (bone.parent) {
+            const parentGroup = boneMap.get(bone.parent);
+            if (parentGroup) parentGroup.add(boneGroup);
+            else rootBones.push(boneGroup);
+        } else {
+            rootBones.push(boneGroup);
+        }
+
+        const pivot = boneGroup.userData.pivot;
+        if (bone.rotation) {
+            const rot = bone.rotation;
+            boneGroup.rotation.set(
+                (rot[0] || 0) * Math.PI / 180,
+                (rot[1] || 0) * Math.PI / 180,
+                (rot[2] || 0) * Math.PI / 180
+            );
+
+            if (pivot) {
+                boneGroup.children.forEach(child => {
+                    if (child.isMesh) {
+                        child.position.x -= pivot[0];
+                        child.position.y -= pivot[1];
+                        child.position.z -= pivot[2];
+                    }
+                });
+                boneGroup.position.set(pivot[0], pivot[1], pivot[2]);
+            }
+        }
+    });
+
+    rootBones.forEach(b => group.add(b));
+};
+
+const createGenericElementMesh = (element, texture, texWidth, texHeight) => {
+    const from = element.from;
+    const to = element.to;
+
+    // Size Logic: Size = to - from (with small epsilon for zero-thickness)
+    const w = Math.max(to[0] - from[0], 0.01);
+    const h = Math.max(to[1] - from[1], 0.01);
+    const d = Math.max(to[2] - from[2], 0.01);
+
+    // Positions based on FROM + SIZE/2
+    const cx = from[0] + w / 2;
+    const cy = from[1] + h / 2;
+    const cz = from[2] + d / 2;
+
+    const group = new THREE.Group();
+
+    // Shared material for all faces if texture exists
+    const material = texture ? new THREE.MeshBasicMaterial({
+        map: texture,
+        side: THREE.DoubleSide,
+        transparent: true,
+        alphaTest: 0.1
+    }) : new THREE.MeshBasicMaterial({ color: 0xcccccc, side: THREE.DoubleSide });
+
+    // Faces based on user SIZE + OFFSET logic
+    const faceConfigs = [
+        { name: 'north', width: w, height: h, pos: [cx, cy, from[2]], rot: [0, Math.PI, 0] },
+        { name: 'south', width: w, height: h, pos: [cx, cy, from[2] + d], rot: [0, 0, 0] },
+        { name: 'east', width: d, height: h, pos: [from[0] + w, cy, cz], rot: [0, Math.PI / 2, 0] },
+        { name: 'west', width: d, height: h, pos: [from[0], cy, cz], rot: [0, -Math.PI / 2, 0] },
+        { name: 'up', width: w, height: d, pos: [cx, from[1] + h, cz], rot: [-Math.PI / 2, 0, 0] },
+        { name: 'down', width: w, height: d, pos: [cx, from[1], cz], rot: [Math.PI / 2, 0, 0] },
+    ];
+
+    faceConfigs.forEach(f => {
+        if (!element.faces || !element.faces[f.name]) return;
+
+        const faceData = element.faces[f.name];
+        const geom = new THREE.PlaneGeometry(Math.max(f.width, 0.001), Math.max(f.height, 0.001));
+
+        // Direct UV Mapping
+        if (texture && faceData.uv) {
+            let [u1, v1, u2, v2] = faceData.uv;
+
+            // Convert to 0-1 range
+            const uMin = u1 / texWidth;
+            const vMin = 1 - (v2 / texHeight); // Invert Y
+            const uMax = u2 / texWidth;
+            const vMax = 1 - (v1 / texHeight); // Invert Y
+
+            // Standard quad has 4 UVs: top-left, top-right, bottom-left, bottom-right
+            // PlaneGeometry vertices are: [0] Top-Left, [1] Top-Right, [2] Bottom-Left, [3] Bottom-Right
+            const uvAttribute = geom.attributes.uv;
+
+            // Set UVs explicitly to match the sub-region
+            uvAttribute.setXY(0, uMin, vMax); // Top-Left
+            uvAttribute.setXY(1, uMax, vMax); // Top-Right
+            uvAttribute.setXY(2, uMin, vMin); // Bottom-Left
+            uvAttribute.setXY(3, uMax, vMin); // Bottom-Right
+
+            // Handle texture rotation (90 deg steps)
+            if (faceData.rotation) {
+                const cx = (uMin + uMax) / 2;
+                const cy = (vMin + vMax) / 2;
+                const r = -faceData.rotation * (Math.PI / 180); // Negative because UV space usually rotates opposite
+
+                for (let i = 0; i < uvAttribute.count; i++) {
+                    const x = uvAttribute.getX(i) - cx;
+                    const y = uvAttribute.getY(i) - cy;
+                    const x2 = x * Math.cos(r) - y * Math.sin(r);
+                    const y2 = x * Math.sin(r) + y * Math.cos(r);
+                    uvAttribute.setXY(i, x2 + cx, y2 + cy);
+                }
+            }
+        }
+
+        const mesh = new THREE.Mesh(geom, material);
+        mesh.position.set(f.pos[0], f.pos[1], f.pos[2]);
+        mesh.rotation.set(f.rot[0], f.rot[1], f.rot[2]);
+        group.add(mesh);
+    });
+
+    if (element.rotation) {
+        const { origin, axis, angle } = element.rotation;
+        const pivot = new THREE.Group();
+        pivot.position.set(origin[0], origin[1], origin[2]);
+
+        const rad = (angle || 0) * (Math.PI / 180);
+        if (axis === 'x') pivot.rotation.x = rad;
+        else if (axis === 'y') pivot.rotation.y = rad;
+        else if (axis === 'z') pivot.rotation.z = rad;
+
+        group.position.sub(pivot.position);
+        pivot.add(group);
+        return pivot;
+    }
+
+    return group;
+};
+
+export const loadBBModel = async (url, textureUrl = null) => {
+    try {
+        const response = await fetch(url);
+        const modelData = await response.json();
+        const group = new THREE.Group();
+
+        let texture = null;
+        if (textureUrl) {
+            texture = await new THREE.TextureLoader().loadAsync(textureUrl);
+            texture.magFilter = THREE.NearestFilter;
+            texture.minFilter = THREE.NearestFilter;
+            texture.colorSpace = THREE.SRGBColorSpace;
+        }
+
+        const [texWidth, texHeight] = modelData.texture_size || [32, 32];
+
+        if (modelData.elements) {
+            let i = 0;
+
+            modelData.elements.forEach(element => {
+
+                // Task: Filter to ONLY these cubes for testing
+                const isFirstCube = element.from[0] === 4 && element.from[1] === 4.5 && element.from[2] === 2;
+                const isSecondCube = element.from[0] === 6 && element.from[1] === 4.5 && element.from[2] === 0;
+                const isThirdCube = element.from[0] === 4 && element.from[1] === 4.5 && element.from[2] === 12;
+                const isFourthCube = element.from[0] === 4 && element.from[1] === 11.5 && element.from[2] === 5;
+                const isFifthCube = element.from[0] === 12.2 && element.from[1] === 11.75 && element.from[2] === 4.25;
+
+                if (i++ < 12) {
+                    console.log('[BBModelLoader] Rendering test cube:', element.from, element.to);
+                    const mesh = createGenericElementMesh(element, texture, texWidth, texHeight);
+                    if (mesh) group.add(mesh);
+                }
+            });
+        }
         return group;
-
     } catch (error) {
-        console.error('[BBModelLoader] Error loading model:', error);
+        console.error('[BBModelLoader] Error:', error);
         return null;
     }
 };

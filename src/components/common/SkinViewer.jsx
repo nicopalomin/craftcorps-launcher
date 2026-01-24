@@ -232,13 +232,50 @@ const SkinViewer = ({
     }, [skinUrl, capeUrl, model, animation, cosmetics, nameTag]);
 
     const updateCosmetics = async (viewer, activeCosmetics) => {
-        console.log('[SkinViewer] updateCosmetics called with:', activeCosmetics);
+        if (!viewer || !viewer.playerObject || !viewer.playerObject.skin) return;
 
-        // Cleanup existing cosmetic meshes
+        // 1. Parallel load all models first (without touching the scene)
+        const modelsToLoad = activeCosmetics.filter(item => item.type !== 'cape');
+
+        const loadedModels = await Promise.all(modelsToLoad.map(async (item) => {
+            if (item.model) {
+                try {
+                    const mesh = await loadBBModel(item.model, item.texture);
+                    if (mesh) return { mesh, item };
+                } catch (e) {
+                    console.error("Failed to load cosmetic bbmodel:", e);
+                }
+            } else if (item.type === 'model') {
+                const geometry = new THREE.BoxGeometry(1, 1, 1);
+                const material = new THREE.MeshBasicMaterial({ color: item.color || 0xFF0000 });
+                const mesh = new THREE.Mesh(geometry, material);
+                mesh.scale.set(4, 4, 4);
+                return { mesh, item };
+            }
+            return null;
+        }));
+
+        // 2. ONLY NOW check if the viewer is still the same one we started with
+        // If the viewer was disposed or re-initialized, we drop these results
+        if (!viewerRef.current || viewerRef.current !== viewer) {
+            // Dispose what we loaded to prevent leaks
+            loadedModels.forEach(result => {
+                if (result?.mesh) {
+                    result.mesh.traverse(child => {
+                        if (child.geometry) child.geometry.dispose();
+                        if (child.material) {
+                            if (Array.isArray(child.material)) child.material.forEach(m => m.dispose());
+                            else child.material.dispose();
+                        }
+                    });
+                }
+            });
+            return;
+        }
+
+        // 3. Cleanup existing cosmetic meshes (Atomic switch)
         cosmeticsRef.current.forEach(mesh => {
             if (mesh.parent) mesh.parent.remove(mesh);
-            // Dispose geometry/material if possible to prevent leaks
-            // Traverse if group
             if (mesh.traverse) {
                 mesh.traverse((child) => {
                     if (child.geometry) child.geometry.dispose();
@@ -251,22 +288,12 @@ const SkinViewer = ({
         });
         cosmeticsRef.current = [];
 
-        if (!viewer.playerObject || !viewer.playerObject.skin) {
-            console.warn('[SkinViewer] Player object or skin missing during updateCosmetics');
-            return;
-        }
+        // 4. Attach new meshes
+        loadedModels.forEach(result => {
+            if (!result) return;
+            const { mesh, item } = result;
 
-        // Parallel load all cosmetics
-        const processing = activeCosmetics.map(async (item) => {
-            console.log('[SkinViewer] Processing item:', item.name, 'Type:', item.type, 'Model:', item.model);
-            if (item.type === 'cape') return;
-
-            // Determine Anchor
             let anchorGroup;
-            // Map 'type' to anchor roughly if not explicit
-            // 'hat' -> head
-            // 'wings' -> torso (body)
-            // 'item' -> rightArm?
             const typeLower = (item.type || '').toLowerCase();
             const anchorName = item.anchor ||
                 (typeLower.includes('hat') || typeLower.includes('head') || typeLower.includes('glasses') ? 'head' :
@@ -276,50 +303,11 @@ const SkinViewer = ({
             else if (anchorName === 'body') anchorGroup = viewer.playerObject.skin.body;
             else if (anchorName === 'leftArm') anchorGroup = viewer.playerObject.skin.leftArm;
             else if (anchorName === 'rightArm') anchorGroup = viewer.playerObject.skin.rightArm;
-            else anchorGroup = viewer.playerObject.skin.head; // Default to head
+            else anchorGroup = viewer.playerObject.skin.head;
 
-            if (!anchorGroup) return;
-
-            let mesh;
-
-            // Render logic
-            // 1. Check for BBModel / Custom Model URL
-            if (item.model) {
-                try {
-                    // Load Model
-                    // Pass texture override if available
-                    mesh = await loadBBModel(item.model, item.texture);
-
-                    if (mesh) {
-                        // Adjustments for skinview3d scale
-                        // skinview3d head is roughly 8x8x8 units but scaled?
-                        // Actually skinview3d generic units are pixels.
-                        // Blockbench models are 1 unit = 1 pixel.
-                        // However, origin differences apply.
-
-                        // Pivot fix: Blockbench models often use origin (0,0,0) as ground or feet.
-                        // Or if modeled for head, (0, 24, 0).
-                        // If attached to Head bone, (0,0,0) is the neck pivot.
-                        // We might need to manually offset.
-                        // Let's assume the model is centered correctly or rely on item.transform
-                    }
-                } catch (e) {
-                    console.error("Failed to load cosmetic bbmodel:", e);
-                }
-            } else if (item.type === 'model') {
-                // Fallback box for debugging
-                const geometry = new THREE.BoxGeometry(1, 1, 1);
-                const material = new THREE.MeshBasicMaterial({ color: item.color || 0xFF0000 });
-                mesh = new THREE.Mesh(geometry, material);
-                mesh.scale.set(4, 4, 4);
-            }
-
-            if (mesh) {
-                // Apply Transform Overrides (useful for tweaking positions without editing model)
-                // item.transform: { pos: [x,y,z], rot: [x,y,z], scale: [x,y,z] }
+            if (anchorGroup && mesh) {
                 if (item.transform) {
                     const { pos, rot, scale } = item.transform;
-                    // Note: Rotation in ThreeJS is Euler
                     if (pos) mesh.position.set(pos[0], pos[1], pos[2]);
                     if (rot) mesh.rotation.set(THREE.MathUtils.degToRad(rot[0]), THREE.MathUtils.degToRad(rot[1]), THREE.MathUtils.degToRad(rot[2]));
                     if (scale) mesh.scale.set(scale[0], scale[1], scale[2]);
@@ -329,8 +317,6 @@ const SkinViewer = ({
                 cosmeticsRef.current.push(mesh);
             }
         });
-
-        await Promise.all(processing);
     };
 
     const applyAnimation = (viewer, animName) => {

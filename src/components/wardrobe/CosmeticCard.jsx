@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Lock, Sparkles, Check, Crown } from 'lucide-react';
 import Cape3DRender from '../common/Cape3DRender';
 import Cape2DRender from '../common/Cape2DRender';
+import Model3DRender from '../common/Model3DRender';
 
 const CosmeticCard = ({
     item,
@@ -73,6 +74,18 @@ const CosmeticCard = ({
                                     className={`w-auto h-full max-h-[90%] drop-shadow-[0_15px_15px_rgba(0,0,0,0.8)] ${isFounder ? 'founder-cape-glow' : ''}`}
                                 />
                             </div>
+                        )
+                    ) : item.model ? (
+                        (cape3DMode && isHovered) ? (
+                            <div className={`w-full h-full relative transition-transform duration-700 ${isOwned ? 'scale-105' : ''}`}>
+                                <Model3DRender
+                                    modelUrl={item.model}
+                                    textureUrl={item.texture}
+                                    className="w-full h-full"
+                                />
+                            </div>
+                        ) : (
+                            <img src={item.texture} alt={item.name} className="w-20 h-20 object-contain drop-shadow-2xl transition-transform duration-700 group-hover:scale-115" />
                         )
                     ) : (
                         <img src={item.texture} alt={item.name} className="w-20 h-20 object-contain drop-shadow-2xl transition-transform duration-700 group-hover:scale-115" />
