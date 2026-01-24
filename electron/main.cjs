@@ -113,11 +113,16 @@ async function createWindow() {
         setTimeout(() => {
             telemetryService.init(store);
             playTimeService.init(store);
+            playTimeService.syncPlayTime(); // Verify & Sync with Backend
         }, 5000);
 
         // Register PlayTime Listeners immediately (lightweight, handles missing store gracefully)
         ipcMain.handle('get-total-playtime', () => playTimeService.getTotalPlayTime());
         ipcMain.handle('get-instance-playtime', (e, id) => playTimeService.getInstancePlayTime(id));
+        ipcMain.handle('get-playtime-breakdown', () => playTimeService.getBreakdown());
+        ipcMain.handle('get-playtime-history', (e, start, end) => playTimeService.getHistory(start, end));
+        ipcMain.handle('get-playtime-detailed', () => playTimeService.getDetailedStats());
+        ipcMain.handle('get-playtime-daily', (e, date) => playTimeService.getDailyLog(date));
     }
 
     // Restore saved window state

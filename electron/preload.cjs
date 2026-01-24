@@ -125,7 +125,11 @@ contextBridge.exposeInMainWorld('electronAPI', {
     removeRunningInstancesListener: () => ipcRenderer.removeAllListeners('running-instances-changed'),
     getInstanceByPath: (path) => ipcRenderer.invoke('get-instance-by-path', path),
     saveInstance: (data) => ipcRenderer.invoke('save-instance', data),
-    getInstancePlayTime: (instanceId) => ipcRenderer.invoke('get-instance-playtime', instanceId), // [NEW]
+    getInstancePlayTime: (instanceId) => ipcRenderer.invoke('get-instance-playtime', instanceId),
+    getPlaytimeBreakdown: () => ipcRenderer.invoke('get-playtime-breakdown'),
+    getPlaytimeHistory: (start, end) => ipcRenderer.invoke('get-playtime-history', start, end),
+    getPlaytimeDetailed: () => ipcRenderer.invoke('get-playtime-detailed'),
+    getPlaytimeDaily: (date) => ipcRenderer.invoke('get-playtime-daily', date),
 
     // Import
     importInstanceDialog: () => ipcRenderer.invoke('import-instance-dialog'),

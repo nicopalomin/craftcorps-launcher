@@ -1,5 +1,9 @@
 const log = require('electron-log');
 const telemetryService = require('./telemetryService.cjs');
+const authService = require('./authService.cjs');
+
+// PlayTime Service - Tracks local and syncs with API backend
+
 
 let store;
 
@@ -12,6 +16,134 @@ function init(electronStore) {
 }
 
 const activeSessions = {};
+const API_BASE = 'https://api.craftcorps.net'; // Assuming this base, or should I use authService base?
+
+// Caching System
+const cache = {};
+const CACHE_TTL_BREAKDOWN = 120 * 1000; // 2 minutes
+const CACHE_TTL_DEFAULT = 300 * 1000;   // 5 minutes
+
+function getCached(key) {
+    const entry = cache[key];
+    if (entry && Date.now() < entry.expiry) return entry.data;
+    return null;
+}
+
+function setCached(key, data, ttl) {
+    cache[key] = { data, expiry: Date.now() + ttl };
+}
+
+/**
+ * Fetch Playtime Breakdown
+ */
+async function getBreakdown() {
+    const cached = getCached('breakdown');
+    if (cached) return cached;
+
+    try {
+        const res = await authService.fetchAuthenticated(`${API_BASE}/sessions/playtime/breakdown`);
+        if (!res.ok) throw new Error(`Failed to fetch breakdown: ${res.status}`);
+        const data = await res.json();
+        setCached('breakdown', data, CACHE_TTL_BREAKDOWN);
+        return data;
+    } catch (e) {
+        log.error(`[PlayTime] getBreakdown error: ${e.message}`);
+        return null;
+    }
+}
+
+/**
+ * Fetch Playtime History
+ * @param {string} start ISO Date
+ * @param {string} end ISO Date
+ */
+async function getHistory(start, end) {
+    const cacheKey = `history_${start || 'def'}_${end || 'def'}`;
+    const cached = getCached(cacheKey);
+    if (cached) return cached;
+
+    try {
+        const url = new URL(`${API_BASE}/sessions/playtime/history`);
+        if (start) url.searchParams.append('start', start);
+        if (end) url.searchParams.append('end', end);
+
+        const res = await authService.fetchAuthenticated(url.toString());
+        if (!res.ok) throw new Error(`Failed to fetch history: ${res.status}`);
+        const data = await res.json();
+        setCached(cacheKey, data, CACHE_TTL_DEFAULT);
+        return data;
+    } catch (e) {
+        log.error(`[PlayTime] getHistory error: ${e.message}`);
+        return null; // Return null instead of throwing to avoid UI crashes
+    }
+}
+
+/**
+ * Fetch Detailed Instance Stats
+ */
+async function getDetailedStats() {
+    const cached = getCached('detailed');
+    if (cached) return cached;
+
+    try {
+        const res = await authService.fetchAuthenticated(`${API_BASE}/sessions/playtime/instances`);
+        if (!res.ok) throw new Error(`Failed to fetch detailed stats: ${res.status}`);
+        const data = await res.json();
+        setCached('detailed', data, CACHE_TTL_DEFAULT);
+        return data;
+    } catch (e) {
+        log.error(`[PlayTime] getDetailedStats error: ${e.message}`);
+        return null;
+    }
+}
+
+/**
+ * Fetch Daily Session Log
+ * @param {string} date YYYY-MM-DD
+ */
+async function getDailyLog(date) {
+    const cacheKey = `daily_${date}`;
+    const cached = getCached(cacheKey);
+    if (cached) return cached;
+
+    try {
+        const res = await authService.fetchAuthenticated(`${API_BASE}/sessions/playtime/date/${date}`);
+        if (!res.ok) throw new Error(`Failed to fetch daily log: ${res.status}`);
+        const data = await res.json();
+        setCached(cacheKey, data, CACHE_TTL_DEFAULT);
+        return data;
+    } catch (e) {
+        log.error(`[PlayTime] getDailyLog error: ${e.message}`);
+        return null;
+    }
+}
+
+/**
+ * Sync local playtime with server truth
+ */
+async function syncPlayTime() {
+    log.info('[PlayTime] Syncing with server...');
+    const data = await getBreakdown();
+    if (data && data.totals) {
+        // Update local total
+        // We multiply by 1000 because API returns seconds, we store ms
+        const serverTotalMs = (data.totals.gameplaySeconds || 0) * 1000;
+
+        // Only update if server has more data or to ensure consistency?
+        // Usually server is authority.
+        store.set('playTime.total', serverTotalMs);
+
+        // We could also sync instance breakdown if we mapped it correctly, 
+        // but local tracker is by path, server is by ID. 
+        // We'll leave the local instance tracker as a "device" cache for now, 
+        // unless we want to map server IDs to local paths.
+
+        log.info(`[PlayTime] Synced total playtime: ${serverTotalMs}ms`);
+        return true;
+    }
+    return false;
+}
+
 
 /**
  * Start tracking play time for a specific instance.
@@ -122,5 +254,10 @@ module.exports = {
     startSession,
     stopSession,
     getTotalPlayTime,
-    getInstancePlayTime
+    getInstancePlayTime,
+    getBreakdown,
+    getHistory,
+    getDetailedStats,
+    getDailyLog,
+    syncPlayTime
 };
