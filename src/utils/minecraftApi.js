@@ -1,5 +1,6 @@
 // Fetch Minecraft versions from Mojang's official API
-export const fetchMinecraftVersions = async () => {
+
+export const fetchMinecraftVersions = async (includeSnapshots = false) => {
     try {
         const response = await fetch('https://launchermeta.mojang.com/mc/game/version_manifest.json');
         if (!response.ok) {
@@ -8,16 +9,19 @@ export const fetchMinecraftVersions = async () => {
 
         const data = await response.json();
 
-        // Filter to only release versions (not snapshots)
-        const allReleases = data.versions
-            .filter(v => v.type === 'release')
+        // Filter versions
+        const filteredVersions = data.versions
+            .filter(v => v.type === 'release' || (includeSnapshots && v.type === 'snapshot'))
             .map(v => v.id);
 
-        // Get versions until 1.8
-        const cutoffIndex = allReleases.indexOf('1.8');
-        const releases = cutoffIndex !== -1 ? allReleases.slice(0, cutoffIndex + 1) : allReleases;
+        // Get versions until 1.0
+        // We'll try to find the 1.0 release as a pivot.
+        const cutoffIndex = filteredVersions.indexOf('1.0');
 
-        return releases;
+        // If 1.0 is found, slice until there.
+        const finalVersions = cutoffIndex !== -1 ? filteredVersions.slice(0, cutoffIndex + 1) : filteredVersions;
+
+        return finalVersions;
     } catch (error) {
         console.error('Error fetching Minecraft versions:', error);
         // Fallback to hardcoded versions if API fails

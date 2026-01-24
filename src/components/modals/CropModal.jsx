@@ -5,7 +5,8 @@ import {
     X, Sprout, Save, Plus, FolderOpen, Download, Trash2,
     Pickaxe, Axe, Sword, Shield, Box,
     Map, Compass, Flame, Snowflake, Droplet,
-    Zap, Heart, Skull, Ghost, Trophy, Loader2, ChevronDown
+    Zap, Heart, Skull, Ghost, Trophy, Loader2, ChevronDown,
+    FlaskConical
 } from 'lucide-react';
 import { LOADERS, COLORS, FALLBACK_VERSIONS, INSTANCE_ICONS } from '../../data/mockData';
 import { fetchMinecraftVersions } from '../../utils/minecraftApi';
@@ -37,6 +38,10 @@ const CustomSelect = ({ value, onChange, options, disabled, loading, placeholder
     const [isOpen, setIsOpen] = useState(false);
     const triggerRef = useRef(null);
     const [coords, setCoords] = useState({ top: 0, left: 0, width: 0 });
+    const [scrollTop, setScrollTop] = useState(0);
+
+    const ITEM_HEIGHT = 36; // px-4 py-2 text-sm ~ derived height
+    const DROPDOWN_MAX_HEIGHT = 220;
 
     const toggleOpen = () => {
         if (disabled || loading) return;
@@ -54,6 +59,7 @@ const CustomSelect = ({ value, onChange, options, disabled, loading, placeholder
                 width: rect.width
             });
             setIsOpen(true);
+            setScrollTop(0);
         }
     };
 
@@ -81,6 +87,21 @@ const CustomSelect = ({ value, onChange, options, disabled, loading, placeholder
 
     const selectedOption = options.find(o => o.value === value);
 
+    // Virtualization Calculations
+    const totalHeight = options.length * ITEM_HEIGHT;
+    const startIndex = Math.floor(scrollTop / ITEM_HEIGHT);
+    const visibleCount = Math.ceil(DROPDOWN_MAX_HEIGHT / ITEM_HEIGHT);
+    // Add buffer of 2 items above and below
+    const renderStart = Math.max(0, startIndex - 2);
+    const renderEnd = Math.min(options.length, startIndex + visibleCount + 2);
+
+    const visibleOptions = [];
+    if (options.length > 0) {
+        for (let i = renderStart; i < renderEnd; i++) {
+            visibleOptions.push({ ...options[i], index: i });
+        }
+    }
+
     return (
         <>
             <div
@@ -98,32 +119,42 @@ const CustomSelect = ({ value, onChange, options, disabled, loading, placeholder
 
             {isOpen && createPortal(
                 <div
-                    className="custom-select-dropdown fixed z-[9999] bg-slate-900 border border-slate-700 rounded-xl overflow-y-auto custom-scrollbar shadow-2xl animate-in fade-in zoom-in-95 duration-100"
+                    className="custom-select-dropdown fixed z-[9999] bg-slate-900 border border-slate-700 rounded-xl custom-scrollbar shadow-2xl animate-in fade-in zoom-in-95 duration-100"
                     style={{
                         top: coords.top,
                         left: coords.left,
                         width: coords.width,
-                        maxHeight: '200px' // Shortened height
+                        maxHeight: `${DROPDOWN_MAX_HEIGHT}px`,
+                        height: options.length > 0 ? (totalHeight > DROPDOWN_MAX_HEIGHT ? `${DROPDOWN_MAX_HEIGHT}px` : `${totalHeight}px`) : 'auto',
+                        overflowY: 'auto'
                     }}
+                    onScroll={(e) => setScrollTop(e.currentTarget.scrollTop)}
                 >
-                    {options.map((option) => (
-                        <div
-                            key={option.value}
-                            onClick={() => {
-                                if (!option.disabled) {
-                                    onChange(option.value);
-                                    setIsOpen(false);
-                                }
-                            }}
-                            className={`px-4 py-2 text-sm cursor-pointer transition-colors flex items-center justify-between select-none ${option.disabled ? 'opacity-50 cursor-not-allowed text-slate-600' :
-                                option.value === value ? 'bg-emerald-500/10 text-emerald-400 font-medium' : 'text-slate-300 hover:bg-white/5'
-                                }`}
-                        >
-                            {option.label}
-                            {option.value === value && <div className="w-1.5 h-1.5 rounded-full bg-emerald-500" />}
+                    {options.length > 0 ? (
+                        <div style={{ height: `${totalHeight}px`, position: 'relative' }}>
+                            {visibleOptions.map((option) => (
+                                <div
+                                    key={option.value}
+                                    onClick={() => {
+                                        if (!option.disabled) {
+                                            onChange(option.value);
+                                            setIsOpen(false);
+                                        }
+                                    }}
+                                    className={`absolute left-0 w-full px-4 py-2 text-sm cursor-pointer transition-colors flex items-center justify-between select-none box-border ${option.disabled ? 'opacity-50 cursor-not-allowed text-slate-600' :
+                                        option.value === value ? 'bg-emerald-500/10 text-emerald-400 font-medium' : 'text-slate-300 hover:bg-white/5'
+                                        }`}
+                                    style={{
+                                        top: `${option.index * ITEM_HEIGHT}px`,
+                                        height: `${ITEM_HEIGHT}px`
+                                    }}
+                                >
+                                    <span className="truncate">{option.label}</span>
+                                    {option.value === value && <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 shrink-0 ml-2" />}
+                                </div>
+                            ))}
                         </div>
-                    ))}
-                    {options.length === 0 && (
+                    ) : (
                         <div className="px-4 py-3 text-sm text-slate-500 text-center">No options</div>
                     )}
                 </div>,
@@ -139,6 +170,7 @@ const CropModal = ({ isOpen, onClose, onSave, editingCrop, onDelete, instanceCou
     const [name, setName] = useState('');
     const [loader, setLoader] = useState(LOADERS[0]);
     const [version, setVersion] = useState('');
+    const [includeSnapshots, setIncludeSnapshots] = useState(false);
 
     // New simplified state
     const [selectedPreset, setSelectedPreset] = useState(PRESETS[0]);
@@ -156,16 +188,23 @@ const CropModal = ({ isOpen, onClose, onSave, editingCrop, onDelete, instanceCou
     const [ramOverride, setRamOverride] = useState(false);
     const [ram, setRam] = useState(4); // Default to 4GB if enabling override
 
-    // Fetch Minecraft versions on mount
+    // Fetch Minecraft versions on mount or when snapshot setting changes
     useEffect(() => {
         const loadVersions = async () => {
             setLoadingVersions(true);
-            const fetchedVersions = await fetchMinecraftVersions();
+            const fetchedVersions = await fetchMinecraftVersions(includeSnapshots);
             setVersions(fetchedVersions);
             setLoadingVersions(false);
+
+            // If currently selected version is not in the new list (unless it's empty?), logic to handle?
+            // Usually we keep the selected version even if it's hidden, or we might want to reset if it's invalid.
+            // But for simple snapshot toggle, preserving is usually fine or let user re-select.
+            // If switching FROM snapshots TO releases, and a snapshot is selected, it might "disappear" from list.
+            // But CustomSelect just shows `value` if it's not in options (or might show empty label).
+            // Let's not overcomplicate for now.
         };
         loadVersions();
-    }, []);
+    }, [includeSnapshots]);
 
     // Reset or populate form when modal opens
     useEffect(() => {
@@ -497,6 +536,21 @@ const CropModal = ({ isOpen, onClose, onSave, editingCrop, onDelete, instanceCou
                                     loading={loadingVersions}
                                     disabled={loadingVersions || (editingCrop && editingCrop.modpackProjectId)}
                                 />
+                                <div className="mt-2 flex items-center gap-2">
+                                    <button
+                                        type="button"
+                                        onClick={() => setIncludeSnapshots(!includeSnapshots)}
+                                        className={`flex items-center gap-2 text-[10px] font-bold uppercase tracking-wider transition-colors ${includeSnapshots ? 'text-emerald-500' : 'text-slate-500 hover:text-slate-400'
+                                            }`}
+                                    >
+                                        <div className={`w-3 h-3 rounded-full border flex items-center justify-center transition-colors ${includeSnapshots ? 'bg-emerald-500 border-emerald-500' : 'border-slate-600'
+                                            }`}>
+                                            {includeSnapshots && <div className="w-1.5 h-1.5 rounded-full bg-white" />}
+                                        </div>
+                                        {t('crop_enable_snapshots', { defaultValue: 'Enable Snapshots' })}
+                                        <FlaskConical size={12} className={includeSnapshots ? 'text-emerald-500' : 'text-slate-600'} />
+                                    </button>
+                                </div>
                             </div>
                         </div>
 
