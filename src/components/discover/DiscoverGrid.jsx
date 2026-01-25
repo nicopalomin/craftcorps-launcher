@@ -168,10 +168,34 @@ const DiscoverGrid = React.memo(({
                         </div>
                     )}
 
-                    {/* EMPTY STATE */}
+                    {/* PREMIUM EMPTY STATE */}
                     {servers.length === 0 && (
-                        <div className="text-center py-20 text-slate-500">
-                            No servers found matching your criteria.
+                        <div className="flex flex-col items-center justify-center py-32 px-6 animate-in fade-in zoom-in duration-500">
+                            <div className="relative mb-8">
+                                <div className="absolute inset-0 bg-blue-500/20 blur-[60px] rounded-full scale-150" />
+                                <div className="relative bg-slate-900 border border-white/10 p-8 rounded-3xl shadow-2xl">
+                                    <Server size={48} className="text-slate-500 opacity-50" strokeWidth={1.5} />
+                                    <div className="absolute -top-1 -right-1 bg-red-500 w-4 h-4 rounded-full border-2 border-slate-900" />
+                                </div>
+                            </div>
+
+                            <h2 className="text-2xl font-bold text-white mb-3">
+                                No Discovery Servers Found
+                            </h2>
+                            <p className="text-slate-400 text-center max-w-sm mb-10 leading-relaxed">
+                                Please check your internet connection and try again later. We couldn't fetch the server list at this time.
+                            </p>
+
+                            <button
+                                onClick={() => loadServers(true)}
+                                className="group relative px-8 py-3.5 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-2xl transition-all duration-300 hover:scale-105 active:scale-95 shadow-lg shadow-blue-900/40 overflow-hidden"
+                            >
+                                <div className="absolute inset-0 bg-gradient-to-tr from-white/0 via-white/10 to-white/0 -translate-x-full group-hover:translate-x-full transition-transform duration-700" />
+                                <span className="relative flex items-center gap-2">
+                                    <Sparkles size={18} />
+                                    Try Again
+                                </span>
+                            </button>
                         </div>
                     )}
 

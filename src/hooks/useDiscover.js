@@ -71,6 +71,13 @@ export const useDiscover = (selectedInstance, activeAccount) => {
 
                 const data = await discovery.fetchServers(offset, 36, category, version, language, query, isOfflineAccount);
 
+                const serversFromApi = data.servers || (Array.isArray(data) ? data : []);
+                log(`fetchServers response received:`, {
+                    count: serversFromApi.length,
+                    hasMore: data?.hasMore,
+                    sample: serversFromApi[0] || null
+                });
+
                 // Ignore if a newer request started
                 if (currentId !== requestIdRef.current) {
                     log(`Ignoring stale response for reqId=${currentId}`);
@@ -78,9 +85,8 @@ export const useDiscover = (selectedInstance, activeAccount) => {
                 }
 
                 if (data && (data.success || Array.isArray(data.servers) || Array.isArray(data))) {
-                    const newServers = data.servers || (Array.isArray(data) ? data : []);
-                    if (isInitial) setServers(newServers);
-                    else setServers((prev) => [...prev, ...newServers]);
+                    if (isInitial) setServers(serversFromApi);
+                    else setServers((prev) => [...prev, ...serversFromApi]);
 
                     setHasMore(data.hasMore === undefined ? false : data.hasMore);
                 }
@@ -108,8 +114,13 @@ export const useDiscover = (selectedInstance, activeAccount) => {
                 const cached = localStorage.getItem('discover_metadata');
                 if (cached) setMetadata(JSON.parse(cached));
 
+                log('Fetching discovery metadata...');
                 const data = await discovery.getMetadata();
                 if (data) {
+                    log('Discovery metadata received:', {
+                        catCount: data.categories?.length,
+                        verCount: data.versions?.length
+                    });
                     setMetadata({
                         categories: data.categories || [],
                         versions: data.versions || [],
@@ -122,7 +133,7 @@ export const useDiscover = (selectedInstance, activeAccount) => {
             }
         };
         fetchMeta();
-    }, []);
+    }, [log]);
 
     // Listen for smart join progress events
     useEffect(() => {
@@ -148,12 +159,16 @@ export const useDiscover = (selectedInstance, activeAccount) => {
 
     // Initial Load (Mount only)
     useEffect(() => {
+        log(`Initial load effect triggered. servers.length=${servers.length} activeAccount=${activeAccount?.name || 'none'}`);
         // If we have no servers (even from cache), trigger load.
-        // If we have servers from cache (via useState init), we do NOT fetch.
         if (servers.length === 0) {
             loadServers(true);
         }
-    }, []);
+    }, [activeAccount?.id, activeAccount?.name, loadServers, log]);
+
+    useEffect(() => {
+        log(`Servers state updated. Current count: ${servers.length}`);
+    }, [servers.length, log]);
 
     // Debounce search/filter (Updates only)
     const isMounted = useRef(false);
@@ -172,14 +187,27 @@ export const useDiscover = (selectedInstance, activeAccount) => {
 
     // Derived Sections
     const sections = useMemo(() => {
-        return {
-            hero: servers.find(s => s.uiSection === 'hero'),
-            subFeatured: servers.filter(s => s.uiSection === 'subFeatured'),
-            trending: servers.filter(s => s.uiSection === 'trending'),
-            featuredCorp: servers.filter(s => s.uiSection === 'featured_corp'),
-            list: servers.filter(s => !s.uiSection || s.uiSection === 'list')
-        };
-    }, [servers]);
+        const hero = servers.find(s => s.uiSection === 'hero');
+        const subFeatured = servers.filter(s => s.uiSection === 'subFeatured');
+        const trending = servers.filter(s => s.uiSection === 'trending');
+        const featuredCorp = servers.filter(s => s.uiSection === 'featured_corp');
+
+        // Track what's already shown in premium sections to avoid duplicates in the main list
+        const shownIds = new Set();
+        if (hero) shownIds.add(hero.id || hero.ip);
+        subFeatured.forEach(s => shownIds.add(s.id || s.ip));
+        trending.forEach(s => shownIds.add(s.id || s.ip));
+        featuredCorp.forEach(s => shownIds.add(s.id || s.ip));
+
+        // The 'list' should be everything else
+        const list = servers.filter(s => !shownIds.has(s.id || s.ip));
+
+        const result = { hero, subFeatured, trending, featuredCorp, list };
+
+        log(`Sections calculated. Hero: ${!!result.hero}, Sub: ${result.subFeatured.length}, Trending: ${result.trending.length}, FeaturedCC: ${result.featuredCorp.length}, List: ${result.list.length} (Total: ${servers.length})`);
+
+        return result;
+    }, [servers, log]);
 
     const [playingServerIp, setPlayingServerIp] = useState(null);
     const isLaunchingRef = useRef(false);

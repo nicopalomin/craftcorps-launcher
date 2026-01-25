@@ -10,7 +10,9 @@ const API_BASE = 'https://api.craftcorps.net';
 /**
  * Fetch discover servers from the backend
  */
-async function getDiscoverServers(event, { offset = 0, limit = 9, category = 'all', version, language, query, isOfflineAccount }) {
+async function getDiscoverServers(event, payload = {}) {
+    log.info('[DiscoveryHandler] get-discover-servers IPC INVOKED', payload);
+    const { offset = 0, limit = 9, category = 'all', version, language, query, isOfflineAccount } = payload;
     try {
         let url = `${API_BASE}/servers/discover?offset=${offset}&limit=${limit}&category=${category}`;
         if (version) url += `&version=${encodeURIComponent(version)}`;
@@ -27,7 +29,10 @@ async function getDiscoverServers(event, { offset = 0, limit = 9, category = 'al
             }
         });
 
+        log.info(`[Discovery] API Response status: ${response.status} for ${url}`);
+
         if (!response.ok) {
+            log.error(`[Discovery] API Error: ${response.status} ${response.statusText}`);
             throw new Error(`API returned ${response.status}: ${response.statusText}`);
         }
 
@@ -41,6 +46,7 @@ async function getDiscoverServers(event, { offset = 0, limit = 9, category = 'al
 }
 
 async function getDiscoverCategories(event) {
+    log.info('[DiscoveryHandler] getDiscoverCategories IPC INVOKED');
     try {
         const url = `${API_BASE}/servers/categories`;
 
@@ -50,7 +56,7 @@ async function getDiscoverCategories(event) {
         return await response.json();
     } catch (error) {
         log.error('[Discovery] Failed to fetch categories', error);
-        return { success: false, categories: [] };
+        return [];
     }
 }
 
