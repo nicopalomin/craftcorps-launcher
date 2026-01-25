@@ -7,6 +7,11 @@ contextBridge.exposeInMainWorld('electronAPI', {
     close: () => ipcRenderer.send('window-close'),
     hide: () => ipcRenderer.send('window-hide'),
     show: () => ipcRenderer.send('window-show'),
+    sendAppReady: () => ipcRenderer.send('app-ready'),
+
+    // Visibility
+    onVisibilityChange: (callback) => ipcRenderer.on('window-visibility', (_event, value) => callback(value)),
+    removeVisibilityListener: () => ipcRenderer.removeAllListeners('window-visibility'),
 
 
     // Auth

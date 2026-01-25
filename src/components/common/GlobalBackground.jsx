@@ -1,7 +1,7 @@
 import React from 'react';
 import heroBg from '/images/hero-bg.png';
 
-const GlobalBackground = ({
+const GlobalBackground = React.memo(({
     selectedInstance,
     theme,
     disableAnimations,
@@ -26,17 +26,17 @@ const GlobalBackground = ({
             {/* Dynamic Instance Gradient - Only on Home */}
             {showDynamicElements && selectedInstance && !['midnight', 'white'].includes(theme) && (
                 <div
-                    className={`absolute inset-0 bg-gradient-to-br ${selectedInstance.bgGradient} transition-colors duration-1000 opacity-30 mix-blend-overlay`}
+                    className={`absolute inset-0 bg-gradient-to-br ${selectedInstance.bgGradient} transition-colors duration-1000 opacity-20`}
                 />
             )}
 
             {/* Texture Overlay */}
-            <div className="absolute inset-0 bg-[url('/cubes.png')] opacity-15 mix-blend-soft-light" />
+            <div className="absolute inset-0 bg-[url('/cubes.png')] opacity-5" />
 
             {/* Global Bottom Shadow/Gradient for readability */}
             <div className={`absolute inset-0 bg-gradient-to-t ${theme === 'midnight' ? 'from-[#050505] via-transparent' : 'from-slate-900 via-transparent'} to-transparent opacity-80`} />
         </div>
     );
-};
+});
 
 export default GlobalBackground;

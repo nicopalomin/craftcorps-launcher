@@ -1,3 +1,4 @@
+const appBootTime = Date.now();
 console.time('[MAIN] boot');
 const { app, BrowserWindow, ipcMain, dialog, Tray, Menu } = require('electron');
 const path = require('path');
@@ -164,16 +165,64 @@ async function createWindow() {
     const startUrl = process.env.ELECTRON_START_URL || `file://${path.join(__dirname, '../dist/index.html')}`;
 
     mainWindow.once('ready-to-show', () => {
-        if (splashWindow && !splashWindow.isDestroyed()) {
-            splashWindow.destroy();
-        }
-        if (!isHidden) {
+        // We no longer show the window here. 
+        // We wait for the 'app-ready' signal from the renderer to ensure no black flash.
+        console.log('[MAIN] Window ready-to-show (Backend)');
+
+        // Safety timeout: If renderer doesn't signal in 10s, show anyway
+        setTimeout(() => {
+            if (mainWindow && !mainWindow.isVisible() && !isHidden) {
+                console.warn('[MAIN] Splash timeout - forcing show');
+                if (splashWindow && !splashWindow.isDestroyed()) splashWindow.destroy();
+                mainWindow.show();
+            }
+        }, 10000);
+    });
+
+    ipcMain.on('app-ready', () => {
+        const totalStartupTime = Date.now() - appBootTime;
+        console.log(`[PERF] TOTAL STARTUP DURATION: ${totalStartupTime}ms (Splash -> Dashboard)`);
+        log.info(`[PERF] TOTAL STARTUP DURATION: ${totalStartupTime}ms`);
+
+        console.log('[MAIN] Received app-ready from renderer');
+
+        if (mainWindow && !mainWindow.isDestroyed() && !isHidden) {
+            // Start main window at 0 opacity
+            mainWindow.setOpacity(0);
             mainWindow.show();
             mainWindow.focus();
+
+            // Smooth cross-fade
+            let opacity = 0;
+            const fadeInInterval = setInterval(() => {
+                opacity += 0.05;
+                if (opacity >= 1) {
+                    mainWindow.setOpacity(1);
+                    clearInterval(fadeInInterval);
+
+                    // Destroy splash once main is fully opaque
+                    if (splashWindow && !splashWindow.isDestroyed()) {
+                        splashWindow.destroy();
+                    }
+                } else {
+                    mainWindow.setOpacity(opacity);
+                    // Optionally fade out splash simultaneously
+                    if (splashWindow && !splashWindow.isDestroyed()) {
+                        splashWindow.setOpacity(1 - opacity);
+                    }
+                }
+            }, 16); // ~60fps
+        } else {
+            // Fallback if hidden or destroyed
+            if (splashWindow && !splashWindow.isDestroyed()) {
+                splashWindow.destroy();
+            }
         }
     });
 
     mainWindow.on('show', () => {
+        mainWindow.webContents.setAudioMuted(false);
+        mainWindow.webContents.send('window-visibility', true);
         try {
             const { liftSuspension } = require('./discordRpc.cjs');
             liftSuspension();
@@ -182,9 +231,29 @@ async function createWindow() {
         }
     });
 
+    mainWindow.on('hide', () => {
+        mainWindow.webContents.setAudioMuted(true);
+        mainWindow.webContents.send('window-visibility', false);
+
+        // Deep Purge: Clear Chromium internal caches
+        const session = mainWindow.webContents.session;
+        session.clearCache().catch(() => { });
+        session.clearHostResolverCache().catch(() => { });
+    });
+
     mainWindow.on('close', (e) => {
         if (app.isQuitting) return;
 
+        // Check if we should minimize to tray instead of closing
+        const minimizeOnClose = store ? store.get('settings_minimize_on_close', true) : true;
+
+        if (minimizeOnClose) {
+            e.preventDefault();
+            mainWindow.hide();
+            return;
+        }
+
+        // Fallback: If a game is running, we always minimize to keep it alive
         try {
             const { isGameRunning } = require('./handlers/gameHandler.cjs');
             if (isGameRunning()) {
@@ -200,7 +269,7 @@ async function createWindow() {
     console.time('[MAIN] loadURL');
     if (process.env.NODE_ENV === 'development') {
         await mainWindow.loadURL('http://localhost:51173');
-        mainWindow.webContents.openDevTools({ mode: 'detach' });
+        // mainWindow.webContents.openDevTools({ mode: 'detach' });
     } else {
         await mainWindow.loadURL(startUrl);
     }

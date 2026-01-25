@@ -25,7 +25,7 @@ const formatPlayTime = (ms) => {
     return `${minutes} m`;
 };
 
-const InstanceHero = ({
+const InstanceHero = React.memo(({
     selectedInstance,
     launchStatus,
     launchStep,
@@ -34,11 +34,11 @@ const InstanceHero = ({
     onPlay,
     onStop,
     theme,
-    isAdvanced = false, // New prop to control layout mode
-    accounts = [], // New prop for launch menu
-    allowOverflow = true, // Allow the widget to show content outside its borders (e.g. menus)
-    runningInstances = [], // Full list of active processes
-    launchCooldown = false // 5-second safety cooldown
+    isAdvanced = false,
+    accounts = [],
+    allowOverflow = true,
+    runningInstances = [],
+    launchCooldown = false
 }) => {
     const { t } = useTranslation();
     const [playTime, setPlayTime] = useState(null);
@@ -107,7 +107,7 @@ const InstanceHero = ({
                     </h1>
 
                     {/* Tags */}
-                    <div className={`flex items-center gap-2.5 mb-6 ${theme === 'white' ? 'text-slate-600' : 'text-slate-300'} ${isHorizontalLayout ? '' : 'justify-center bg-black/10 px-3 py-1.5 rounded-full backdrop-blur-sm border border-white/5'}`}>
+                    <div className={`flex items-center gap-2.5 mb-6 ${theme === 'white' ? 'text-slate-600' : 'text-slate-300'} ${isHorizontalLayout ? '' : 'justify-center bg-black/10 px-3 py-1.5 rounded-full border border-white/5'}`}>
                         <div className={`flex items-center gap-2 px-3 py-1.5 rounded-lg border ${theme === 'white' ? 'bg-slate-200/50 border-slate-300/50' : 'bg-black/20 border-white/5'}`}>
                             <span className={`font-mono ${theme === 'white' ? 'text-emerald-600' : 'text-emerald-300'}`}>{selectedInstance.version}</span>
                         </div>
@@ -227,20 +227,46 @@ const InstanceHero = ({
                                     <X size={12} /> {t('launch_btn_cancel')}
                                 </button>
                             </div>
+                        ) : launchStatus === 'loading_window' ? (
+                            <div className="w-full max-w-sm flex flex-col items-center gap-4 animate-in fade-in duration-500">
+                                <div className={`w-full p-5 rounded-2xl border flex items-center gap-4 relative overflow-hidden transition-all duration-300 ${theme === 'white' ? 'bg-slate-100 border-slate-200' : 'bg-slate-800/80 border-white/10'}`}>
+                                    {/* Indeterminate Loading Bar */}
+                                    <div className="absolute inset-x-0 bottom-0 h-1 bg-black/20">
+                                        <div className="h-full bg-emerald-500 animate-loading-bar" style={{ width: '50%' }} />
+                                    </div>
+
+                                    <Loader2 size={24} className="animate-spin text-emerald-400 shrink-0" />
+                                    <div className="flex flex-col">
+                                        <span className={`text-base font-bold ${theme === 'white' ? 'text-slate-900' : 'text-white'}`}>
+                                            Game Window Loading...
+                                        </span>
+                                        <span className={`text-xs ${theme === 'white' ? 'text-slate-500' : 'text-slate-400'}`}>
+                                            Please wait while the window appears
+                                        </span>
+                                    </div>
+                                </div>
+                            </div>
                         ) : (
                             // RUNNING STATE
                             <div className="w-full max-w-sm flex items-stretch gap-2">
                                 {/* Main 'Game Open' Button */}
+                                {/* Main 'Stop' Button */}
                                 <button
-                                    onClick={() => {
-                                        if (window.electronAPI?.focusGame) {
-                                            window.electronAPI.focusGame(selectedInstance.path);
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        if (runningInstances.length > 1) {
+                                            onStop(); // Stop All
+                                        } else {
+                                            // Stop specific instance
+                                            const targetId = runningInstances[0]?.id || selectedInstance.id;
+                                            if (targetId) window.electronAPI.stopGame(targetId);
+                                            else onStop(); // Fallback
                                         }
                                     }}
-                                    className="flex-1 btn-premium-emerald text-white transition-all rounded-2xl font-extrabold text-lg flex items-center justify-center gap-3 py-4 uppercase tracking-wider"
+                                    className={`flex-1 text-white transition-all rounded-2xl font-extrabold text-lg flex items-center justify-center gap-3 py-4 uppercase tracking-wider ${runningInstances.length > 0 ? 'btn-premium-red' : 'bg-slate-700'}`}
                                 >
                                     <div className="w-2.5 h-2.5 rounded-full bg-white animate-pulse shadow-[0_0_10px_rgba(255,255,255,0.8)]" />
-                                    GAME OPEN
+                                    {runningInstances.length > 1 ? t('launch_btn_stop_all', 'STOP ALL') : t('launch_btn_stop_game', 'STOP GAME')}
                                 </button>
 
                                 {/* Launch Different Profile Button */}
@@ -408,8 +434,8 @@ const InstanceHero = ({
                     )}
                 </div>
             </div>
-        </div>
+        </div >
     );
-};
+});
 
 export default InstanceHero;

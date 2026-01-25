@@ -30,10 +30,15 @@ export function useAutoUpdate() {
 
         window.electronAPI.onUpdateStatus(handleStatus);
 
-        // Check for updates on mount
-        window.electronAPI.checkForUpdates().catch(err => console.error("Failed to check for updates:", err));
+        // Defer update check to avoid startup contention
+        const updateCheckTimeout = setTimeout(() => {
+            if (window.electronAPI?.checkForUpdates) {
+                window.electronAPI.checkForUpdates().catch(err => console.error("Failed to check for updates:", err));
+            }
+        }, 10000);
 
         return () => {
+            clearTimeout(updateCheckTimeout);
             if (window.electronAPI?.removeUpdateListener) {
                 window.electronAPI.removeUpdateListener();
             }

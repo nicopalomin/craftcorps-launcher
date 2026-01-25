@@ -90,6 +90,8 @@
     "launch_preparing": "Preparing Game Environment",
     "launch_status_init": "Initializing...",
     "launch_btn_cancel": "Cancel Launch",
+    "launch_btn_stop_all": "Stop All",
+    "launch_btn_stop_game": "Stop Game",
     "console_title": "Game Output",
     "console_waiting": "Waiting for game process...",
     "settings_title": "Settings",

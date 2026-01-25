@@ -14,7 +14,7 @@ const ICON_MAP = {
     Zap, Heart, Skull, Ghost, Trophy
 };
 
-const CompactInstanceItem = ({ instance, isSelected, onClick }) => {
+const CompactInstanceItem = React.memo(({ instance, isSelected, onClick }) => {
     return (
         <button
             onClick={onClick}
@@ -32,22 +32,22 @@ const CompactInstanceItem = ({ instance, isSelected, onClick }) => {
             </div>
 
             {/* Version Badge */}
-            <div className="absolute -bottom-1 -right-1 bg-slate-900/90 text-[9px] font-bold text-slate-400 px-1 rounded-md border border-white/10 backdrop-blur-sm">
+            <div className="absolute -bottom-1 -right-1 bg-slate-900/95 text-[9px] font-bold text-slate-400 px-1 rounded-md border border-white/10">
                 {instance.version}
             </div>
 
             {/* Hover Tooltip - Left Side */}
             <div className="absolute right-full mr-3 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50 whitespace-nowrap">
-                <div className="bg-slate-900/90 backdrop-blur-md text-white text-sm font-medium px-3 py-1.5 rounded-lg border border-white/10 shadow-xl flex flex-col items-end">
+                <div className="bg-slate-900/95 text-white text-sm font-medium px-3 py-1.5 rounded-lg border border-white/10 shadow-xl flex flex-col items-end">
                     <span>{instance.name}</span>
                     <span className="text-[10px] text-slate-400">{instance.loader}</span>
                 </div>
             </div>
         </button>
     );
-};
+});
 
-const QuickSwitchPanel = ({
+const QuickSwitchPanel = React.memo(({
     instances,
     selectedInstance,
     setSelectedInstance,
@@ -93,6 +93,6 @@ const QuickSwitchPanel = ({
             </div>
         </div>
     );
-};
+});
 
 export default QuickSwitchPanel;

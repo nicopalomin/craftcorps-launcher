@@ -96,7 +96,7 @@ const Sidebar = ({ activeTab, onTabChange, theme, onSelectRunningInstance }) => 
                 {/* Logo area */}
                 <div className="flex items-center mb-8 mt-2 pl-2 select-none pointer-events-none whitespace-nowrap transition-all duration-500 ease-out">
                     <div className="w-10 h-10 flex-shrink-0 flex items-center justify-center transition-all duration-500 relative">
-                        <div className="absolute inset-0 bg-emerald-500/20 blur-xl rounded-full scale-110 animate-pulse" />
+                        {/* <div className="absolute inset-0 bg-emerald-500/20 blur-xl rounded-full scale-110 animate-pulse" /> */}
                         <img
                             src="images/cc-logo.png"
                             alt="CraftCorps"

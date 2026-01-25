@@ -25,7 +25,8 @@ const AppContent = ({
     onSaveCropWithToast,
     isLoadingInstances,
     runningInstances,
-    launchCooldown
+    launchCooldown,
+    minimizeOnClose, setMinimizeOnClose
 }) => {
     const { addToast } = useToast();
     const [hasOpenedMods, setHasOpenedMods] = React.useState(false);
@@ -40,6 +41,9 @@ const AppContent = ({
         if (activeTab === 'market' && !hasOpenedMarket) setHasOpenedMarket(true);
         if (activeTab === 'wardrobe' && !hasOpenedWardrobe) setHasOpenedWardrobe(true);
     }, [activeTab, hasOpenedMods, hasOpenedDiscover, hasOpenedMarket, hasOpenedWardrobe]);
+
+    // Memory Purge: Handled by App.jsx unmounting us during Deep Sleep.
+    // This component's internal state (hasOpenedMods, etc) is naturally reset on unmount.
 
     // Wrapper for Play to check refreshing
     const onPlayWrapper = (...args) => {
@@ -141,6 +145,7 @@ const AppContent = ({
                     disableAnimations={disableAnimations} setDisableAnimations={setDisableAnimations}
                     availableJavas={availableJavas}
                     enableDiscordRPC={enableDiscordRPC} setEnableDiscordRPC={setEnableDiscordRPC}
+                    minimizeOnClose={minimizeOnClose} setMinimizeOnClose={setMinimizeOnClose}
                     startOnStartup={startOnStartup} setStartOnStartup={setStartOnStartup}
                     theme={theme} setTheme={setTheme}
                 />

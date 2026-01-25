@@ -26,10 +26,21 @@ export const useGameLaunch = (selectedInstance, ram, activeAccount, updateLastPl
             setRunningInstances(instances || []);
         };
 
-        window.electronAPI.getRunningInstances().then(handleRunningUpdate);
-        window.electronAPI.onRunningInstancesChanged(handleRunningUpdate);
+        // Defer initial check
+        const runningCheckTimeout = setTimeout(() => {
+            if (window.electronAPI?.getRunningInstances) {
+                window.electronAPI.getRunningInstances().then(handleRunningUpdate);
+            }
+        }, 3000);
 
-        return () => window.electronAPI.removeRunningInstancesListener?.();
+        if (window.electronAPI?.onRunningInstancesChanged) {
+            window.electronAPI.onRunningInstancesChanged(handleRunningUpdate);
+        }
+
+        return () => {
+            clearTimeout(runningCheckTimeout);
+            window.electronAPI.removeRunningInstancesListener?.();
+        };
     }, []);
 
     // Sync Launch Status with Selection & Running State
@@ -38,7 +49,7 @@ export const useGameLaunch = (selectedInstance, ram, activeAccount, updateLastPl
 
         if (runningInstances.some(i => i.gameDir === selectedInstance.path)) {
             // Only auto-switch to 'running' if we aren't currently in the middle of a 'launching' sequence
-            setLaunchStatus(prev => prev === 'launching' ? 'launching' : 'running');
+            setLaunchStatus(prev => (prev === 'launching' || prev === 'loading_window') ? prev : 'running');
         } else {
             // If we were 'running' but now it's not in the list, go to idle.
             // If we are 'launching', DO NOT reset to idle, wait for event failure or success.
@@ -154,7 +165,10 @@ export const useGameLaunch = (selectedInstance, ram, activeAccount, updateLastPl
                 }
 
                 // Status update handled by runningInstances sync usually, but immediate feedback is good
-                setLaunchStatus('running');
+                setLaunchStatus('loading_window');
+                setTimeout(() => {
+                    setLaunchStatus(prev => prev === 'loading_window' ? 'running' : prev);
+                }, 10000);
             } else {
                 if (log.message && log.message.length < 50 && !log.message.includes('DEBUG')) {
                     setLaunchStep(log.message);

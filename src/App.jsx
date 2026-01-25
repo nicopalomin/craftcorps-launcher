@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 
 import Sidebar from './components/layout/Sidebar';
 import TitleBar from './components/layout/TitleBar';
@@ -12,6 +12,7 @@ import { useAccounts } from './hooks/useAccounts';
 import { useAppSettings } from './hooks/useAppSettings';
 import { useToast } from './contexts/ToastContext';
 import { useTranslation } from 'react-i18next';
+import heroBg from '/images/hero-bg.png';
 import { telemetry } from './services/TelemetryService';
 import { discovery } from './services/DiscoveryService';
 import { useAutoUpdate } from './hooks/useAutoUpdate';
@@ -20,6 +21,46 @@ function App() {
     const { addToast } = useToast();
     const { t } = useTranslation();
     const [activeTab, setActiveTab] = useState('home');
+    const [navigatingTab, setNavigatingTab] = useState('home');
+    const [isPending, startTransition] = React.useTransition();
+    const [backgroundLoaded, setBackgroundLoaded] = useState(false);
+    const [isDeepSleep, setIsDeepSleep] = useState(false);
+
+    // Visibility & Deep Sleep Logic
+    useEffect(() => {
+        if (!window.electronAPI?.onVisibilityChange) return;
+
+        const handleVisibility = (visible) => {
+            if (!visible) {
+                console.log('[PERF] Entering Deep Sleep... Purging memory.');
+                setIsDeepSleep(true);
+            } else {
+                console.log('[PERF] Waking from Deep Sleep.');
+                setIsDeepSleep(false);
+            }
+        };
+
+        window.electronAPI.onVisibilityChange(handleVisibility);
+        return () => window.electronAPI.removeVisibilityListener();
+    }, []);
+
+    // Preload background image
+    useEffect(() => {
+        const img = new Image();
+        img.src = heroBg;
+        img.onload = () => setBackgroundLoaded(true);
+        img.onerror = () => setBackgroundLoaded(true); // Signal even on error to avoid hang
+    }, []);
+
+    const handleTabChange = (tab) => {
+        // Update the visual indicator in the sidebar immediately
+        setNavigatingTab(tab);
+
+        // Defer the heavy page switch
+        startTransition(() => {
+            setActiveTab(tab);
+        });
+    };
 
     // Initialize Telemetry (Delayed)
     useEffect(() => {
@@ -43,8 +84,6 @@ function App() {
 
         return () => clearTimeout(initTimer);
     }, []);
-
-
 
     // Marketing Shot Listener (Shift + S)
     useEffect(() => {
@@ -72,8 +111,6 @@ function App() {
         telemetry.trackPage(activeTab);
     }, [activeTab]);
 
-
-
     // Hooks
     const {
         ram, setRam,
@@ -83,6 +120,7 @@ function App() {
         enableDiscordRPC, setEnableDiscordRPC,
         startOnStartup, setStartOnStartup,
         theme, setTheme,
+        minimizeOnClose, setMinimizeOnClose,
         availableJavas,
         refreshJavas
     } = useAppSettings();
@@ -111,12 +149,7 @@ function App() {
         selectedInstance,
         setSelectedInstance,
         editingCrop,
-        // setEditingCrop, // Not needed with the modal managed in layout? Actually AppOverlays needs it.
-        // Wait, AppOverlays needs editingCrop to pass to CropModal?  Yes.
-        // But useInstances should return it.
-        // Let's check useInstances return values from previous file content.
-        // Yes, it returns editingCrop.
-        setEditingCrop, // Needed? useInstances handles this. 
+        setEditingCrop,
         showCropModal,
         setShowCropModal,
         handleSaveCrop,
@@ -128,12 +161,31 @@ function App() {
         isLoading: isLoadingInstances
     } = useInstances();
 
+    // Initial Paint Signal: Hide splash screen once instances are loaded and UI is stable
+    const handleAppReady = useCallback(() => {
+        if (window.electronAPI?.sendAppReady) {
+            // Wait for 2 frames to ensure Chromium has actually rasterized the paint
+            requestAnimationFrame(() => {
+                requestAnimationFrame(() => {
+                    window.electronAPI.sendAppReady();
+                });
+            });
+        }
+    }, []);
+
+    // Initial readiness monitoring
+    useEffect(() => {
+        if (!isLoadingInstances && backgroundLoaded) {
+            handleAppReady();
+        }
+    }, [isLoadingInstances, backgroundLoaded, handleAppReady]);
+
     // Wrapped Handlers for Toasts
     const onSaveCropWithToast = (crop) => {
         const isNew = !editingCrop;
         handleSaveCrop(crop);
         addToast(editingCrop ? t('toast_crop_updated') : t('toast_crop_created'), 'success');
-        if (isNew) setActiveTab('home');
+        if (isNew) handleTabChange('home');
     };
 
     const onDeleteCropWithToast = (id) => {
@@ -195,18 +247,14 @@ function App() {
     const { updateStatus, updateInfo, downloadProgress, downloadUpdate, quitAndInstall } = useAutoUpdate();
     const [showUpdateModal, setShowUpdateModal] = useState(false);
 
-    // Silently auto-download significant updates (Major or Minor version bump)
+    // Silently auto-download significant updates
     useEffect(() => {
         if (updateStatus === 'available' && updateInfo?.version) {
             try {
                 const currentVersion = typeof __APP_VERSION__ !== 'undefined' ? __APP_VERSION__ : '0.0.0';
-
-                // Parse versions (handling potential non-semver strings gracefully)
                 const parseVer = (v) => v.split('.').map(n => parseInt(n, 10) || 0);
                 const [curMajor, curMinor] = parseVer(currentVersion);
                 const [newMajor, newMinor] = parseVer(updateInfo.version);
-
-                // Check if update is at least 0.1.0 difference (Major different or Minor different)
                 const isSignificant = newMajor > curMajor || (newMajor === curMajor && newMinor > curMinor);
 
                 if (isSignificant) {
@@ -219,14 +267,9 @@ function App() {
         }
     }, [updateStatus, updateInfo, downloadUpdate]);
 
-
-
-    // Update Discord RPC based on activeTab
+    // Update Discord RPC
     useEffect(() => {
         if (!window.electronAPI?.setDiscordActivity) return;
-
-        // Don't update status from frontend if game is launching or running
-        // The backend handles the "In Game" status
         if (launchStatus === 'launching' || launchStatus === 'running') return;
 
         if (!enableDiscordRPC) {
@@ -271,80 +314,90 @@ function App() {
     const handleSelectRunningInstance = (gameDir) => {
         const inst = instances?.find(i => i.path === gameDir);
         if (inst) {
+            handleTabChange('home');
             setSelectedInstance(inst);
-            setActiveTab('home');
         }
     };
 
+    useEffect(() => {
+        setNavigatingTab(activeTab);
+    }, [activeTab]);
+
     return (
         <div className={`flex h-screen font-sans selection:bg-emerald-500/30 overflow-hidden relative ${getThemeBackground()}`}>
-            {/* Global Animated Background */}
-            <GlobalBackground
-                selectedInstance={selectedInstance}
-                theme={theme}
-                disableAnimations={disableAnimations}
-                activeTab={activeTab}
-            />
+            {isDeepSleep ? (
+                /* Deep Sleep Shell: No UI, no DOM elements, minimal RAM */
+                <div className="flex-1 flex items-center justify-center">
+                    {/* Minimal placeholder to keep React happy */}
+                </div>
+            ) : (
+                <>
+                    <GlobalBackground
+                        selectedInstance={selectedInstance}
+                        theme={theme}
+                        disableAnimations={disableAnimations}
+                        activeTab={activeTab}
+                    />
 
-            {/* Sidebar */}
-            <Sidebar
-                activeTab={activeTab}
-                onTabChange={setActiveTab}
-                theme={theme}
-                onSelectRunningInstance={handleSelectRunningInstance}
-            />
+                    <Sidebar
+                        activeTab={navigatingTab}
+                        onTabChange={handleTabChange}
+                        theme={theme}
+                        updateStatus={updateStatus} updateInfo={updateInfo} downloadProgress={downloadProgress}
+                        onDownloadUpdate={downloadUpdate}
+                        onInstallUpdate={quitAndInstall}
+                    />
 
-            {/* Main Content Area */}
-            <main className={`flex-1 flex flex-col min-w-0 relative overflow-hidden transition-colors duration-700 ${activeTab === 'home' ? 'bg-transparent' : (theme === 'white' ? 'bg-slate-50' : (theme === 'midnight' ? 'bg-[#050505]' : 'bg-slate-900'))}`}>
-                <TitleBar
-                    launchStatus={launchStatus}
-                    isRefreshing={isRefreshing}
-                    authError={authError}
-                    onOpenConsole={() => setShowConsole(true)}
-                    updateStatus={updateStatus}
-                    updateInfo={updateInfo}
-                    onOpenUpdateModal={() => setShowUpdateModal(true)}
-                    onSelectRunningInstance={handleSelectRunningInstance}
-                />
+                    <main className={`flex-1 flex flex-col min-w-0 relative overflow-hidden transition-colors duration-700 ${activeTab === 'home' ? 'bg-transparent' : (theme === 'white' ? 'bg-slate-50' : (theme === 'midnight' ? 'bg-[#050505]' : 'bg-slate-900'))}`}>
+                        <TitleBar
+                            launchStatus={launchStatus}
+                            isRefreshing={isRefreshing}
+                            authError={authError}
+                            onOpenConsole={() => setShowConsole(true)}
+                            updateStatus={updateStatus}
+                            updateInfo={updateInfo}
+                            onOpenUpdateModal={() => setShowUpdateModal(true)}
+                            onSelectRunningInstance={handleSelectRunningInstance}
+                        />
 
-                <AppContent
-                    activeTab={activeTab} setActiveTab={setActiveTab}
-                    activeAccount={activeAccount} setShowLoginModal={setShowLoginModal} disableAnimations={disableAnimations}
-                    selectedInstance={selectedInstance} launchStatus={launchStatus} launchStep={launchStep} launchProgress={launchProgress} launchFeedback={launchFeedback} handlePlay={handlePlay} handleStop={handleStop} isRefreshing={isRefreshing}
-                    instances={instances} setSelectedInstance={setSelectedInstance} handleNewCrop={handleNewCrop} handleEditCrop={handleEditCrop}
-                    accounts={accounts} onAccountSwitchWithToast={onAccountSwitchWithToast} showProfileMenu={showProfileMenu} setShowProfileMenu={setShowProfileMenu} onLogoutWithToast={onLogoutWithToast}
-                    onDeleteCropWithToast={onDeleteCropWithToast} reorderInstances={reorderInstances}
-                    ram={ram} setRam={setRam} javaPath={javaPath} setJavaPath={setJavaPath} hideOnLaunch={hideOnLaunch} setHideOnLaunch={setHideOnLaunch} setDisableAnimations={setDisableAnimations} availableJavas={availableJavas} enableDiscordRPC={enableDiscordRPC} setEnableDiscordRPC={setEnableDiscordRPC}
-                    startOnStartup={startOnStartup} setStartOnStartup={setStartOnStartup}
-                    theme={theme} setTheme={setTheme}
-                    onSaveCropWithToast={onSaveCropWithToast}
-                    isLoadingInstances={isLoadingInstances}
-                    runningInstances={runningInstances}
-                    launchCooldown={launchCooldown}
-                />
-            </main>
+                        <AppContent
+                            activeTab={activeTab} setActiveTab={setActiveTab}
+                            activeAccount={activeAccount} setShowLoginModal={setShowLoginModal} disableAnimations={disableAnimations}
+                            selectedInstance={selectedInstance} launchStatus={launchStatus} launchStep={launchStep} launchProgress={launchProgress} launchFeedback={launchFeedback} handlePlay={handlePlay} handleStop={handleStop} isRefreshing={isRefreshing}
+                            instances={instances} setSelectedInstance={setSelectedInstance} handleNewCrop={handleNewCrop} handleEditCrop={handleEditCrop}
+                            accounts={accounts} onAccountSwitchWithToast={onAccountSwitchWithToast} showProfileMenu={showProfileMenu} setShowProfileMenu={setShowProfileMenu} onLogoutWithToast={onLogoutWithToast}
+                            onDeleteCropWithToast={onDeleteCropWithToast} reorderInstances={reorderInstances}
+                            ram={ram} setRam={setRam} javaPath={javaPath} setJavaPath={setJavaPath} hideOnLaunch={hideOnLaunch} setHideOnLaunch={setHideOnLaunch} setDisableAnimations={setDisableAnimations} availableJavas={availableJavas} enableDiscordRPC={enableDiscordRPC} setEnableDiscordRPC={setEnableDiscordRPC}
+                            startOnStartup={startOnStartup} setStartOnStartup={setStartOnStartup}
+                            theme={theme} setTheme={setTheme}
+                            onSaveCropWithToast={onSaveCropWithToast}
+                            isLoadingInstances={isLoadingInstances}
+                            runningInstances={runningInstances}
+                            launchCooldown={launchCooldown}
+                            minimizeOnClose={minimizeOnClose}
+                            setMinimizeOnClose={setMinimizeOnClose}
+                            onReady={handleAppReady}
+                        />
+                    </main>
 
-            {/* Overlays */}
-            <React.Suspense fallback={null}>
-                <AppOverlays
-                    logs={logs} showConsole={showConsole} setShowConsole={setShowConsole}
-                    launchStatus={launchStatus} launchStep={launchStep} launchProgress={launchProgress} selectedInstance={selectedInstance} handleStop={handleStop}
-                    showLoginModal={showLoginModal} setShowLoginModal={setShowLoginModal} onAddAccountWithToast={onAddAccountWithToast} isRefreshing={isRefreshing}
-                    showCropModal={showCropModal} setShowCropModal={setShowCropModal} onSaveCropWithToast={onSaveCropWithToast} editingCrop={editingCrop} onDeleteCropWithToast={onDeleteCropWithToast}
-                    instanceCount={instances.length}
-                    showJavaModal={showJavaModal} setShowJavaModal={setShowJavaModal} handleJavaInstallComplete={handleJavaInstallComplete} refreshJavas={refreshJavas} requiredJavaVersion={requiredJavaVersion}
-                    errorModal={errorModal} setErrorModal={setErrorModal}
-                    crashModal={crashModal} setCrashModal={setCrashModal}
-                    showUpdateModal={showUpdateModal} setShowUpdateModal={setShowUpdateModal}
-                    updateStatus={updateStatus} updateInfo={updateInfo} downloadProgress={downloadProgress}
-                    onDownloadUpdate={() => {
-                        downloadUpdate();
-                        // Modal stays open to show progress usually, or we can close it and let user re-open via titlebar (if we add button there)
-                        // For now, keep open so they see progress bar
-                    }}
-                    onInstallUpdate={quitAndInstall}
-                />
-            </React.Suspense>
+                    <React.Suspense fallback={null}>
+                        <AppOverlays
+                            logs={logs} showConsole={showConsole} setShowConsole={setShowConsole}
+                            launchStatus={launchStatus} launchStep={launchStep} launchProgress={launchProgress} selectedInstance={selectedInstance} handleStop={handleStop}
+                            showLoginModal={showLoginModal} setShowLoginModal={setShowLoginModal} onAddAccountWithToast={onAddAccountWithToast} isRefreshing={isRefreshing}
+                            showCropModal={showCropModal} setShowCropModal={setShowCropModal} onSaveCropWithToast={onSaveCropWithToast} editingCrop={editingCrop} onDeleteCropWithToast={onDeleteCropWithToast}
+                            instanceCount={instances.length}
+                            showJavaModal={showJavaModal} setShowJavaModal={setShowJavaModal} handleJavaInstallComplete={handleJavaInstallComplete} refreshJavas={refreshJavas} requiredJavaVersion={requiredJavaVersion}
+                            errorModal={errorModal} setErrorModal={setErrorModal}
+                            crashModal={crashModal} setCrashModal={setCrashModal}
+                            showUpdateModal={showUpdateModal} setShowUpdateModal={setShowUpdateModal}
+                            updateStatus={updateStatus} updateInfo={updateInfo} downloadProgress={downloadProgress}
+                            onDownloadUpdate={downloadUpdate}
+                            onInstallUpdate={quitAndInstall}
+                        />
+                    </React.Suspense>
+                </>
+            )}
         </div>
     );
 }

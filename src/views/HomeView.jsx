@@ -460,7 +460,7 @@ const HomeView = ({
     const isModded = selectedInstance && selectedInstance.loader !== 'Vanilla';
 
     return (
-        <div className={`flex-1 flex flex-col relative animate-in fade-in zoom-in-95 duration-500 select-none overflow-hidden ${isModded && showAdvanced ? 'justify-start' : 'justify-center'}`}>
+        <div className={`flex-1 flex flex-col relative select-none overflow-hidden ${isModded && showAdvanced ? 'justify-start' : 'justify-center'}`}>
 
             {/* Top Right Control Cluster (Account + Actions) */}
             <div className="absolute top-8 right-8 flex flex-col items-end gap-3 z-50">
@@ -546,7 +546,7 @@ const HomeView = ({
                                 <div ref={modsSectionRef} className="w-full max-w-7xl mx-auto px-8 pb-8 mt-4 animate-in slide-in-from-bottom-10 fade-in duration-700 delay-100">
                                     {/* Unified Glass Card */}
                                     <div
-                                        className={`flex flex-col h-[750px] overflow-hidden relative transition-all duration-300 ${theme === 'white' ? 'bg-white/90 border border-white/50 shadow-xl rounded-3xl backdrop-blur-md' : 'bg-slate-950/80 border border-slate-800/50 shadow-2xl rounded-[2rem] backdrop-blur-xl'}`}
+                                        className={`flex flex-col h-[750px] overflow-hidden relative transition-all duration-300 ${theme === 'white' ? 'bg-white/90 border border-white/50 shadow-xl rounded-3xl' : 'bg-slate-950/80 border border-slate-800/50 shadow-2xl rounded-[2rem]'}`}
                                     >
 
                                         {/* Internal Tab Switcher */}
@@ -644,7 +644,7 @@ const HomeView = ({
                         </div>
                     </>
                 ) : (
-                    isLoadingInstances ? <HomeSkeleton theme={theme} /> : <EmptyState onNewCrop={onNewCrop} />
+                    isLoadingInstances ? null : <EmptyState onNewCrop={onNewCrop} />
                 )}
 
                 {/* Bottom Spacer - animates flex-grow to slide content up */}

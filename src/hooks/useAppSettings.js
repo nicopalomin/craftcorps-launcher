@@ -11,6 +11,10 @@ export const useAppSettings = () => {
     const [hideOnLaunch, setHideOnLaunch] = useState(() => localStorage.getItem('settings_hideOnLaunch') === 'true');
     const [disableAnimations, setDisableAnimations] = useState(() => localStorage.getItem('settings_disableAnimations') === 'true');
     const [theme, setTheme] = useState(() => localStorage.getItem('settings_theme') || 'classic');
+    const [minimizeOnClose, setMinimizeOnClose] = useState(() => {
+        const stored = localStorage.getItem('settings_minimizeOnClose');
+        return stored !== null ? stored === 'true' : true;
+    });
 
     const [enableDiscordRPC, setEnableDiscordRPC] = useState(() => {
         const stored = localStorage.getItem('settings_enableDiscordRPC');
@@ -36,7 +40,11 @@ export const useAppSettings = () => {
 
     useEffect(() => {
         const init = async () => {
-            await refreshJavas();
+            // Defer heavy Java detection
+            setTimeout(() => {
+                refreshJavas();
+            }, 6000);
+
             if (window.electronAPI) {
                 window.electronAPI.onJavaPathUpdated((newPath) => {
                     // Only toast if path actually changed
@@ -68,7 +76,13 @@ export const useAppSettings = () => {
         localStorage.setItem('settings_disableAnimations', disableAnimations);
         localStorage.setItem('settings_enableDiscordRPC', enableDiscordRPC);
         localStorage.setItem('settings_theme', theme);
-    }, [ram, javaPath, hideOnLaunch, disableAnimations, enableDiscordRPC, theme]);
+        localStorage.setItem('settings_minimizeOnClose', minimizeOnClose);
+
+        // Sync to electron store for main process access
+        if (window.electronAPI?.storeSet) {
+            window.electronAPI.storeSet('settings_minimize_on_close', minimizeOnClose);
+        }
+    }, [ram, javaPath, hideOnLaunch, disableAnimations, enableDiscordRPC, theme, minimizeOnClose]);
 
     useEffect(() => {
         // Apply theme to html tag using data-theme attribute
@@ -85,6 +99,7 @@ export const useAppSettings = () => {
         hideOnLaunch, setHideOnLaunch,
         disableAnimations, setDisableAnimations,
         enableDiscordRPC, setEnableDiscordRPC,
+        minimizeOnClose, setMinimizeOnClose,
         startOnStartup,
         setStartOnStartup: async (val) => {
             if (window.electronAPI) {

@@ -87,10 +87,11 @@ function setupGameHandlers(getMainWindow) {
         launcher.on('log', (data) => {
             const { type, message } = data;
             // Log to backend file
-            if (type === 'ERROR') log.error(`[MCLC][${path.basename(gameDir)}] ${message}`);
-            else if (type === 'WARN') log.warn(`[MCLC][${path.basename(gameDir)}] ${message}`);
-            else if (type === 'DEBUG') console.log(`[DEBUG][${path.basename(gameDir)}] ${message}`);
-            else log.info(`[MCLC][${path.basename(gameDir)}] ${message}`);
+            // UNHOOKED: Game logs are no longer written to main.log to save disk/perf
+            // if (type === 'ERROR') log.error(`[MCLC][${path.basename(gameDir)}] ${message}`);
+            // else if (type === 'WARN') log.warn(`[MCLC][${path.basename(gameDir)}] ${message}`);
+            // else if (type === 'DEBUG') console.log(`[DEBUG][${path.basename(gameDir)}] ${message}`);
+            // else log.info(`[MCLC][${path.basename(gameDir)}] ${message}`);
 
             // Detect Crash Report
             if (message.includes('Crash report saved to:')) {
