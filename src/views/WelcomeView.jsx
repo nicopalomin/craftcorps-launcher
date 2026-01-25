@@ -1,7 +1,6 @@
 import React from 'react';
 import { User } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
-import BackgroundBlobs from '../components/common/BackgroundBlobs';
 
 function WelcomeView({ onConnect, disableAnimations }) {
     const { t } = useTranslation();

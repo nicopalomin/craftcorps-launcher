@@ -161,6 +161,34 @@ Date: ${new Date().toISOString()}
     ipcMain.handle('get-auth-user-id', () => {
         return authService.getUserId();
     });
+
+    // Launch on Startup
+    ipcMain.handle('get-start-on-startup', () => {
+        return app.getLoginItemSettings().openAtLogin;
+    });
+
+    ipcMain.handle('set-start-on-startup', (event, value) => {
+        app.setLoginItemSettings({
+            openAtLogin: value,
+            openAsHidden: value, // macOS
+            path: app.getPath('exe'),
+            args: value ? ['--hidden'] : [] // Windows
+        });
+        if (store) store.set('settings_initialized_startup', true);
+        return app.getLoginItemSettings().openAtLogin;
+    });
+
+    // Handle Default Value (First Run)
+    if (store && !store.get('settings_initialized_startup')) {
+        app.setLoginItemSettings({
+            openAtLogin: true,
+            openAsHidden: true,
+            path: app.getPath('exe'),
+            args: ['--hidden']
+        });
+        store.set('settings_initialized_startup', true);
+        log.info('[AppHandler] Startup enabled by default on first run.');
+    }
 }
 
 module.exports = { setupAppHandlers };

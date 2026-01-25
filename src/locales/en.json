@@ -108,6 +108,8 @@
     "settings_no_java": "No detected runtimes",
     "settings_discord": "Discord Rich Presence",
     "settings_discord_desc": "Show your game status on Discord",
+    "settings_start_on_startup": "Launch on Startup",
+    "settings_start_on_startup_desc": "Automatically start the launcher when your PC starts.",
     "btn_browse": "Browse",
     "btn_upload_logs": "Upload to Support",
     "toast_logs_uploaded": "Logs uploaded successfully!",

@@ -1,6 +1,5 @@
 const { contextBridge, ipcRenderer, webUtils } = require('electron');
 
-console.log('Preload script loaded'); // DEBUG LOG
 
 contextBridge.exposeInMainWorld('electronAPI', {
     minimize: () => ipcRenderer.send('window-minimize'),
@@ -18,9 +17,12 @@ contextBridge.exposeInMainWorld('electronAPI', {
     linkMicrosoftAccount: (consent) => ipcRenderer.invoke('link-microsoft', consent),
     getUserProfile: () => ipcRenderer.invoke('get-user-profile'),
     linkDiscord: () => ipcRenderer.invoke('link-discord'),
+    getInviteCode: () => ipcRenderer.invoke('get-invite-code'),
 
     microsoftLogin: (consent) => ipcRenderer.invoke('microsoft-login', consent),
     microsoftRefresh: (refreshToken) => ipcRenderer.invoke('refresh-microsoft-token', refreshToken),
+    refreshBackendSession: () => ipcRenderer.invoke('refresh-backend-session'),
+    getBackendToken: () => ipcRenderer.invoke('get-backend-token'),
     detectLocalAccounts: () => ipcRenderer.invoke('detect-local-accounts'),
     linkProfile: (payload) => ipcRenderer.invoke('link-profile', payload),
     selectFile: () => ipcRenderer.invoke('select-file'),
@@ -77,11 +79,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
     removeInstanceModsListener: () => ipcRenderer.removeAllListeners('instance-mods-updated'),
     deleteMod: (filePath) => ipcRenderer.invoke('delete-mod', filePath),
     addInstanceMods: async (instancePath, filePaths) => {
-        console.log('[Preload] Invoking add-instance-mods', { instancePath, count: filePaths?.length });
         try {
-            const result = await ipcRenderer.invoke('add-instance-mods', { instancePath, filePaths });
-            console.log('[Preload] Result from add-instance-mods', result);
-            return result;
+            return await ipcRenderer.invoke('add-instance-mods', { instancePath, filePaths });
         } catch (e) {
             console.error('[Preload] Error invoking add-instance-mods', e);
             throw e;
@@ -93,11 +92,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
     getInstanceResourcePacks: (instancePath) => ipcRenderer.invoke('get-instance-resource-packs', instancePath),
     selectResourcePackFiles: () => ipcRenderer.invoke('select-resource-pack-files'),
     addInstanceResourcePacks: async (instancePath, filePaths) => {
-        console.log('[Preload] Invoking add-instance-resource-packs', { instancePath, count: filePaths?.length });
         try {
-            const result = await ipcRenderer.invoke('add-instance-resource-packs', { instancePath, filePaths });
-            console.log('[Preload] Result from add-instance-resource-packs', result);
-            return result;
+            return await ipcRenderer.invoke('add-instance-resource-packs', { instancePath, filePaths });
         } catch (e) {
             console.error('[Preload] Error invoking add-instance-resource-packs', e);
             throw e;
@@ -126,10 +122,14 @@ contextBridge.exposeInMainWorld('electronAPI', {
     getInstanceByPath: (path) => ipcRenderer.invoke('get-instance-by-path', path),
     saveInstance: (data) => ipcRenderer.invoke('save-instance', data),
     getInstancePlayTime: (instanceId) => ipcRenderer.invoke('get-instance-playtime', instanceId),
+    getTotalPlayTime: () => ipcRenderer.invoke('get-total-playtime'),
     getPlaytimeBreakdown: () => ipcRenderer.invoke('get-playtime-breakdown'),
     getPlaytimeHistory: (start, end) => ipcRenderer.invoke('get-playtime-history', start, end),
     getPlaytimeDetailed: () => ipcRenderer.invoke('get-playtime-detailed'),
     getPlaytimeDaily: (date) => ipcRenderer.invoke('get-playtime-daily', date),
+    syncPlaytime: () => ipcRenderer.invoke('sync-playtime'),
+    onPlaytimeUpdated: (callback) => ipcRenderer.on('playtime-updated', (_event, value) => callback(value)),
+    removePlaytimeListener: () => ipcRenderer.removeAllListeners('playtime-updated'),
 
     // Import
     importInstanceDialog: () => ipcRenderer.invoke('import-instance-dialog'),
@@ -182,4 +182,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
     // Internal Tools
     captureMarketingShot: () => ipcRenderer.invoke('capture-marketing-shot'),
     getPathForFile: (file) => webUtils.getPathForFile(file),
+
+    // System/App Settings
+    getStartOnStartup: () => ipcRenderer.invoke('get-start-on-startup'),
+    setStartOnStartup: (value) => ipcRenderer.invoke('set-start-on-startup', value),
 });

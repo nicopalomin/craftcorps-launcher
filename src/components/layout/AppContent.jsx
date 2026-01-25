@@ -20,6 +20,7 @@ const AppContent = ({
     accounts, onAccountSwitchWithToast, showProfileMenu, setShowProfileMenu, onLogoutWithToast,
     onDeleteCropWithToast, reorderInstances,
     ram, setRam, javaPath, setJavaPath, hideOnLaunch, setHideOnLaunch, setDisableAnimations, availableJavas, enableDiscordRPC, setEnableDiscordRPC,
+    startOnStartup, setStartOnStartup,
     theme, setTheme,
     onSaveCropWithToast,
     isLoadingInstances,
@@ -131,6 +132,7 @@ const AppContent = ({
                     disableAnimations={disableAnimations} setDisableAnimations={setDisableAnimations}
                     availableJavas={availableJavas}
                     enableDiscordRPC={enableDiscordRPC} setEnableDiscordRPC={setEnableDiscordRPC}
+                    startOnStartup={startOnStartup} setStartOnStartup={setStartOnStartup}
                     theme={theme} setTheme={setTheme}
                 />
             )}

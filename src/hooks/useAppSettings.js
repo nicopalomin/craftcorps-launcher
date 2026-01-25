@@ -16,6 +16,7 @@ export const useAppSettings = () => {
         const stored = localStorage.getItem('settings_enableDiscordRPC');
         return stored !== null ? stored === 'true' : true;
     });
+    const [startOnStartup, setStartOnStartup] = useState(false);
     const [availableJavas, setAvailableJavas] = useState([]);
 
     const refreshJavas = async () => {
@@ -46,6 +47,9 @@ export const useAppSettings = () => {
                         refreshJavas();
                     }
                 });
+
+                // Fetch startup setting
+                window.electronAPI.getStartOnStartup().then(setStartOnStartup).catch(console.error);
             }
         };
         init();
@@ -81,6 +85,15 @@ export const useAppSettings = () => {
         hideOnLaunch, setHideOnLaunch,
         disableAnimations, setDisableAnimations,
         enableDiscordRPC, setEnableDiscordRPC,
+        startOnStartup,
+        setStartOnStartup: async (val) => {
+            if (window.electronAPI) {
+                const result = await window.electronAPI.setStartOnStartup(val);
+                setStartOnStartup(result);
+            } else {
+                setStartOnStartup(val);
+            }
+        },
         theme, setTheme,
         availableJavas,
         refreshJavas

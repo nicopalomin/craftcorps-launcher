@@ -20,6 +20,7 @@ app.setName(isCanary ? 'CraftCorps Canary' : 'CraftCorps Launcher');
 const profileArg = process.argv.find(arg => arg.startsWith('--profile='));
 const isDev = process.env.NODE_ENV === 'development' || process.argv.includes('--dev');
 const isMarketing = process.argv.includes('--marketing-shot');
+const isHidden = process.argv.includes('--hidden');
 
 if (profileArg || isDev || isMarketing) {
     let profileSuffix = 'dev';
@@ -70,6 +71,26 @@ Object.assign(console, log.functions);
 
 let tray;
 let mainWindow;
+let splashWindow;
+
+function createSplashWindow() {
+    splashWindow = new BrowserWindow({
+        width: 340,
+        height: 380,
+        transparent: false,
+        frame: false,
+        alwaysOnTop: true,
+        resizable: false,
+        center: true,
+        backgroundColor: '#020617',
+        webPreferences: {
+            nodeIntegration: false,
+            contextIsolation: true
+        }
+    });
+
+    splashWindow.loadFile(path.join(__dirname, 'splash.html'));
+}
 
 // Crash Handling
 app.setPath('crashDumps', path.join(app.getPath('userData'), 'crashDumps'));
@@ -101,32 +122,10 @@ async function createWindow() {
         : path.join(__dirname, '../dist/images/cc-logo.png');
 
     // Dynamic import for ESM module support
-    // Dynamic import for ESM module support
-    if (!store) {
-        const { default: Store } = await import('electron-store');
-        store = new Store();
-
-        // Initialize Authentication Service (Critical Path)
-        authService.init(store);
-
-        // Defer Service Init (Telemetry & PlayTime) to avoid startup contention
-        setTimeout(() => {
-            telemetryService.init(store);
-            playTimeService.init(store);
-            playTimeService.syncPlayTime(); // Verify & Sync with Backend
-        }, 5000);
-
-        // Register PlayTime Listeners immediately (lightweight, handles missing store gracefully)
-        ipcMain.handle('get-total-playtime', () => playTimeService.getTotalPlayTime());
-        ipcMain.handle('get-instance-playtime', (e, id) => playTimeService.getInstancePlayTime(id));
-        ipcMain.handle('get-playtime-breakdown', () => playTimeService.getBreakdown());
-        ipcMain.handle('get-playtime-history', (e, start, end) => playTimeService.getHistory(start, end));
-        ipcMain.handle('get-playtime-detailed', () => playTimeService.getDetailedStats());
-        ipcMain.handle('get-playtime-daily', (e, date) => playTimeService.getDailyLog(date));
-    }
+    // (Store initialization moved to app.whenReady)
 
     // Restore saved window state
-    const { width, height } = store.get('windowBounds', { width: 1200, height: 800 });
+    const { width, height } = store ? store.get('windowBounds', { width: 1200, height: 800 }) : { width: 1200, height: 800 };
 
     console.time('[MAIN] BrowserWindow ctor');
     mainWindow = new BrowserWindow({
@@ -135,7 +134,7 @@ async function createWindow() {
         height: height,
         minWidth: 940,
         minHeight: 600,
-        show: false,
+        show: false, // Keep hidden until ready-to-show
         frame: false,
         transparent: false, // Disabled for faster startup
         backgroundColor: '#020617',
@@ -153,7 +152,7 @@ async function createWindow() {
     function scheduleBoundsSave() {
         clearTimeout(boundsTimer);
         boundsTimer = setTimeout(() => {
-            if (mainWindow && !mainWindow.isDestroyed()) {
+            if (mainWindow && !mainWindow.isDestroyed() && store) {
                 const { width, height } = mainWindow.getBounds();
                 store.set('windowBounds', { width, height });
             }
@@ -165,8 +164,22 @@ async function createWindow() {
     const startUrl = process.env.ELECTRON_START_URL || `file://${path.join(__dirname, '../dist/index.html')}`;
 
     mainWindow.once('ready-to-show', () => {
-        mainWindow.show();
-        mainWindow.focus();
+        if (splashWindow && !splashWindow.isDestroyed()) {
+            splashWindow.destroy();
+        }
+        if (!isHidden) {
+            mainWindow.show();
+            mainWindow.focus();
+        }
+    });
+
+    mainWindow.on('show', () => {
+        try {
+            const { liftSuspension } = require('./discordRpc.cjs');
+            liftSuspension();
+        } catch (e) {
+            log.error('Failed to lift Discord RPC suspension:', e);
+        }
     });
 
     mainWindow.on('close', (e) => {
@@ -221,6 +234,44 @@ app.whenReady().then(async () => {
         return;
     }
 
+    if (!isHidden) {
+        createSplashWindow(); // Show Splash Screen Immediately
+    }
+
+    // Initialize Electron Store (Critical for Handlers)
+    if (!store) {
+        const { default: Store } = await import('electron-store');
+        store = new Store();
+
+        // Initialize Authentication Service (Critical Path)
+        authService.init(store);
+
+        // Defer Service Init (Telemetry & PlayTime) to avoid startup contention
+        setTimeout(() => {
+            telemetryService.init(store);
+            playTimeService.init(store);
+            playTimeService.syncPlayTime(); // Verify & Sync with Backend
+        }, 5000);
+
+        // Register PlayTime Listeners immediately
+        ipcMain.handle('get-total-playtime', () => playTimeService.getTotalPlayTime());
+        ipcMain.handle('get-instance-playtime', (e, id) => playTimeService.getInstancePlayTime(id));
+        ipcMain.handle('get-playtime-breakdown', () => playTimeService.getBreakdown());
+        ipcMain.handle('get-playtime-history', (e, start, end) => playTimeService.getHistory(start, end));
+        ipcMain.handle('get-playtime-detailed', () => playTimeService.getDetailedStats());
+        ipcMain.handle('get-playtime-daily', (e, date) => playTimeService.getDailyLog(date));
+        ipcMain.handle('sync-playtime', async () => {
+            const result = await playTimeService.syncPlayTime();
+            return result;
+        });
+
+        playTimeService.onChanged(() => {
+            if (mainWindow && !mainWindow.isDestroyed()) {
+                mainWindow.webContents.send('playtime-updated');
+            }
+        });
+    }
+
     console.time('[MAIN] registerHandlers');
 
     // Critical Handlers - Load immediately
@@ -230,7 +281,7 @@ app.whenReady().then(async () => {
 
     // Discord RPC - Registers handlers immediately, defers connection internally (lightweight)
     const { initDiscordRPC } = require('./discordRpc.cjs');
-    initDiscordRPC();
+    initDiscordRPC(isHidden);
 
     setupWindowHandlers(getMainWindow);
     setupAppHandlers(getMainWindow, store);

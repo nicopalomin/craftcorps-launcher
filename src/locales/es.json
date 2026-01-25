@@ -106,6 +106,8 @@
     "settings_no_java": "No se detectaron tiempos de ejecución",
     "settings_discord": "Discord Rich Presence",
     "settings_discord_desc": "Muestra tu estado de juego en Discord",
+    "settings_start_on_startup": "Iniciar con el PC",
+    "settings_start_on_startup_desc": "Inicia automáticamente el lanzador cuando se enciende el PC.",
     "btn_browse": "Explorar",
     "btn_upload_logs": "Subir a Soporte",
     "toast_logs_uploaded": "¡Registros subidos con éxito!",

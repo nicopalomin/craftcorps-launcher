@@ -7,8 +7,10 @@ let rpc;
 let rpcReady = false;
 let startTimestamp = Date.now();
 let currentActivity = null;
+let isSuspended = false;
 
-function initDiscordRPC() {
+function initDiscordRPC(startSuspended = false) {
+    isSuspended = startSuspended;
     // DiscordRPC.register(clientId); // Not strictly needed for IPC presence and can cause issues on some systems
 
     // Defer RPC initialization to avoid blocking main process/window rendering on startup
@@ -26,7 +28,7 @@ function initDiscordRPC() {
                 if (currentActivity) {
                     // If activity was set while connecting (e.g. game launched), use that
                     rpc.setActivity(currentActivity).catch(err => log.error(`[Discord RPC] Set pending activity failed: ${err}`));
-                } else {
+                } else if (!startSuspended) {
                     // Set initial activity, using current time as baseline
                     setActivity({
                         details: 'In Launcher',
@@ -56,6 +58,20 @@ function initDiscordRPC() {
     ipcMain.handle('discord-clear-activity', async () => {
         return clearActivity();
     });
+
+    ipcMain.handle('discord-resume', () => {
+        liftSuspension();
+    });
+}
+
+function liftSuspension() {
+    if (isSuspended) {
+        isSuspended = false;
+        log.info('[Discord RPC] Suspension lifted.');
+        if (currentActivity) {
+            setActivity(currentActivity);
+        }
+    }
 }
 
 async function setActivity(activity) {
@@ -69,6 +85,7 @@ async function setActivity(activity) {
     }
 
     currentActivity = activity;
+    if (isSuspended) return;
 
     if (!rpcReady || !rpc) return;
 
@@ -84,5 +101,6 @@ async function clearActivity() {
 module.exports = {
     initDiscordRPC,
     setActivity,
-    clearActivity
+    clearActivity,
+    liftSuspension
 };

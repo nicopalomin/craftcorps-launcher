@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import { Paintbrush, Box, Layers, Settings, Aperture } from 'lucide-react';
-import BackgroundBlobs from '../components/common/BackgroundBlobs';
 import { useToast } from '../contexts/ToastContext';
 import { useTranslation } from 'react-i18next';
 
