@@ -69,7 +69,11 @@ function setupGameHandlers(getMainWindow) {
 
         // Start Tracking Play Time
         // Note: multiple instances of same game will overlap updates, acceptable for now.
-        playTimeService.startSession(gameDir);
+        playTimeService.startSession(options.id || '0', {
+            playerName: options.username,
+            playerUuid: options.uuid,
+            isOnline: options.userType !== 'offline'
+        });
 
         // --- Instance Listeners ---
         launcher.on('started', () => {
@@ -112,7 +116,7 @@ function setupGameHandlers(getMainWindow) {
         launcher.on('launch-error', (error) => {
             log.error(`[Main] Launch Error (${path.basename(gameDir)}): ${error.summary}`);
             safeSend('launch-error', { ...error, gameDir, launchId });
-            playTimeService.stopSession(gameDir);
+            playTimeService.stopSession(options.id || '0');
             activeLaunchers.delete(launchId);
             emitRunningInstances();
         });
@@ -122,7 +126,7 @@ function setupGameHandlers(getMainWindow) {
             safeSend('game-exit', { code, gameDir, launchId });
 
             // Stop Tracking Play Time
-            playTimeService.stopSession(gameDir);
+            playTimeService.stopSession(options.id || '0');
             activeLaunchers.delete(launchId);
             emitRunningInstances();
 
@@ -316,6 +320,12 @@ const getInstances = async () => {
                 const data = JSON.parse(jsonContent);
                 data.path = fullPath;
 
+                // Ensure ID exists
+                if (!data.id) {
+                    data.id = crypto.randomUUID();
+                    await fs.promises.writeFile(jsonPath, JSON.stringify(data, null, 4));
+                }
+
                 // Load Icon concurrently if exists
                 const iconPath = path.join(fullPath, 'icon.png');
                 try {
@@ -359,6 +369,12 @@ const getInstanceByPath = async (event, fullPath) => {
         const jsonContent = await fs.promises.readFile(jsonPath, 'utf8');
         const data = JSON.parse(jsonContent);
         data.path = targetPath;
+
+        // Ensure ID exists
+        if (!data.id) {
+            data.id = crypto.randomUUID();
+            await fs.promises.writeFile(jsonPath, JSON.stringify(data, null, 4));
+        }
 
         // Load Icon
         const iconPath = path.join(targetPath, 'icon.png');
@@ -452,6 +468,11 @@ const ensureLoaderInstalled = async (instanceData) => {
 
 const saveInstance = async (event, instanceData) => {
     if (!instanceData || !instanceData.path) return { success: false, error: 'Invalid instance data' };
+
+    // Ensure ID
+    if (!instanceData.id) {
+        instanceData.id = crypto.randomUUID();
+    }
 
     try {
         if (!fs.existsSync(instanceData.path)) {

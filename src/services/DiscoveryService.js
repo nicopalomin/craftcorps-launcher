@@ -96,13 +96,24 @@ class DiscoveryService {
         if (window.electronAPI && window.electronAPI.getDiscoverServers) {
             try {
                 const res = await window.electronAPI.getDiscoverServers({ offset, limit, category, version, language, query, isOfflineAccount });
+                console.log('[DiscoveryService] Raw IPC Response:', res);
 
-                // If clean fetch (first page, no filters), update memory cache
-                if (res && (res.servers || Array.isArray(res)) && offset === 0 && !query && category === 'all' && !version && !language && !isOfflineAccount) {
-                    this.memoryCache = res.servers || res;
+                // Filter out junk/placeholder servers immediately
+                const rawServers = res.servers || (Array.isArray(res) ? res : []);
+                const validServers = rawServers.filter(s =>
+                    s &&
+                    s.name && s.name !== 'unknown' &&
+                    s.ip && s.ip !== 'unknown'
+                );
+
+                const cleanedRes = Array.isArray(res) ? validServers : { ...res, servers: validServers };
+
+                // If clean fetch (first page, no filters), update memory cache with CLEAN data
+                if (cleanedRes && (cleanedRes.servers || Array.isArray(cleanedRes)) && offset === 0 && !query && category === 'all' && !version && !language && !isOfflineAccount) {
+                    this.memoryCache = cleanedRes.servers || cleanedRes;
                 }
 
-                return res;
+                return cleanedRes;
             } catch (e) {
                 console.error('[Discovery] Failed to fetch servers via IPC', e);
             }

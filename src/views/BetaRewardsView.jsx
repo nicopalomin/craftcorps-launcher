@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { Gift, HelpCircle, Clock, Users, Share2, Clipboard, AlertTriangle } from 'lucide-react';
+import { Gift, HelpCircle, Clock, Users, Share2, Clipboard, AlertTriangle, RefreshCw } from 'lucide-react';
+import { useToast } from '../contexts/ToastContext';
 
 const ProgressBar = ({ current, milestones, theme, label, icon: Icon, action }) => {
     // Custom visual positions (percentages) for the milestones
@@ -81,7 +82,7 @@ const ProgressBar = ({ current, milestones, theme, label, icon: Icon, action }) 
                             {/* Tooltip for Reward (Mock) */}
                             <div className={`absolute bottom-full mb-3 opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap px-3 py-2 rounded-lg text-xs font-medium pointer-events-none transform translate-y-2 group-hover:translate-y-0 duration-200 ${theme === 'white' ? 'bg-slate-800 text-white shadow-xl' : 'bg-white text-slate-900 shadow-xl'}`}>
                                 {isUnlocked ? "Eligible for Reward" : "Reach this milestone to be eligible for a reward!"}
-                                <div className={`absolute left-1/2 -translate-x-1/2 top-100 w-2 h-2 rotate-45 ${theme === 'white' ? 'bg-slate-800' : 'bg-white'} `}></div>
+                                <div className={`absolute left-1/2 -translate-x-1/2 top-full -mt-1 w-2 h-2 rotate-45 ${theme === 'white' ? 'bg-slate-800' : 'bg-white'} `}></div>
                             </div>
                         </div>
                     );
@@ -111,20 +112,41 @@ const BetaRewardsView = ({ theme, selectedInstance }) => {
     const [playTime, setPlayTime] = useState(0.5); // Default start
     const [friendsInvited, setFriendsInvited] = useState(0);
 
-    // Fetch playtime from currently selected instance as a proxy for "launcher playtime"
-    // Ideally this would be a global user stat, but we use what we have for now.
+    const { addToast } = useToast();
+    const [isRefreshing, setIsRefreshing] = useState(false);
+
+    // Fetch total playtime from all instances
+    const fetchPlayTime = async () => {
+        if (window.electronAPI) {
+            const ms = await window.electronAPI.getTotalPlayTime();
+            if (ms) {
+                const hours = ms / (1000 * 60 * 60);
+                setPlayTime(hours);
+            }
+        }
+    };
+
     useEffect(() => {
         let active = true;
-        if (selectedInstance?.path && window.electronAPI) {
-            window.electronAPI.getInstancePlayTime(selectedInstance.path).then((ms) => {
-                if (active && ms) {
-                    const hours = ms / (1000 * 60 * 60);
-                    setPlayTime(hours);
-                }
-            });
-        }
+        fetchPlayTime();
         return () => { active = false; };
-    }, [selectedInstance]);
+    }, []); // Run once on mount (and on refresh) -- removed dependency on selectedInstance
+
+    const handleRefresh = async () => {
+        setIsRefreshing(true);
+        try {
+            if (window.electronAPI?.syncPlaytime) {
+                await window.electronAPI.syncPlaytime();
+                await fetchPlayTime();
+                addToast("Playtime synced!", "success");
+            }
+        } catch (e) {
+            console.error(e);
+            addToast("Failed to sync playtime", "error");
+        } finally {
+            setIsRefreshing(false);
+        }
+    };
 
     return (
         <div className={`w-full h-full overflow-y-auto custom-scrollbar relative animate-in fade-in duration-500 select-none ${theme === 'white' ? 'bg-slate-50' : 'bg-transparent'}`}>
@@ -133,6 +155,21 @@ const BetaRewardsView = ({ theme, selectedInstance }) => {
             <div className="absolute inset-0 pointer-events-none overflow-hidden fixed">
                 <div className={`absolute top-[-10%] left-[-10%] w-[50%] h-[50%] rounded-full blur-[120px] opacity-20 ${theme === 'white' ? 'bg-indigo-300' : 'bg-indigo-600/30'}`} />
                 <div className={`absolute bottom-[-10%] right-[-10%] w-[50%] h-[50%] rounded-full blur-[120px] opacity-20 ${theme === 'white' ? 'bg-purple-300' : 'bg-purple-600/30'}`} />
+            </div>
+
+            {/* Refresh Button */}
+            <div className="absolute top-8 right-8 z-50">
+                <button
+                    onClick={handleRefresh}
+                    disabled={isRefreshing}
+                    className={`p-3 rounded-xl transition-all duration-200 ${theme === 'white'
+                        ? 'bg-white/80 text-slate-600 hover:bg-white hover:text-indigo-600 shadow-lg hover:shadow-xl'
+                        : 'bg-slate-800/50 text-slate-400 hover:bg-slate-800 hover:text-white border border-white/5 hover:border-white/10'
+                        } disabled:opacity-50 disabled:cursor-not-allowed`}
+                    title="Refresh Playtime"
+                >
+                    <RefreshCw size={20} className={isRefreshing ? 'animate-spin' : ''} />
+                </button>
             </div>
 
             <div className="min-h-full w-full flex flex-col items-center justify-center py-12">

@@ -288,8 +288,9 @@ export const useGameLaunch = (selectedInstance, ram, activeAccount, updateLastPl
                     accountToUse // Passing the specific account
                 );
 
-                // Attach gameDir for backend identification
+                // Attach gameDir and ID for backend identification
                 launchOptions.gameDir = instance.path;
+                launchOptions.id = instance.id;
 
                 window.electronAPI.launchGame(launchOptions);
                 window.electronAPI.log('info', `[UI] Launch command sent to backend. RAM: ${effectiveRam} GB (Override: ${!!instance?.ramOverride}), User: ${launchOptions.username}, Java: ${javaPath}`);

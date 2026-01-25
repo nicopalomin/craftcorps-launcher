@@ -95,15 +95,9 @@ export const useInstances = () => {
             setInstances(prev => prev.map(inst => inst.id === cropData.id ? { ...inst, ...cropData } : inst));
         } else {
             // Create new
-            setInstances(prev => {
-                const newInstances = [...prev, cropData];
-                // If it's the first one, or nothing is currently selected, auto-select it
-                if (!selectedInstance || prev.length === 0) {
-                    setSelectedInstance(cropData);
-                }
-                return newInstances;
-            });
-            if (!selectedInstance) setSelectedInstance(cropData);
+            setInstances(prev => [...prev, cropData]);
+            // Always set the newly created instance as active per user request
+            setSelectedInstance(cropData);
         }
     };
 

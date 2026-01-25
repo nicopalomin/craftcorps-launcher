@@ -51,13 +51,30 @@ const InstanceHero = ({
 
     useEffect(() => {
         let active = true;
-        setPlayTime(0); // Reset or set to 0 initially
-        if (selectedInstance?.path) {
-            window.electronAPI.getInstancePlayTime(selectedInstance.path).then((time) => {
-                if (active) setPlayTime(time || 0);
-            });
+        const fetchTime = () => {
+            if (selectedInstance) {
+                // Use ID if available, else fallback to '0' (legacy/tracking default)
+                // We fallback to path only if we suspect old tracking data might be keyed by path locally?
+                // But user requested fallback '0'. Let's stick to ID || '0'.
+                const queryId = selectedInstance.id || '0';
+                window.electronAPI.getInstancePlayTime(queryId).then((time) => {
+                    if (active) setPlayTime(time || 0);
+                });
+            }
+        };
+
+        fetchTime();
+
+        if (window.electronAPI?.onPlaytimeUpdated) {
+            window.electronAPI.onPlaytimeUpdated(fetchTime);
         }
-        return () => { active = false; };
+
+        return () => {
+            active = false;
+            if (window.electronAPI?.removePlaytimeListener) {
+                window.electronAPI.removePlaytimeListener();
+            }
+        };
     }, [selectedInstance?.path, launchStatus]);
 
     const timeString = formatPlayTime(playTime);

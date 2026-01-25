@@ -11,8 +11,32 @@ let store;
  * Initialize the PlayTimeService with the Electron Store instance.
  * @param {Object} electronStore 
  */
+let onChangeCallback = null;
+
+// Heartbeat State
+let lastSyncTime = Date.now();
+let heartbeatInterval = null;
+const HEARTBEAT_INTERVAL_MS = 30000; // 30 seconds
+
 function init(electronStore) {
     store = electronStore;
+
+    // Start Heartbeat Loop
+    if (heartbeatInterval) clearInterval(heartbeatInterval);
+    lastSyncTime = Date.now();
+    heartbeatInterval = setInterval(sendHeartbeat, HEARTBEAT_INTERVAL_MS);
+
+    // Initial Sync
+    sendHeartbeat();
+    syncPlayTime();
+}
+
+function onChanged(callback) {
+    onChangeCallback = callback;
+}
+
+function notify() {
+    if (onChangeCallback) onChangeCallback();
 }
 
 const activeSessions = {};
@@ -41,8 +65,8 @@ async function getBreakdown() {
     if (cached) return cached;
 
     try {
-        const res = await authService.fetchAuthenticated(`${API_BASE}/sessions/playtime/breakdown`);
-        if (!res.ok) throw new Error(`Failed to fetch breakdown: ${res.status}`);
+        const res = await authService.fetchAuthenticated(`${API_BASE}/sessions/playtime/summary`);
+        if (!res.ok) throw new Error(`Failed to fetch summary: ${res.status}`);
         const data = await res.json();
         setCached('breakdown', data, CACHE_TTL_BREAKDOWN);
         return data;
@@ -119,50 +143,182 @@ async function getDailyLog(date) {
 }
 
 /**
- * Sync local playtime with server truth
+ * Fetch Playtime Breakdown (Grouped by Server/Instance)
  */
+async function getOfficialBreakdown() {
+    try {
+        const res = await authService.fetchAuthenticated(`${API_BASE}/sessions/playtime/breakdown`);
+        if (!res.ok) throw new Error(`Failed to fetch breakdown: ${res.status}`);
+        return await res.json();
+    } catch (e) {
+        log.error(`[PlayTime] getOfficialBreakdown error: ${e.message}`);
+        return null;
+    }
+}
+
 async function syncPlayTime() {
     log.info('[PlayTime] Syncing with server...');
-    const data = await getBreakdown();
-    if (data && data.totals) {
-        // Update local total
-        // We multiply by 1000 because API returns seconds, we store ms
-        const serverTotalMs = (data.totals.gameplaySeconds || 0) * 1000;
+    try {
+        // 1. Fetch Official Total (from Summary)
+        const summary = await getBreakdown();
+        log.info(`[PlayTime] DEBUG: Summary response: ${JSON.stringify(summary)}`);
 
-        // Only update if server has more data or to ensure consistency?
-        // Usually server is authority.
-        store.set('playTime.total', serverTotalMs);
+        if (summary) {
+            let totalSeconds = 0;
+            const syncedTracker = {};
 
-        // We could also sync instance breakdown if we mapped it correctly, 
-        // but local tracker is by path, server is by ID. 
-        // We'll leave the local instance tracker as a "device" cache for now, 
-        // unless we want to map server IDs to local paths.
+            // Check if we have the servers structure
+            if (summary.servers && Array.isArray(summary.servers)) {
+                log.info(`[PlayTime] DEBUG: Parsing servers array...`);
+                summary.servers.forEach(server => {
+                    log.info(`[PlayTime] DEBUG: Processing server: ${server.serverName}, total: ${server.totalPlaytime}`);
+                    totalSeconds += (server.totalPlaytime || 0);
 
-        log.info(`[PlayTime] Synced total playtime: ${serverTotalMs}ms`);
+                    // Summary also includes per-instance breakdown
+                    if (server.instances) {
+                        Object.entries(server.instances).forEach(([id, seconds]) => {
+                            log.info(`[PlayTime] DEBUG: Instance ${id} -> ${seconds}s`);
+                            syncedTracker[id] = (syncedTracker[id] || 0) + (seconds * 1000);
+                        });
+                    }
+                });
+            } else {
+                // Fallback if no servers array, check for root level totals
+                log.info(`[PlayTime] DEBUG: No 'servers' array found, using global totals.`);
+                totalSeconds = summary.totalSeconds || summary.gameplaySeconds || (summary.totals && summary.totals.gameplaySeconds) || 0;
+            }
+
+            const serverTotalMs = totalSeconds * 1000;
+
+            log.info(`[PlayTime] DEBUG: Storing total: ${serverTotalMs}ms (${totalSeconds}s)`);
+            store.set('playTime.total', serverTotalMs);
+            store.set('playTime.syncedTotal', serverTotalMs);
+
+            log.info(`[PlayTime] DEBUG: Storing syncedTracker: ${JSON.stringify(syncedTracker)}`);
+            store.set('playTime.syncedTracker', syncedTracker);
+
+            log.info(`[PlayTime] Sync complete. Total: ${totalSeconds}s`);
+        } else {
+            log.warn(`[PlayTime] DEBUG: Summary was null or undefined`);
+        }
+
+        // 2. Fetch Detailed Per-Instance Stats (REQUIRED for InstanceHero UI)
+        try {
+            const detailed = await getDetailedStats();
+            log.info(`[PlayTime] DEBUG: Detailed instances response: ${JSON.stringify(detailed)}`);
+
+            if (detailed) {
+                const syncedTracker = {};
+
+                // Handle "Servers" structure (Official API Spec)
+                if (detailed.servers && Array.isArray(detailed.servers)) {
+                    detailed.servers.forEach(server => {
+                        if (server.instances) {
+                            Object.entries(server.instances).forEach(([id, seconds]) => {
+                                syncedTracker[id] = (syncedTracker[id] || 0) + (seconds * 1000);
+                            });
+                        }
+                    });
+                }
+                // Handle legacy flat/array structures just in case
+                else if (Array.isArray(detailed)) {
+                    detailed.forEach(item => {
+                        const id = item.instanceId || item.id;
+                        if (id) syncedTracker[id] = (item.durationSeconds || item.playtime || 0) * 1000;
+                    });
+                } else if (typeof detailed === 'object') {
+                    Object.entries(detailed).forEach(([id, stats]) => {
+                        // Ignore 'servers' key if it was object but handled above, strictly check for instance-like keys? 
+                        // Actually if it's the objects map format:
+                        if (id !== 'servers') {
+                            const seconds = typeof stats === 'number' ? stats : (stats.gameplaySeconds || stats.duration || 0);
+                            syncedTracker[id] = (syncedTracker[id] || 0) + (seconds * 1000);
+                        }
+                    });
+                }
+
+                log.info(`[PlayTime] DEBUG: Storing detailed syncedTracker: ${JSON.stringify(syncedTracker)}`);
+                store.set('playTime.syncedTracker', syncedTracker);
+                log.info(`[PlayTime] Synced tracker updated with ${Object.keys(syncedTracker).length} instances.`);
+            }
+        } catch (detailError) {
+            log.error(`[PlayTime] Failed to sync detailed stats: ${detailError.message}`);
+        }
+
+        notify();
         return true;
+    } catch (e) {
+        log.error(`[PlayTime] syncPlayTime error: ${e.message}`);
+        return false;
     }
-    return false;
+}
+
+/**
+ * Heartbeat Sync
+ * Sends deltas to backend
+ */
+async function sendHeartbeat() {
+    const now = Date.now();
+    const deltaMs = now - lastSyncTime;
+
+    if (deltaMs <= 0) return;
+
+    const deltaSeconds = Math.round(deltaMs / 1000);
+    if (deltaSeconds <= 0) return; // Too small to report
+
+    const token = await authService.getToken();
+    if (!token) return; // Not logged in or no token available
+
+    const instances = Object.entries(activeSessions).map(([id, data]) => ({
+        instanceId: id,
+        deltaSeconds: deltaSeconds,
+        playerName: data.playerName,
+        playerUuid: data.playerUuid,
+        isOnline: data.isOnline
+    }));
+
+    const payload = {
+        launcherDeltaSeconds: deltaSeconds,
+        instances
+    };
+
+    try {
+        const res = await authService.fetchAuthenticated(`${API_BASE}/presence/launcher`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+
+        if (res.ok) {
+            // Success: Update lastSyncTime to NOW (effectively consuming the delta)
+            lastSyncTime = now;
+
+            // Also update local trackers for UI feedback immediately (optional but good)
+            if (instances.length > 0) {
+                instances.forEach(i => addPlayTime(i.instanceId, deltaMs));
+            }
+        } else {
+            log.warn(`[PlayTime] Heartbeat failed: ${res.status}. Delta preserved.`);
+        }
+    } catch (e) {
+        log.error(`[PlayTime] Heartbeat error: ${e.message}`);
+    }
 }
 
 
 /**
  * Start tracking play time for a specific instance.
  * @param {string} instanceIdOrPath - Unique identifier for the instance (using path as ID)
+ * @param {Object} playerData - { playerName, playerUuid, isOnline }
  */
-function startSession(instanceIdOrPath) {
+function startSession(instanceIdOrPath, playerData) {
     if (!store) return;
-    const now = Date.now();
-
-    // Start 5-minute interval for server-side tracking (Rewards)
-    const intervalId = setInterval(() => {
-        telemetryService.track('PLAY_TIME_PING', {
-            instanceId: instanceIdOrPath,
-            duration: 300000 // 5 minutes 
-        });
-        log.info(`[PlayTime] Server ping sent for ${instanceIdOrPath}`);
-    }, 300000); // 5 minutes
-
-    activeSessions[instanceIdOrPath] = { startTime: now, intervalId };
+    activeSessions[instanceIdOrPath] = {
+        playerName: playerData?.playerName || 'Player',
+        playerUuid: playerData?.playerUuid || '0',
+        isOnline: !!playerData?.isOnline // Premium Status
+    };
+    log.info(`[PlayTime] Started session for ${instanceIdOrPath} (Player: ${activeSessions[instanceIdOrPath].playerName}, Premium: ${activeSessions[instanceIdOrPath].isOnline})`);
 }
 
 /**
@@ -172,19 +328,14 @@ function startSession(instanceIdOrPath) {
 function stopSession(instanceIdOrPath) {
     if (!store) return;
     const session = activeSessions[instanceIdOrPath];
-    if (!session) return;
+    if (session) {
+        log.info(`[PlayTime] Stopped session for ${instanceIdOrPath}. Triggering final sync.`);
 
-    // Stop server pinging
-    if (session.intervalId) clearInterval(session.intervalId);
+        // Immediate sync to flush remaining time
+        sendHeartbeat();
 
-    const endTime = Date.now();
-    const durationMs = endTime - session.startTime;
-
-    // clean up
-    delete activeSessions[instanceIdOrPath];
-
-    if (durationMs > 0) {
-        addPlayTime(instanceIdOrPath, durationMs);
+        // Now remove from tracking
+        delete activeSessions[instanceIdOrPath];
     }
 }
 
@@ -224,6 +375,7 @@ function addPlayTime(instanceIdOrPath, durationMs) {
         const currentInstanceTime = tracker[instanceIdOrPath] || 0;
         tracker[instanceIdOrPath] = currentInstanceTime + durationMs;
         store.set('playTime.tracker', tracker);
+        notify();
 
         log.info(`[PlayTime] Added ${Math.round(durationMs / 1000)}s to ${instanceIdOrPath}. Total: ${Math.round((currentTotal + durationMs) / 1000)}s`);
     } catch (e) {
@@ -245,8 +397,28 @@ function getTotalPlayTime() {
  */
 function getInstancePlayTime(instanceIdOrPath) {
     if (!store) return 0;
-    const tracker = store.get('playTime.tracker', {});
-    return tracker[instanceIdOrPath] || 0;
+
+    // 1. Get Synced Time (Backend Authority)
+    const syncedTracker = store.get('playTime.syncedTracker', {});
+    const syncedTime = syncedTracker[instanceIdOrPath] || 0;
+
+    // 2. Get Local Time (Device History / Pending Sync)
+    const localTracker = store.get('playTime.tracker', {});
+    const localTime = localTracker[instanceIdOrPath] || 0;
+
+    // 3. Display whichever is greater.
+    // This provides immediate UI feedback for new play time while favoring
+    // the backend's official count once it catches up.
+    let playTime = Math.max(syncedTime, localTime);
+
+    // 4. Legacy Fallback: If current ID yields 0, checks if we have "0" (Legacy/Global) data
+    // This handles cases where local instance has a UUID but backend data is under "0"
+    /* if (playTime === 0) {
+        const legacyTime = syncedTracker['0'] || 0;
+        if (legacyTime > 0) return legacyTime;
+    } */
+
+    return playTime;
 }
 
 module.exports = {
@@ -259,5 +431,8 @@ module.exports = {
     getHistory,
     getDetailedStats,
     getDailyLog,
-    syncPlayTime
+    getOfficialBreakdown,
+    syncPlayTime,
+    onChanged,
+    notify
 };

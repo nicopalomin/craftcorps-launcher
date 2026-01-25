@@ -81,6 +81,7 @@ function App() {
         hideOnLaunch, setHideOnLaunch,
         disableAnimations, setDisableAnimations,
         enableDiscordRPC, setEnableDiscordRPC,
+        startOnStartup, setStartOnStartup,
         theme, setTheme,
         availableJavas,
         refreshJavas
@@ -129,8 +130,10 @@ function App() {
 
     // Wrapped Handlers for Toasts
     const onSaveCropWithToast = (crop) => {
+        const isNew = !editingCrop;
         handleSaveCrop(crop);
         addToast(editingCrop ? t('toast_crop_updated') : t('toast_crop_created'), 'success');
+        if (isNew) setActiveTab('home');
     };
 
     const onDeleteCropWithToast = (id) => {
@@ -159,6 +162,11 @@ function App() {
         handleAccountSwitch(account);
         addToast(`Switched to ${account.name}`, 'info');
         telemetry.track('ACCOUNT_SWITCH', { accountId: account.id });
+
+        // Trigger PlayTime Sync for new account
+        if (window.electronAPI?.syncPlaytime) {
+            window.electronAPI.syncPlaytime().catch(err => console.error('Playtime sync failed on switch:', err));
+        }
     }
 
     const {
@@ -307,6 +315,7 @@ function App() {
                     accounts={accounts} onAccountSwitchWithToast={onAccountSwitchWithToast} showProfileMenu={showProfileMenu} setShowProfileMenu={setShowProfileMenu} onLogoutWithToast={onLogoutWithToast}
                     onDeleteCropWithToast={onDeleteCropWithToast} reorderInstances={reorderInstances}
                     ram={ram} setRam={setRam} javaPath={javaPath} setJavaPath={setJavaPath} hideOnLaunch={hideOnLaunch} setHideOnLaunch={setHideOnLaunch} setDisableAnimations={setDisableAnimations} availableJavas={availableJavas} enableDiscordRPC={enableDiscordRPC} setEnableDiscordRPC={setEnableDiscordRPC}
+                    startOnStartup={startOnStartup} setStartOnStartup={setStartOnStartup}
                     theme={theme} setTheme={setTheme}
                     onSaveCropWithToast={onSaveCropWithToast}
                     isLoadingInstances={isLoadingInstances}
