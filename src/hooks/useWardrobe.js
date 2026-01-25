@@ -178,29 +178,8 @@ export const useWardrobe = (activeAccount) => {
                 };
             });
 
-            // INJECT TEST ITEM
-            enriched.unshift({
-                id: 'test_beaver_hat',
-                cosmeticId: 'test_beaver_hat',
-                name: 'Beaver Hat',
-                type: 'HAT', // Will map to 'Hats' category
-                texture: '/example_renderable/beaver_hat.png',
-                model: '/example_renderable/beaver_hat.json',
-                isOwned: true
-            });
-
             console.log('[useWardrobe] Enriched cosmetics:', enriched.length);
             setOwnedCosmetics(enriched);
-
-            // AUTO-EQUIP TEST HAT FOR DEBUGGING
-            const testHat = enriched.find(c => c.id === 'test_beaver_hat');
-            if (testHat) {
-                console.log('[useWardrobe] Auto-equipping test hat');
-                setActiveCosmetics(prev => {
-                    if (prev.find(c => c.id === testHat.id)) return prev;
-                    return [...prev, testHat];
-                });
-            }
 
             // Sync Active Cosmetics from Server State
             if (activeSet.size > 0) {
