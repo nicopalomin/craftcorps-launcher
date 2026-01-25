@@ -1,5 +1,4 @@
 import React from 'react';
-import BackgroundBlobs from './BackgroundBlobs';
 import heroBg from '/images/hero-bg.png';
 
 const GlobalBackground = ({
@@ -17,7 +16,7 @@ const GlobalBackground = ({
         <div className={`fixed inset-0 overflow-hidden pointer-events-none z-0 transition-opacity duration-700 ${activeTab === 'home' ? 'opacity-100' : 'opacity-0'}`}>
             {/* Base Image Layer */}
             <div
-                className="absolute inset-0 bg-cover bg-center transition-opacity duration-1000 animate-ken-burns"
+                className={`absolute inset-0 bg-cover bg-center transition-opacity duration-1000 ${!disableAnimations ? 'animate-ken-burns' : ''}`}
                 style={{ backgroundImage: `url(${heroBg})` }}
             />
 
@@ -36,9 +35,6 @@ const GlobalBackground = ({
 
             {/* Global Bottom Shadow/Gradient for readability */}
             <div className={`absolute inset-0 bg-gradient-to-t ${theme === 'midnight' ? 'from-[#050505] via-transparent' : 'from-slate-900 via-transparent'} to-transparent opacity-80`} />
-
-            {/* Animated Blobs - Stay mostly behind content */}
-            <BackgroundBlobs disabled={disableAnimations || (isModded && activeTab === 'home') || ['midnight', 'white'].includes(theme)} />
         </div>
     );
 };
