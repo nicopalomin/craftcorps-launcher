@@ -83,7 +83,8 @@ class AuthService {
                 email,
                 password,
                 installId: this.installId,
-                clientType: 'launcher'
+                clientType: 'LAUNCHER',
+                machineId: this._ensureDeviceId()
             })
         });
 
@@ -98,7 +99,11 @@ class AuthService {
         const res = await fetch(`${AUTH_BASE}/auth/login/microsoft`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ accessToken })
+            body: JSON.stringify({
+                accessToken,
+                installId: this.installId,
+                machineId: this._ensureDeviceId()
+            })
         });
 
         if (!res.ok) throw new Error(`Microsoft Login failed: ${res.status}`);
@@ -202,8 +207,12 @@ class AuthService {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
-                deviceId,
-                profile
+                deviceId: this.installId, // User request specifies deviceId as installId here
+                machineId: deviceId, // This is the hardware ID (from _ensureDeviceId)
+                profile: {
+                    ...profile,
+                    authType: 'CRACKED'
+                }
             })
         });
         if (!res.ok) throw new Error(`Link Profile failed: ${res.status}`);
@@ -290,6 +299,36 @@ class AuthService {
         const res = await this.fetchAuthenticated(`${AUTH_BASE}/auth/me`);
         if (!res.ok) throw new Error('Failed to fetch profile');
         return await res.json();
+    }
+
+    async getPlayerCosmetics() {
+        log.info('[AuthService] Fetching player cosmetics...');
+        try {
+            const res = await this.fetchAuthenticated(`https://api.craftcorps.net/cosmetics/player`);
+            if (res.ok) {
+                const data = await res.json();
+                if (this.store && this.userId) {
+                    this.store.set(`player_cosmetics_${this.userId}`, data);
+                }
+                return data;
+            }
+
+            // Fallback to cache if 401 or network error
+            if (this.store && this.userId) {
+                const cached = this.store.get(`player_cosmetics_${this.userId}`);
+                if (cached) {
+                    log.info('[AuthService] Returning cached cosmetics due to API failure.');
+                    return cached;
+                }
+            }
+            return null;
+        } catch (e) {
+            log.warn('[AuthService] Failed to fetch cosmetics:', e);
+            if (this.store && this.userId) {
+                return this.store.get(`player_cosmetics_${this.userId}`);
+            }
+            return null;
+        }
     }
 
     async getInviteCode() {

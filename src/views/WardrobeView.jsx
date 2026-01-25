@@ -33,7 +33,8 @@ const WardrobeView = ({ theme, activeAccount, isActive }) => {
         toggleCosmetic,
         categorizedCosmetics,
         viewerSkin,
-        unequippedCosmeticSlots
+        unequippedCosmeticSlots,
+        refreshCosmetics
     } = useWardrobe(activeAccount);
 
     return (
@@ -102,6 +103,7 @@ const WardrobeView = ({ theme, activeAccount, isActive }) => {
                     unequippedCosmeticSlots={unequippedCosmeticSlots}
                     activeCosmetics={activeCosmetics}
                     toggleCosmetic={toggleCosmetic}
+                    refreshCosmetics={refreshCosmetics}
                 />
             </div>
         </div>

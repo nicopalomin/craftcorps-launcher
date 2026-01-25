@@ -31,7 +31,24 @@ export const useWardrobe = (activeAccount) => {
 
     // Currently Selected for Preview
     const [selectedSkin, setSelectedSkin] = useState(null);
-    const [activeCosmetics, setActiveCosmetics] = useState([]);
+
+    // Active Cosmetics (Cached by Account ID)
+    const [activeCosmetics, setActiveCosmetics] = useState(() => {
+        if (!activeAccount) return [];
+        try {
+            const accountId = activeAccount.uuid || activeAccount.id;
+            const saved = localStorage.getItem(`craftcorps_active_cosmetics_${accountId}`);
+            return saved ? JSON.parse(saved) : [];
+        } catch (e) { return []; }
+    });
+
+    // Update localStorage for active cosmetics
+    useEffect(() => {
+        if (activeAccount && activeCosmetics) {
+            const accountId = activeAccount.uuid || activeAccount.id;
+            localStorage.setItem(`craftcorps_active_cosmetics_${accountId}`, JSON.stringify(activeCosmetics));
+        }
+    }, [activeCosmetics, activeAccount]);
 
     // Available Cosmetics (Fetched from API)
     const [ownedCosmetics, setOwnedCosmetics] = useState([]);
@@ -134,15 +151,22 @@ export const useWardrobe = (activeAccount) => {
 
                 if (uuid && uuid.length >= 32) {
                     // A. Use Authenticated Detailed Endpoint (Preferred)
-                    if (activeAccount.accessToken) {
+                    if (activeAccount.backendAccessToken || activeAccount.accessToken) {
                         try {
-                            const detailed = await fetchDetailedCosmetics(activeAccount.accessToken, uuid);
+                            // First, check if we already have pre-fetched cosmetics in the account object
+                            let detailed = activeAccount.cosmetics;
+
+                            // If not, fetch from main process (which handles caching/refresh)
+                            if (!detailed) {
+                                detailed = await fetchDetailedCosmetics(activeAccount.backendAccessToken || activeAccount.accessToken);
+                            }
+
                             if (detailed && detailed.cosmetics) {
                                 ownedIds = detailed.cosmetics.map(c => c.cosmeticId);
                                 detailed.cosmetics.forEach(c => {
                                     if (c.isActive) activeSet.add(c.cosmeticId);
                                 });
-                                console.log('[useWardrobe] Loaded detailed cosmetics via Auth:', ownedIds);
+                                console.log('[useWardrobe] Loaded detailed cosmetics:', ownedIds);
                             }
                         } catch (err) {
                             console.warn("Auth fetch failed, falling back to public", err);
@@ -186,7 +210,7 @@ export const useWardrobe = (activeAccount) => {
                 const activeItems = enriched.filter(c => activeSet.has(c.id));
                 setActiveCosmetics(activeItems);
             } else if (ownedIds.length > 0) {
-                if (activeAccount?.accessToken) {
+                if (activeAccount?.backendAccessToken || activeAccount?.accessToken) {
                     setActiveCosmetics([]);
                 }
             }
@@ -201,6 +225,19 @@ export const useWardrobe = (activeAccount) => {
 
     useEffect(() => {
         if (activeAccount?.name) {
+            // Load cached cosmetics immediately for the new account
+            const accountId = activeAccount.uuid || activeAccount.id;
+            try {
+                const saved = localStorage.getItem(`craftcorps_active_cosmetics_${accountId}`);
+                if (saved) {
+                    setActiveCosmetics(JSON.parse(saved));
+                } else {
+                    setActiveCosmetics([]);
+                }
+            } catch (e) {
+                setActiveCosmetics([]);
+            }
+
             loadCurrentSkin(activeAccount.name);
             loadCosmetics(activeAccount.name);
         }
@@ -211,17 +248,19 @@ export const useWardrobe = (activeAccount) => {
 
         try {
             if (isEquipped) {
+                // If already equipped, we just unequip it
                 setActiveCosmetics(prev => prev.filter(c => c.id !== cosmetic.id));
+                // Note: The backend likely un-equips items via its own logic, 
+                // but we keep UI state in sync.
             } else {
+                // If not equipped, add it and remove any other item of the SAME TYPE (Category Exclusivity)
                 setActiveCosmetics(prev => {
-                    if (cosmetic.type === 'cape') {
-                        return [...prev.filter(c => c.type !== 'cape'), cosmetic];
-                    }
-                    return [...prev, cosmetic];
+                    const filtered = prev.filter(c => (c.type || '').toLowerCase() !== (cosmetic.type || '').toLowerCase());
+                    return [...filtered, cosmetic];
                 });
 
                 if (activeAccount?.type?.toLowerCase() !== 'offline') {
-                    await equipCosmetic(activeAccount.accessToken, cosmetic.id, activeAccount.uuid || activeAccount.id);
+                    await equipCosmetic(activeAccount.backendAccessToken || activeAccount.accessToken, cosmetic.id, activeAccount.uuid || activeAccount.id);
                     addToast(`Equipped ${cosmetic.name}`, 'success');
                 } else {
                     addToast(`Previewing ${cosmetic.name} (Offline Mode)`, 'info');
@@ -397,6 +436,12 @@ export const useWardrobe = (activeAccount) => {
         return allTypes.filter(type => !categorizedCosmetics[type] || categorizedCosmetics[type].every(item => !activeCosmetics.some(c => c.id === item.id)));
     }, [categorizedCosmetics, activeCosmetics]);
 
+    const refreshCosmetics = () => {
+        if (activeAccount?.name) {
+            loadCosmetics(activeAccount.name);
+        }
+    };
+
     return {
         activeTab,
         setActiveTab,
@@ -420,6 +465,7 @@ export const useWardrobe = (activeAccount) => {
         toggleCosmetic,
         categorizedCosmetics,
         viewerSkin,
-        unequippedCosmeticSlots
+        unequippedCosmeticSlots,
+        refreshCosmetics
     };
 };

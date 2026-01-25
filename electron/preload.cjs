@@ -30,6 +30,11 @@ contextBridge.exposeInMainWorld('electronAPI', {
     getBackendToken: () => ipcRenderer.invoke('get-backend-token'),
     detectLocalAccounts: () => ipcRenderer.invoke('detect-local-accounts'),
     linkProfile: (payload) => ipcRenderer.invoke('link-profile', payload),
+
+    // Unified Wardrobe (Authenticated via main process)
+    fetchDetailedCosmetics: () => ipcRenderer.invoke('fetch-detailed-cosmetics'),
+    equipCosmetic: (payload) => ipcRenderer.invoke('equip-cosmetic', payload),
+
     selectFile: () => ipcRenderer.invoke('select-file'),
     openLogsFolder: () => ipcRenderer.invoke('open-logs-folder'),
     openPath: (path) => ipcRenderer.invoke('open-path', path),

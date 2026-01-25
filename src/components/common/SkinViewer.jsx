@@ -160,6 +160,13 @@ const SkinViewer = ({
         viewer.camera.position.y = 10;
         viewer.camera.lookAt(0, 0, 0);
 
+        // Tracking for updates
+        viewer._currentSkinUrl = skinUrl;
+        viewer._currentCapeUrl = capeUrl;
+        viewer._currentModel = model;
+        viewer._currentAnimName = animation;
+        viewer._currentNameTagStr = nameTag;
+
         applyAnimation(viewer, animation);
         viewerRef.current = viewer;
 
@@ -205,21 +212,58 @@ const SkinViewer = ({
         const viewer = viewerRef.current;
         if (!viewer) return;
 
+        let isCancelled = false;
+
         const handleUpdate = async () => {
             // 1. Load Skin
-            if (skinUrl !== viewer.skinUrl || model !== viewer.playerObject?.skin?.model) {
+            if (skinUrl !== viewer._currentSkinUrl || model !== viewer._currentModel) {
                 const finalSkin = skinUrl || "https://textures.minecraft.net/texture/3b60a1f6d5aa4abb850eb34673899478148b6154564c4786650bf6b1fd85a3";
                 console.log(`[SkinViewer] Loading skin: ${model}`);
+                viewer._currentSkinUrl = skinUrl;
+                viewer._currentModel = model;
                 await viewer.loadSkin(finalSkin, { model: model });
             }
 
-            // 2. Load Cape
-            const cosmeticCape = cosmetics.find(c => c.type === 'cape');
-            const finalCapeUrl = cosmeticCape ? cosmeticCape.texture : capeUrl;
-            if (finalCapeUrl !== viewer.capeUrl) {
-                console.log("[SkinViewer] Loading cape...");
-                viewer.loadCape(finalCapeUrl);
+            if (isCancelled) return;
+
+            // 2. Load Cape (Case-insensitive type check)
+            const cosmeticCape = cosmetics.find(c => c.type?.toLowerCase() === 'cape');
+            let finalCapeUrl = cosmeticCape ? cosmeticCape.texture : capeUrl;
+
+            // Add cache buster for API stability
+            if (finalCapeUrl && (finalCapeUrl.startsWith('http') || finalCapeUrl.startsWith('/'))) {
+                const separator = finalCapeUrl.includes('?') ? '&' : '?';
+                finalCapeUrl = `${finalCapeUrl}${separator}t=${Date.now()}`;
             }
+
+            if (finalCapeUrl !== viewer._currentCapeUrl) {
+                console.log("[SkinViewer] Updating cape texture...");
+                viewer._currentCapeUrl = finalCapeUrl;
+
+                if (finalCapeUrl) {
+                    try {
+                        await viewer.loadCape(finalCapeUrl);
+                        // Force Three.js to re-evaluate the material to prevent "White Texture" syndrome
+                        if (viewer.playerObject?.cape) {
+                            viewer.playerObject.cape.visible = true;
+                            if (viewer.playerObject.cape.material) {
+                                viewer.playerObject.cape.material.needsUpdate = true;
+                                viewer.playerObject.cape.material.transparent = true;
+                                viewer.playerObject.cape.material.alphaTest = 0.5;
+                            }
+                        }
+                    } catch (e) {
+                        console.error("[SkinViewer] Cape load failed:", e);
+                    }
+                } else {
+                    viewer.loadCape(null);
+                    if (viewer.playerObject?.cape) {
+                        viewer.playerObject.cape.visible = false;
+                    }
+                }
+            }
+
+            if (isCancelled) return;
 
             // 3. Animation
             applyAnimation(viewer, animation);
@@ -228,15 +272,15 @@ const SkinViewer = ({
             await updateCosmetics(viewer, cosmetics);
 
             // 5. NameTag
-            // We store the current nameTag string in a custom property on the viewer to avoid regenerating if unchanged
             if (nameTag !== viewer._currentNameTagStr) {
-                viewer._currentNameTagStr = nameTag; // Track it
+                viewer._currentNameTagStr = nameTag;
                 viewer.nameTag = nameTag ? createNameTag(nameTag) : null;
             }
         };
 
         handleUpdate().catch(err => console.error("[SkinViewer] Update failed:", err));
 
+        return () => { isCancelled = true; };
     }, [skinUrl, capeUrl, model, animation, cosmetics, nameTag]);
 
     const updateCosmetics = async (viewer, activeCosmetics) => {

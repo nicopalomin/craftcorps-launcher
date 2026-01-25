@@ -58,12 +58,19 @@ function setupAuthHandlers(getMainWindow) {
                 await authService.recordConsent(consentToRecord);
             } catch (ignore) { }
 
-            // 3. Login with Backend using MS Token
-            console.log('[AuthHandler] Exchange Microsoft token for CraftCorps session...');
+            // 3. Login with Backend using Minecraft Token (New Backend Flow)
+            console.log('[AuthHandler] Exchange Minecraft token for CraftCorps session...');
             const data = await authService.loginMicrosoft(msAccount.accessToken);
-            console.log('[AuthHandler] Backend login successful. Received accessToken:', !!data.accessToken, 'refreshToken:', !!data.refreshToken);
+            // 4. Fetch and Cache Cosmetics (Pre-warm for UI)
+            let cosmetics = null;
+            try { cosmetics = await authService.getPlayerCosmetics(); } catch (e) { }
+            console.log('[AuthHandler] Backend cosmetics fetch complete:', !!cosmetics);
 
-            return { success: true, data, account: msAccount };
+            return {
+                success: true,
+                data,
+                account: { ...msAccount, backendAccessToken: data.accessToken, cosmetics }
+            };
         } catch (error) {
             console.error('[AuthHandler] Microsoft Login Failed:', error);
             return { success: false, error: error.message || error };
@@ -273,6 +280,37 @@ function setupAuthHandlers(getMainWindow) {
         } catch (error) {
             console.error('[AuthHandler] Link Discord failed:', error);
             return { success: false, error: error.message };
+        }
+    });
+
+    // --- Cosmetics ---
+
+    ipcMain.handle('fetch-detailed-cosmetics', async () => {
+        try {
+            return await authService.getPlayerCosmetics();
+        } catch (error) {
+            console.error('[AuthHandler] Fetch detailed cosmetics failed:', error);
+            return null;
+        }
+    });
+
+    ipcMain.handle('equip-cosmetic', async (event, { cosmeticId, playerUuid }) => {
+        try {
+            const url = 'https://api.craftcorps.net/cosmetics/equip';
+            const res = await authService.fetchAuthenticated(url, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ capeId: cosmeticId, playerUuid })
+            });
+
+            if (!res.ok) {
+                const text = await res.text();
+                throw new Error(text || `Equip failed: ${res.status}`);
+            }
+            return true;
+        } catch (error) {
+            console.error('[AuthHandler] Equip cosmetic failed:', error);
+            throw error;
         }
     });
 }

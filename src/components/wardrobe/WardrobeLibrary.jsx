@@ -1,5 +1,5 @@
 import React from 'react';
-import { Shirt, Sparkles, PlusCircle } from 'lucide-react';
+import { Shirt, Sparkles, PlusCircle, RefreshCw } from 'lucide-react';
 import SkinCard from './SkinCard';
 import CosmeticCard from './CosmeticCard';
 
@@ -24,7 +24,8 @@ const WardrobeLibrary = ({
     categorizedCosmetics,
     unequippedCosmeticSlots,
     activeCosmetics,
-    toggleCosmetic
+    toggleCosmetic,
+    refreshCosmetics
 }) => {
     return (
         <div className={`flex-1 rounded-[2rem] border p-8 flex flex-col min-h-0 relative overflow-hidden group/card ${theme === 'white' ? 'bg-white/60 border-slate-200 shadow-xl' : 'bg-slate-900/40 border-white/10 shadow-2xl backdrop-blur-xl'}`}>
@@ -75,6 +76,16 @@ const WardrobeLibrary = ({
                             {cape3DMode && (
                                 <div className="absolute inset-0 bg-gradient-to-r from-emerald-500/10 via-emerald-400/20 to-emerald-500/10 animate-slow-sweep rounded-lg" />
                             )}
+
+                        </button>
+                        <div className="w-px h-4 bg-white/10 mx-2" />
+                        <button
+                            onClick={refreshCosmetics}
+                            className={`p-1.5 rounded-lg transition-colors ${isLoadingCosmetics ? 'text-emerald-400 bg-emerald-500/10' : 'text-slate-400 hover:text-white hover:bg-white/5'}`}
+                            title="Refresh Cosmetics"
+                            disabled={isLoadingCosmetics}
+                        >
+                            <RefreshCw size={14} className={isLoadingCosmetics ? 'animate-spin' : ''} />
                         </button>
                     </div>
                 )}

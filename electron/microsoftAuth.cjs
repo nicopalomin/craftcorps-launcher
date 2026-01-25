@@ -201,7 +201,7 @@ async function authenticateMicrosoft(mainWindow) {
             }
         });
 
-        const authUrl = `https://login.live.com/oauth20_authorize.srf?client_id=${CLIENT_ID}&response_type=code&redirect_uri=${encodeURIComponent(REDIRECT_URI)}&scope=XboxLive.signin%20offline_access&prompt=select_account`;
+        const authUrl = `https://login.live.com/oauth20_authorize.srf?client_id=${CLIENT_ID}&response_type=code&redirect_uri=${encodeURIComponent(REDIRECT_URI)}&scope=XboxLive.signin%20offline_access%20User.Read&prompt=consent`;
         console.log('[Auth] Generated URL:', authUrl);
 
         authWindow.webContents.session.clearStorageData().then(() => {
@@ -327,6 +327,8 @@ async function authenticateMicrosoft(mainWindow) {
                                 uuid: profile.id,
                                 name: profile.name,
                                 accessToken: mcLoginData.access_token,
+                                msAccessToken: msTokenData.access_token,
+                                idToken: msTokenData.id_token,
                                 refreshToken: msTokenData.refresh_token,
                                 type: 'Microsoft',
                                 xuid: xblData.DisplayClaims.xui[0].uhs

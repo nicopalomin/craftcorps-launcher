@@ -24,23 +24,27 @@ export const fetchPlayerCosmetics = async (playerUuid) => {
 
 /**
  * Fetch Cosmetics owned/active for the authenticated user
+ * Endpoint: GET /cosmetics/player
  * @param {string} token 
- * @param {string} uuid 
  */
-export const fetchDetailedCosmetics = async (token, uuid) => {
+export const fetchDetailedCosmetics = async (token) => {
     try {
-        const response = await fetch(`${BASE_URL}/cosmetics/player?uuid=${uuid}`, {
-            headers: { 'Authorization': `Bearer ${token}` }
-        });
-
-        if (!response.ok) {
-            console.warn('[CosmeticsAPI] Detailed fetch failed:', response.status);
-            return null;
+        // Use Electron IPC to handle authenticated request with auto-refresh
+        if (window.electronAPI?.fetchDetailedCosmetics) {
+            return await window.electronAPI.fetchDetailedCosmetics();
         }
 
-        const data = await response.json();
-        // Returns: { playerUuid, cosmetics: [{ cosmeticId, isActive, name, textureUrl }] }
-        return data;
+        // Fallback for dev/browser if needed (though session token management is complex there)
+        const response = await fetch(`${BASE_URL}/cosmetics/player`, {
+            method: 'GET',
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json'
+            }
+        });
+
+        if (!response.ok) return null;
+        return await response.json();
     } catch (error) {
         console.error('Error fetching detailed cosmetics:', error);
         return null;
@@ -74,15 +78,20 @@ export const fetchAllCosmetics = async () => {
  * @param {string} playerUuid - The UUID of the player
  * @returns {Promise<boolean>} - Success status
  */
-export const equipCosmetic = async (token, capeId, playerUuid) => {
+export const equipCosmetic = async (token, cosmeticId, playerUuid) => {
     try {
+        // Use Electron IPC to handle authenticated request with auto-refresh
+        if (window.electronAPI?.equipCosmetic) {
+            return await window.electronAPI.equipCosmetic({ cosmeticId, playerUuid });
+        }
+
         const response = await fetch(`${BASE_URL}/cosmetics/equip`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
                 'Authorization': `Bearer ${token}`
             },
-            body: JSON.stringify({ capeId, playerUuid })
+            body: JSON.stringify({ capeId: cosmeticId, playerUuid })
         });
 
         if (!response.ok) {
