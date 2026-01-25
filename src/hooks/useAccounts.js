@@ -40,7 +40,7 @@ export const useAccounts = () => {
             // Prevent double refresh (Strict Mode)
             if (hasRefreshedRef.current || !window.electronAPI?.microsoftRefresh) return;
 
-            const accountsToRefresh = accounts.filter(a => a.type === 'Microsoft' && a.refreshToken);
+            const accountsToRefresh = accounts.filter(a => a.type === 'Microsoft' && (a.minecraftRefreshToken || a.refreshToken));
             if (accountsToRefresh.length === 0) return;
 
             // Mark as running
@@ -56,8 +56,9 @@ export const useAccounts = () => {
             // Sequential Loop
             for (const acc of accountsToRefresh) {
                 try {
-                    console.log(`[Auth] Refreshing: ${acc.name}`);
-                    const result = await window.electronAPI.microsoftRefresh(acc.refreshToken);
+                    const msToken = acc.minecraftRefreshToken || acc.refreshToken;
+                    console.log(`[Auth] Refreshing ${acc.name}. CC Token: ${!!acc.accessToken}, MS Token: ${!!msToken}`);
+                    const result = await window.electronAPI.microsoftRefresh(msToken);
 
                     if (result.success && result.account) {
                         console.log(`[Auth] Success: ${acc.name}`);
@@ -149,6 +150,29 @@ export const useAccounts = () => {
         setShowProfileMenu(false);
     };
 
+    const handleRefreshBackend = async () => {
+        console.log('[Auth] Manually triggering backend session refresh...');
+        const result = await window.electronAPI.refreshBackendSession();
+        if (result.success) {
+            console.log('[Auth] Backend refresh successful. Updating active account.');
+            const updated = {
+                ...activeAccount,
+                accessToken: result.accessToken,
+                refreshToken: result.refreshToken
+            };
+            setActiveAccount(updated);
+
+            // Sync to accounts list
+            const updatedAccounts = accounts.map(a => a.id === activeAccount.id ? updated : a);
+            setAccounts(updatedAccounts);
+            localStorage.setItem('craftcorps_accounts', JSON.stringify(updatedAccounts));
+            localStorage.setItem('craftcorps_active_account', JSON.stringify(updated));
+            return true;
+        }
+        console.warn('[Auth] Backend refresh failed.');
+        return false;
+    };
+
     return {
         accounts,
         activeAccount,
@@ -160,6 +184,7 @@ export const useAccounts = () => {
         handleAccountSwitch,
         handleAddAccount,
         handleLogout,
+        handleRefreshBackend,
         isRefreshing,
         authError
     };

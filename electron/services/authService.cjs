@@ -132,8 +132,12 @@ class AuthService {
     }
 
     async refreshSession() {
-        if (!this.refreshToken) return false;
+        if (!this.refreshToken) {
+            log.warn('[AuthService] No refresh token available to refresh session.');
+            return false;
+        }
         try {
+            log.info('[AuthService] Requesting token refresh from /auth/refresh...');
             const res = await fetch(`${AUTH_BASE}/auth/refresh`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -141,25 +145,30 @@ class AuthService {
             });
 
             if (!res.ok) {
+                log.error(`[AuthService] Refresh failed with status ${res.status}`);
                 if (res.status === 401 || res.status === 403) {
+                    log.warn('[AuthService] Refresh token invalid or expired. Invalidating session.');
                     this.invalidateSession();
                 }
-                throw new Error(`Refresh failed: ${res.status}`);
+                return false;
             }
 
             const data = await res.json();
             if (data.accessToken) {
+                log.info('[AuthService] Received new access token from refresh.');
                 this.token = data.accessToken;
                 this.store.set(STORE_KEY_AUTH_TOKEN, this.token);
                 if (data.refreshToken) {
+                    log.info('[AuthService] Also received new refresh token.');
                     this.refreshToken = data.refreshToken;
                     this.store.set(STORE_KEY_REFRESH_TOKEN, this.refreshToken);
                 }
                 return true;
             }
+            log.warn('[AuthService] Refresh response did not contain an accessToken.');
             return false;
         } catch (e) {
-            log.warn('[AuthService] Token refresh failed:', e.message);
+            log.error('[AuthService] Token refresh failed with exception:', e.message);
             return false;
         }
     }
@@ -229,19 +238,24 @@ class AuthService {
 
     async getToken() {
         if (!this.token) {
+            log.info('[AuthService] No token in memory, attempting anonymous login...');
             await this.loginAnonymous();
+            log.info(`[AuthService] Resulting token: ${this.token ? 'PRESENT' : 'MISSING'}`);
             return this.token;
         }
         if (this._isTokenExpired(this.token)) {
+            log.info('[AuthService] In-memory token expired. Attempting refresh...');
             const refreshed = await this.refreshSession();
 
             // Fix: If refresh failed (e.g. network error) but we still have a refresh token (session not invalidated),
             // do NOT fall back to anonymous. This preserves the user's identity while offline.
             if (!refreshed && this.refreshToken) {
+                log.warn('[AuthService] Refresh failed but refresh token exists. Returning stale token to preserve identity.');
                 return this.token;
             }
 
             if (!refreshed) {
+                log.info('[AuthService] Refresh failed and no fallback available. Attempting anonymous login...');
                 await this.loginAnonymous();
             }
         }
@@ -249,15 +263,18 @@ class AuthService {
     }
 
     _handleAuthResponse(data) {
+        log.info('[AuthService] Handling auth response from backend...');
         this.token = data.accessToken;
         this.refreshToken = data.refreshToken || null;
 
-        // Decoding logic ...
         if (data.user && data.user.id) {
             this.userId = data.user.id;
         } else {
             this.userId = this._decodeUserId(this.token);
         }
+
+        log.info(`[AuthService] User ID set to: ${this.userId}`);
+        log.info(`[AuthService] Has Refresh Token: ${!!this.refreshToken}`);
 
         this.store.set(STORE_KEY_AUTH_TOKEN, this.token);
         this.store.set(STORE_KEY_USER_ID, this.userId);
@@ -273,6 +290,28 @@ class AuthService {
         const res = await this.fetchAuthenticated(`${AUTH_BASE}/auth/me`);
         if (!res.ok) throw new Error('Failed to fetch profile');
         return await res.json();
+    }
+
+    async getInviteCode() {
+        log.info('[AuthService] Fetching invite code...');
+        try {
+            // Try specific endpoint first
+            const res = await this.fetchAuthenticated(`${AUTH_BASE}/auth/invite-code`);
+            if (res.ok) {
+                const data = await res.json();
+                return data.code;
+            }
+
+            // Fallback: Check profile if endpoint missing
+            const profile = await this.getUserProfile();
+            if (profile && profile.referralCode) return profile.referralCode;
+            if (profile && profile.inviteCode) return profile.inviteCode;
+
+            return null;
+        } catch (e) {
+            log.warn('[AuthService] Failed to fetch invite code:', e);
+            return null;
+        }
     }
     getDeviceId() { return this.deviceId; }
 
@@ -304,10 +343,27 @@ class AuthService {
 
     async fetchAuthenticated(url, options = {}, retried = false) {
         const token = await this.getToken();
+
+        if (!token) {
+            log.warn(`[AuthService] No token available for authenticated request to ${url}`);
+        }
+
         const headers = { ...options.headers, 'Authorization': `Bearer ${token}` };
+
+        log.info(`[AuthService] ${options.method || 'GET'} ${url} (Token: ${token ? 'YES' : 'NO'})`);
+
         const response = await fetch(url, { ...options, headers });
 
         if (response.status === 401 && !retried) {
+            log.info(`[AuthService] 401 received for ${url}. Attempting to refresh session...`);
+            const refreshSuccess = await this.refreshSession();
+
+            if (refreshSuccess) {
+                log.info('[AuthService] Refresh successful. Retrying request with new token.');
+                return this.fetchAuthenticated(url, options, true);
+            }
+
+            log.warn('[AuthService] Refresh failed. Invalidating session and retrying.');
             this.invalidateSession();
             return this.fetchAuthenticated(url, options, true);
         }

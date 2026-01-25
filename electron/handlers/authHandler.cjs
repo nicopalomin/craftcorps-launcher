@@ -49,7 +49,9 @@ function setupAuthHandlers(getMainWindow) {
             const consentToRecord = consent || DEFAULT_CONSENT;
 
             // 1. Authenticate with Microsoft (Get Access Token)
+            console.log('[AuthHandler] Starting Microsoft authentication window...');
             const msAccount = await authenticateMicrosoft(getMainWindow());
+            console.log('[AuthHandler] Microsoft auth successful. User:', msAccount.name);
 
             // 2. Record Consent (Optional, but good practice before login if needed)
             try {
@@ -57,7 +59,9 @@ function setupAuthHandlers(getMainWindow) {
             } catch (ignore) { }
 
             // 3. Login with Backend using MS Token
+            console.log('[AuthHandler] Exchange Microsoft token for CraftCorps session...');
             const data = await authService.loginMicrosoft(msAccount.accessToken);
+            console.log('[AuthHandler] Backend login successful. Received accessToken:', !!data.accessToken, 'refreshToken:', !!data.refreshToken);
 
             return { success: true, data, account: msAccount };
         } catch (error) {
@@ -126,6 +130,24 @@ function setupAuthHandlers(getMainWindow) {
         }
     });
 
+    ipcMain.handle('refresh-backend-session', async () => {
+        try {
+            const success = await authService.refreshSession();
+            return {
+                success,
+                accessToken: authService.token,
+                refreshToken: authService.refreshToken
+            };
+        } catch (error) {
+            console.error('[AuthHandler] Backend Refresh Failed:', error);
+            return { success: false, error: error.message };
+        }
+    });
+
+    ipcMain.handle('get-backend-token', async () => {
+        return authService.token;
+    });
+
     ipcMain.handle('detect-local-accounts', async () => {
         try {
             const fs = require('fs').promises;
@@ -177,6 +199,17 @@ function setupAuthHandlers(getMainWindow) {
         } catch (error) {
             console.error('[AuthHandler] Get Profile failed:', error);
             return { success: false, error: error.message };
+        }
+    });
+
+    ipcMain.handle('get-invite-code', async () => {
+        try {
+            const code = await authService.getInviteCode();
+            return { success: true, code };
+        } catch (error) {
+            console.error('[AuthHandler] Get Invite Code failed:', error);
+            // Return null code instead of erroring out to UI
+            return { success: false, code: null };
         }
     });
 

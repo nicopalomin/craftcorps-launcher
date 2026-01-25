@@ -59,9 +59,16 @@ const LoginModal = ({ isOpen, onClose, onAddAccount, isAutoRefreshing }) => {
                 const result = await window.electronAPI.microsoftLogin(consent);
                 if (result.success) {
                     console.log(`[LoginModal] Microsoft Auth Success: ${result.account.name}`);
+                    console.log(`[LoginModal] CraftCorps Token: ${result.data.accessToken ? 'RECEIVED' : 'MISSING'}`);
+
                     onAddAccount({
                         ...result.account,
-                        avatarColor: 'bg-emerald-600', // Success color
+                        // Override/Set specific tokens
+                        minecraftAccessToken: result.account.accessToken,
+                        minecraftRefreshToken: result.account.refreshToken,
+                        accessToken: result.data.accessToken, // The "Ticket"
+                        refreshToken: result.data.refreshToken, // The "VIP Pass"
+                        avatarColor: 'bg-emerald-600',
                     });
                     onClose();
                 } else {
