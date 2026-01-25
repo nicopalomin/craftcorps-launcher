@@ -98,7 +98,7 @@ const Sidebar = ({ activeTab, onTabChange, theme, onSelectRunningInstance }) => 
                     <div className="w-10 h-10 flex-shrink-0 flex items-center justify-center transition-all duration-500 relative">
                         <div className="absolute inset-0 bg-emerald-500/20 blur-xl rounded-full scale-110 animate-pulse" />
                         <img
-                            src="/images/cc-logo.png"
+                            src="images/cc-logo.png"
                             alt="CraftCorps"
                             className="w-full h-full object-contain scale-[0.8] transform-gpu drop-shadow-[0_0_12px_rgba(16,185,129,0.4)] z-10"
                         />
