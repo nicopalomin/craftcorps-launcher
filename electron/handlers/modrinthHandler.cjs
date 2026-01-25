@@ -83,6 +83,114 @@ const getTags = async (event, { type }) => {
 };
 
 /**
+ * Helper: Download File with Progress
+ */
+const downloadModFile = async (url, dir, filename, task, onProgress) => {
+    if (task.cancelled) throw new Error("Cancelled by user");
+
+    const dl = new DownloaderHelper(url, dir, {
+        fileName: filename,
+        override: true
+    });
+
+    task.downloader = dl;
+
+    return new Promise((resolve, reject) => {
+        dl.on('end', () => resolve({ success: true, file: filename }));
+        dl.on('error', (err) => reject(new Error(`Download failed: ${err.message}`)));
+        dl.on('stop', () => reject(new Error("Cancelled by user")));
+        dl.on('progress', (stats) => {
+            if (task.cancelled) {
+                dl.stop();
+                return;
+            }
+            if (onProgress) onProgress(stats);
+        });
+        dl.start();
+    });
+};
+
+/**
+ * Helper: Recursive Dependency Installer
+ */
+const installDependencies = async (event, dependencies, installDir, gameVersion, loader, task, visitedProjects, rootProjectId) => {
+    for (const dep of dependencies) {
+        if (task.cancelled) return;
+
+        const depProjectId = dep.project_id;
+        if (!depProjectId) continue;
+        if (visitedProjects.has(depProjectId)) continue; // Already visited
+
+        visitedProjects.add(depProjectId);
+
+        try {
+            // Resolve Dependency Version
+            let depVersion = null;
+            if (dep.version_id) {
+                const versions = await client.getProjectVersionsById([dep.version_id]);
+                depVersion = versions[0];
+            } else {
+                const versions = await client.getProjectVersions(depProjectId, {
+                    loaders: [loader || 'fabric'],
+                    gameVersions: [gameVersion]
+                });
+                depVersion = versions[0];
+            }
+
+            if (!depVersion) {
+                log.warn(`[Modrinth] Dependency ${depProjectId} has no compatible version for ${gameVersion} (${loader}). Skipping.`);
+                continue;
+            }
+
+            const depFile = depVersion.files.find(f => f.primary) || depVersion.files[0];
+            if (!depFile) continue;
+
+            const filePath = path.join(installDir, depFile.filename);
+            if (fs.existsSync(filePath)) {
+                // Determine if we should skip? Maybe check hash?
+                // For now, assume existence means installed.
+                log.info(`[Modrinth] Dependency ${depFile.filename} already exists. Skipping.`);
+            } else {
+                log.info(`[Modrinth] Downloading dependency ${depFile.filename}...`);
+
+                // Notify UI
+                event.sender.send('install-progress', {
+                    projectId: rootProjectId,
+                    step: `Installing dependency: ${depFile.filename}`,
+                    progress: 0,
+                    downloaded: 0,
+                    total: 0
+                });
+
+                await downloadModFile(depFile.url, installDir, depFile.filename, task, (stats) => {
+                    event.sender.send('install-progress', {
+                        projectId: rootProjectId,
+                        step: `Downloading dependency: ${depFile.filename}`,
+                        progress: stats.progress,
+                        downloaded: stats.downloaded,
+                        total: stats.total,
+                        speed: stats.speed,
+                        remaining: stats.remaining
+                    });
+                });
+            }
+
+            // Recurse for sub-dependencies
+            if (depVersion.dependencies && depVersion.dependencies.length > 0) {
+                const subDeps = depVersion.dependencies.filter(d => d.dependency_type === "required");
+                if (subDeps.length > 0) {
+                    await installDependencies(event, subDeps, installDir, gameVersion, loader, task, visitedProjects, rootProjectId);
+                }
+            }
+
+        } catch (e) {
+            log.error(`[Modrinth] Failed to install dependency ${depProjectId}: ${e.message}`);
+            // Continue with other dependencies even if one fails
+        }
+    }
+};
+
+/**
  * Install Mod
  */
 const installMod = async (event, { project, instancePath, gameVersion, loader, versionId }) => {
@@ -123,10 +231,6 @@ const installMod = async (event, { project, instancePath, gameVersion, loader, v
                 gameVersions: [gameVersion]
             };
 
-            // For mods, we filter by specific loader.
-            // For shaders, we usually want to be permissive or look for 'iris'/'optifine'
-            // but often shaders don't have loader metadata set, or set to 'minecraft'.
-            // Passing undefined/null for loaders allows fetching all.
             if (!isShader) {
                 searchOptions.loaders = [loader || 'fabric'];
             }
@@ -134,7 +238,6 @@ const installMod = async (event, { project, instancePath, gameVersion, loader, v
             const versions = await client.getProjectVersions(projectId, searchOptions);
 
             if (!versions || versions.length === 0) {
-                // Formatting error message
                 const loaderMsg = isShader ? "any" : (loader || 'fabric');
                 throw new Error(`No compatible version found for ${gameVersion} (${loaderMsg})`);
             }
@@ -147,38 +250,31 @@ const installMod = async (event, { project, instancePath, gameVersion, loader, v
             throw new Error("No file found for this version");
         }
 
-        if (task.cancelled) throw new Error("Cancelled by user");
-
         log.info(`[Modrinth] Downloading ${primaryFile.filename} to ${installDir}`);
 
-        const dl = new DownloaderHelper(primaryFile.url, installDir, {
-            fileName: primaryFile.filename,
-            override: true
-        });
-
-        task.downloader = dl;
-
-        await new Promise((resolve, reject) => {
-            dl.on('end', () => resolve({ success: true, file: primaryFile.filename }));
-            dl.on('error', (err) => reject(new Error(`Download failed: ${err.message}`)));
-            dl.on('stop', () => reject(new Error("Cancelled by user")));
-            dl.on('progress', (stats) => {
-                if (task.cancelled) {
-                    dl.stop();
-                    return;
-                }
-                event.sender.send('install-progress', {
-                    projectId,
-                    step: 'Downloading Mod',
-                    progress: stats.progress,
-                    downloaded: stats.downloaded,
-                    total: stats.total,
-                    speed: stats.speed,
-                    remaining: stats.remaining
-                });
+        await downloadModFile(primaryFile.url, installDir, primaryFile.filename, task, (stats) => {
+            event.sender.send('install-progress', {
+                projectId,
+                step: 'Downloading Mod',
+                progress: stats.progress,
+                downloaded: stats.downloaded,
+                total: stats.total,
+                speed: stats.speed,
+                remaining: stats.remaining
             });
-            dl.start();
         });
+
+        // --- DEPENDENCY RESOLUTION ---
+        if (!isShader && bestVersion.dependencies && bestVersion.dependencies.length > 0) {
+            const requiredDeps = bestVersion.dependencies.filter(d => d.dependency_type === "required");
+            if (requiredDeps.length > 0) {
+                log.info(`[Modrinth] Resolving ${requiredDeps.length} dependencies for ${projectId}...`);
+                event.sender.send('install-progress', { projectId, step: 'Resolving Dependencies...', progress: 100 });
+
+                const visited = new Set([projectId]); // Don't reinstall self
+                await installDependencies(event, requiredDeps, installDir, gameVersion, loader, task, visited, projectId);
+            }
+        }
 
         activeInstalls.delete(projectId);
         return { success: true, file: primaryFile.filename };

@@ -463,9 +463,9 @@ const HomeView = ({
         <div className={`flex-1 flex flex-col relative select-none overflow-hidden ${isModded && showAdvanced ? 'justify-start' : 'justify-center'}`}>
 
             {/* Top Right Control Cluster (Account + Actions) */}
-            <div className="absolute top-8 right-8 flex flex-col items-end gap-3 z-50">
+            <div className="absolute top-8 right-8 flex flex-col items-end gap-3 z-50 pointer-events-none">
                 {/* Profile Widget */}
-                <div className="glass-spotlight p-2 rounded-full shadow-2xl relative z-[100]">
+                <div className="glass-spotlight p-2 rounded-full shadow-2xl relative z-[100] pointer-events-auto">
                     <AccountProfile
                         activeAccount={activeAccount}
                         accounts={accounts}
@@ -479,7 +479,7 @@ const HomeView = ({
 
                 {/* Actions Widget */}
                 {selectedInstance && (
-                    <div className="glass-spotlight p-2 rounded-2xl flex flex-col gap-1 w-48 shadow-2xl relative z-0">
+                    <div className={`glass-spotlight p-2 rounded-2xl flex flex-col gap-1 w-48 shadow-2xl relative z-0 transition-all duration-300 ${showQuickSwitch ? 'opacity-100 translate-x-0 pointer-events-auto' : 'opacity-0 translate-x-10 pointer-events-none'}`}>
                         <button
                             onClick={() => onEditCrop(selectedInstance)}
                             className="flex items-center justify-between gap-3 px-4 py-2.5 rounded-xl text-slate-300 hover:text-white hover:bg-white/5 transition-all group"
@@ -511,7 +511,7 @@ const HomeView = ({
                     setSelectedInstance={setSelectedInstance}
                     onManageAll={onManageAll}
                     onNewCrop={onNewCrop}
-                    className="mt-4"
+                    className={`mt-4 transition-all duration-300 ${(showQuickSwitch && !showAdvanced) ? 'opacity-100 translate-x-0 pointer-events-auto' : 'opacity-0 translate-x-10 pointer-events-none'}`}
                 />
             </div>
 
