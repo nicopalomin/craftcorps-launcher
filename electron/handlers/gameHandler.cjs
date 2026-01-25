@@ -430,12 +430,15 @@ const ensureLoaderInstalled = async (instanceData) => {
     if (!instanceData.loader || instanceData.loader === 'Vanilla') return;
 
     try {
-        const os = process.platform;
-        const home = process.env.HOME || process.env.USERPROFILE;
-        let commonRoot;
-        if (os === 'win32') commonRoot = path.join(process.env.APPDATA, '.minecraft');
-        else if (os === 'darwin') commonRoot = path.join(home, 'Library', 'Application Support', 'minecraft');
-        else commonRoot = path.join(home, '.minecraft');
+        // Use Instance Folder as Root for Isolation (like Prism/MultiMC)
+        // This ensures versions/mods/etc are self-contained or at least version json is checked locally if needed?
+        // Wait, if we use instanceData.path as root, we duplicate assets/libraries?
+        // MCLC has 'overrides' but core structure is usually shared.
+        // However, user specifically asked to check isolated file. 
+        // If we set root to instance folder, MCLC will look there.
+
+        // Let's use the instance folder as the root for this setup check.
+        const instanceRoot = instanceData.path;
 
         const options = {
             loader: instanceData.loader,
@@ -444,17 +447,17 @@ const ensureLoaderInstalled = async (instanceData) => {
         };
 
         const launchOptions = {
-            root: commonRoot,
+            root: instanceRoot, // Changed from commonRoot
             version: { number: instanceData.version }
         };
 
         const emit = (type, data) => {
-            const msg = data && data.message ? data.message : data; // Handle object or string
+            const msg = data && data.message ? data.message : data;
             log.info(`[LoaderSetup] ${msg}`);
         };
 
         const lower = instanceData.loader.toLowerCase();
-        log.info(`[LoaderSetup] optimizing ${lower} setup for ${instanceData.version}...`);
+        log.info(`[LoaderSetup] optimizing ${lower} setup for ${instanceData.version} in ${instanceRoot}...`);
 
         if (lower.includes('fabric')) await FabricHandler.prepare(options, launchOptions, emit);
         else if (lower.includes('neoforge')) await NeoForgeHandler.prepare(options, launchOptions, emit);
@@ -475,14 +478,30 @@ const saveInstance = async (event, instanceData) => {
     }
 
     try {
+        // Fix: getNewInstancePath already creates the folder, so we must check for instance.json to see if it's truly new content-wise
+        const jsonPath = path.join(instanceData.path, 'instance.json');
+        const isNewInstance = !fs.existsSync(jsonPath);
+
         if (!fs.existsSync(instanceData.path)) {
             fs.mkdirSync(instanceData.path, { recursive: true });
         }
-        const jsonPath = path.join(instanceData.path, 'instance.json');
+
         fs.writeFileSync(jsonPath, JSON.stringify(instanceData, null, 4));
 
         // Ensure Loader is Ready (Backgroud-ish but awaited for safety)
         await ensureLoaderInstalled(instanceData);
+
+        // Auto-install Fabric API for new Fabric instances
+        if (isNewInstance && instanceData.loader === 'Fabric') {
+            log.info('[Instance] New Fabric instance detected. Auto-installing Fabric API...');
+            // running in background to not block UI? No, user expects it to be ready.
+            try {
+                await installFabricApi(instanceData.path, instanceData.version);
+            } catch (err) {
+                log.warn(`[Instance] Failed to auto-install Fabric API: ${err.message}`);
+                // Don't fail the whole creation, just warn
+            }
+        }
 
         return { success: true };
     } catch (e) {
@@ -558,6 +577,54 @@ const handleFocusGame = (event, gameDir) => {
             });
         }
     }
+};
+
+const installFabricApi = async (instancePath, gameVersion) => {
+    const { DownloaderHelper } = require('node-downloader-helper');
+
+    // 1. Fetch Version from Modrinth
+    // Project ID: P7dR8mSH (fabric-api)
+    // Facet: [["versions:1.20.1"], ["project_type:mod"]]
+    // But easier to use /v2/project/{id}/version
+
+    // Need valid json array for query params
+    const gvParam = JSON.stringify([gameVersion]);
+    const loaderParam = JSON.stringify(['fabric']);
+
+    const url = `https://api.modrinth.com/v2/project/fabric-api/version?game_versions=${gvParam}&loaders=${loaderParam}`;
+
+    log.info(`[FabricAPI] Fetching versions from: ${url}`);
+    const res = await fetch(url);
+    if (!res.ok) throw new Error(`Modrinth API returned ${res.status}`);
+
+    const versions = await res.json();
+    if (!versions || versions.length === 0) {
+        throw new Error(`No Fabric API version found for Minecraft ${gameVersion}`);
+    }
+
+    const bestVer = versions[0]; // First one is usually latest
+    const file = bestVer.files.find(f => f.primary) || bestVer.files[0];
+
+    if (!file) throw new Error('No valid file found in version data');
+
+    const modsDir = path.join(instancePath, 'mods');
+    if (!fs.existsSync(modsDir)) {
+        fs.mkdirSync(modsDir, { recursive: true });
+    }
+
+    log.info(`[FabricAPI] Downloading ${file.filename}...`);
+    const dl = new DownloaderHelper(file.url, modsDir, {
+        fileName: file.filename,
+        override: true
+    });
+
+    await new Promise((resolve, reject) => {
+        dl.on('end', () => resolve());
+        dl.on('error', (err) => reject(err));
+        dl.start();
+    });
+
+    log.info('[FabricAPI] Installed successfully.');
 };
 
 module.exports = {
