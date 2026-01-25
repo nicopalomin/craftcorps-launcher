@@ -164,29 +164,62 @@ Date: ${new Date().toISOString()}
 
     // Launch on Startup
     ipcMain.handle('get-start-on-startup', () => {
-        return app.getLoginItemSettings().openAtLogin;
+        // Return stored preference if available (UI consistency), otherwise check system
+        const stored = store ? store.get('settings_start_on_startup') : undefined;
+        if (stored !== undefined) return stored;
+
+        // Fallback to system state (e.g. migration from older version)
+        const systemValue = app.getLoginItemSettings().openAtLogin;
+
+        // Sync system state to store to ensure consistency going forward
+        if (store) {
+            store.set('settings_start_on_startup', systemValue);
+        }
+
+        return systemValue;
     });
 
     ipcMain.handle('set-start-on-startup', (event, value) => {
+        const args = [];
+        if (process.env.NODE_ENV === 'development') {
+            args.push(app.getAppPath());
+        }
+        if (value) {
+            args.push('--hidden');
+        }
+
         app.setLoginItemSettings({
             openAtLogin: value,
             openAsHidden: value, // macOS
             path: app.getPath('exe'),
-            args: value ? ['--hidden'] : [] // Windows
+            args: args // Windows
         });
-        if (store) store.set('settings_initialized_startup', true);
-        return app.getLoginItemSettings().openAtLogin;
+
+        if (store) {
+            store.set('settings_initialized_startup', true);
+            store.set('settings_start_on_startup', value);
+        }
+
+        // Return valid boolean directly to ensure UI updates immediately
+        return value;
     });
 
     // Handle Default Value (First Run)
     if (store && !store.get('settings_initialized_startup')) {
+        const args = [];
+        if (process.env.NODE_ENV === 'development') {
+            args.push(app.getAppPath());
+        }
+        args.push('--hidden');
+
         app.setLoginItemSettings({
             openAtLogin: true,
             openAsHidden: true,
             path: app.getPath('exe'),
-            args: ['--hidden']
+            args: args
         });
         store.set('settings_initialized_startup', true);
+        store.set('settings_start_on_startup', true);
         log.info('[AppHandler] Startup enabled by default on first run.');
     }
 }

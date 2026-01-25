@@ -70,7 +70,8 @@ const SkinViewer = ({
     background = null,
     cosmetics = [],
     nameTag = null,
-    zoom = 70
+    zoom = 70,
+    isActive = true
 }) => {
     const canvasRef = useRef(null);
     const viewerRef = useRef(null);
@@ -142,6 +143,7 @@ const SkinViewer = ({
         // --- AMBIENT ROTATION ---
         viewer.autoRotate = true;
         viewer.autoRotateSpeed = 0.5; // Very slow cinematic turn
+        viewer.renderPaused = !isActive; // Initial State
 
         if (viewer.controls) {
             viewer.controls.enableZoom = true;
@@ -191,6 +193,12 @@ const SkinViewer = ({
             }
         };
     }, []);
+
+    // Handle Pause Toggle
+    useEffect(() => {
+        if (!viewerRef.current) return;
+        viewerRef.current.renderPaused = !isActive;
+    }, [isActive]);
 
     // Handle Prop Updates
     useEffect(() => {

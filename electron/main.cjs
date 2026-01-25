@@ -200,6 +200,7 @@ async function createWindow() {
     console.time('[MAIN] loadURL');
     if (process.env.NODE_ENV === 'development') {
         await mainWindow.loadURL('http://localhost:51173');
+        mainWindow.webContents.openDevTools({ mode: 'detach' });
     } else {
         await mainWindow.loadURL(startUrl);
     }
@@ -211,6 +212,21 @@ async function createWindow() {
         const contextMenu = Menu.buildFromTemplate([
             { label: 'Show Launcher', click: () => mainWindow.show() },
             { type: 'separator' },
+            {
+                label: 'Open Task Manager', click: () => {
+                    // There is no public API to open chrome task manager programmatically :(
+                    // But we can dump metrics to console
+                    const metrics = app.getAppMetrics();
+                    console.log('--- APP METRICS ---');
+                    metrics.forEach(m => {
+                        console.log(`Type: ${m.type}, CPU: ${m.cpu.percentCPUUsage.toFixed(2)}%, Mem: ${(m.memory.workingSetSize / 1024 / 1024).toFixed(2)} MB`);
+                    });
+                    dialog.showMessageBox({
+                        title: 'Task Manager Unavailable',
+                        message: 'The internal Task Manager cannot be opened programmatically. Check the terminal for a CPU usage dump.'
+                    });
+                }
+            },
             {
                 label: 'Quit', click: () => {
                     app.isQuitting = true;

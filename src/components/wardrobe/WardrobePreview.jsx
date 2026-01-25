@@ -10,7 +10,8 @@ const WardrobePreview = ({
     isProcessing,
     selectedSkin,
     activeAccount,
-    theme
+    theme,
+    isActive = true // Default to true if not passed
 }) => {
     return (
         <div className="lg:w-2/5 flex flex-col gap-6 h-full">
@@ -24,13 +25,21 @@ const WardrobePreview = ({
 
                 {/* 3D Model Viewer */}
                 <div className="relative z-10 w-full h-full flex items-center justify-center">
-                    <SkinViewer
-                        skinUrl={viewerSkin.skinUrl}
-                        capeUrl={viewerSkin.capeUrl}
-                        model={viewerSkin.model}
-                        cosmetics={activeCosmetics}
-                        className="w-full h-full"
-                    />
+                    {isActive ? (
+                        <SkinViewer
+                            skinUrl={viewerSkin.skinUrl}
+                            capeUrl={viewerSkin.capeUrl}
+                            model={viewerSkin.model}
+                            cosmetics={activeCosmetics}
+                            className="w-full h-full animate-in fade-in duration-500"
+                            isActive={isActive}
+                        />
+                    ) : (
+                        <div className="flex flex-col items-center justify-center gap-2 text-slate-500 opacity-50">
+                            <div className="w-12 h-12 rounded-full border-2 border-slate-700 border-t-emerald-500 animate-spin" />
+                            <span className="text-[10px] font-bold tracking-widest uppercase">Paused</span>
+                        </div>
+                    )}
                 </div>
 
                 {/* Drag hint */}

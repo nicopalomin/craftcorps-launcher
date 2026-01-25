@@ -9,7 +9,7 @@ import { useWardrobe } from '../hooks/useWardrobe';
  * High-level view for character customization (Skins and Cosmetics).
  * Uses useWardrobe hook for state and business logic.
  */
-const WardrobeView = ({ theme, activeAccount }) => {
+const WardrobeView = ({ theme, activeAccount, isActive }) => {
     const {
         activeTab,
         setActiveTab,
@@ -76,6 +76,7 @@ const WardrobeView = ({ theme, activeAccount }) => {
                     selectedSkin={selectedSkin}
                     activeAccount={activeAccount}
                     theme={theme}
+                    isActive={isActive}
                 />
 
                 {/* Right Column: Library */}

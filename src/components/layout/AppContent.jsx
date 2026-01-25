@@ -130,7 +130,7 @@ const AppContent = ({
             {/* Wardrobe View - Keep Alive */}
             {(activeTab === 'wardrobe' || hasOpenedWardrobe) && (
                 <div className={`flex-1 flex-col h-full overflow-hidden ${activeTab === 'wardrobe' ? 'flex' : 'hidden'}`}>
-                    <WardrobeView skins={SKINS} theme={theme} activeAccount={activeAccount} />
+                    <WardrobeView skins={SKINS} theme={theme} activeAccount={activeAccount} isActive={activeTab === 'wardrobe'} />
                 </div>
             )}
             {activeTab === 'settings' && (
