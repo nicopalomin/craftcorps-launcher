@@ -503,6 +503,16 @@ const HomeView = ({
                         )}
                     </div>
                 )}
+
+                {/* Quick Switch Panel - Right Side Vertical */}
+                <QuickSwitchPanel
+                    instances={instances}
+                    selectedInstance={selectedInstance}
+                    setSelectedInstance={setSelectedInstance}
+                    onManageAll={onManageAll}
+                    onNewCrop={onNewCrop}
+                    className="mt-4"
+                />
             </div>
 
             {/* Main Content Scrollable Area */}
@@ -640,15 +650,6 @@ const HomeView = ({
                 {/* Bottom Spacer - animates flex-grow to slide content up */}
                 <div className={`w-full transition-all duration-500 ease-in-out ${(!isModded || !showAdvanced) ? 'flex-1 min-h-[10%]' : 'flex-none h-0'}`} />
             </div>
-            {/* Quick Switch Panel */}
-            <QuickSwitchPanel
-                instances={instances}
-                selectedInstance={selectedInstance}
-                setSelectedInstance={setSelectedInstance}
-                onManageAll={onManageAll}
-                onNewCrop={onNewCrop}
-                className={`transform transition-all duration-500 ease-in-out ${showQuickSwitch ? 'translate-y-0 opacity-100' : 'translate-y-[200%] opacity-0'}`}
-            />
         </div>
     );
 };

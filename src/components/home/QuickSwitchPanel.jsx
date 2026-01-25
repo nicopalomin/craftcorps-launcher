@@ -1,7 +1,51 @@
 import React from 'react';
-import { Plus, ChevronRight, ChevronDown, ChevronUp } from 'lucide-react';
-import QuickSelectCard from '../common/QuickSelectCard';
+import { Plus, Archive } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
+// We'll reimplement the card inline for 'Compact' mode to avoid touching the main one extensively
+import {
+    Sprout, Pickaxe, Axe, Sword, Shield, Box,
+    Map, Compass, Flame, Snowflake, Droplet,
+    Zap, Heart, Skull, Ghost, Trophy
+} from 'lucide-react';
+
+const ICON_MAP = {
+    Sprout, Pickaxe, Axe, Sword, Shield, Box,
+    Map, Compass, Flame, Snowflake, Droplet,
+    Zap, Heart, Skull, Ghost, Trophy
+};
+
+const CompactInstanceItem = ({ instance, isSelected, onClick }) => {
+    return (
+        <button
+            onClick={onClick}
+            className={`group relative flex items-center justify-center p-2 rounded-xl border transition-all duration-200 select-none w-14 h-14 ${isSelected
+                ? 'bg-emerald-500/10 border-emerald-500/50 shadow-[0_0_15px_-3px_rgba(16,185,129,0.3)]'
+                : 'bg-white/5 border-white/5 hover:bg-white/10 hover:border-white/10'
+                }`}
+        >
+            <div className={`w-10 h-10 rounded-lg ${instance.icon ? 'bg-transparent' : instance.iconColor} flex items-center justify-center ${instance.glyphColor || 'text-slate-900'} overflow-hidden`}>
+                {instance.icon ? (
+                    <img src={instance.icon} alt={instance.name} className="w-full h-full object-cover" />
+                ) : (
+                    React.createElement(ICON_MAP[instance.iconKey] || Sprout, { size: 20 })
+                )}
+            </div>
+
+            {/* Version Badge */}
+            <div className="absolute -bottom-1 -right-1 bg-slate-900/90 text-[9px] font-bold text-slate-400 px-1 rounded-md border border-white/10 backdrop-blur-sm">
+                {instance.version}
+            </div>
+
+            {/* Hover Tooltip - Left Side */}
+            <div className="absolute right-full mr-3 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50 whitespace-nowrap">
+                <div className="bg-slate-900/90 backdrop-blur-md text-white text-sm font-medium px-3 py-1.5 rounded-lg border border-white/10 shadow-xl flex flex-col items-end">
+                    <span>{instance.name}</span>
+                    <span className="text-[10px] text-slate-400">{instance.loader}</span>
+                </div>
+            </div>
+        </button>
+    );
+};
 
 const QuickSwitchPanel = ({
     instances,
@@ -12,92 +56,41 @@ const QuickSwitchPanel = ({
     className = ""
 }) => {
     const { t } = useTranslation();
-    const scrollContainerRef = React.useRef(null);
-    const panelRef = React.useRef(null);
-    const [isMinimized, setIsMinimized] = React.useState(true);
-    const [hasResetScroll, setHasResetScroll] = React.useState(false);
-
-    // Click outside to minimize
-    React.useEffect(() => {
-        function handleClickOutside(event) {
-            if (panelRef.current && !panelRef.current.contains(event.target) && !isMinimized) {
-                setIsMinimized(true);
-            }
-        }
-
-        document.addEventListener("mousedown", handleClickOutside);
-        return () => {
-            document.removeEventListener("mousedown", handleClickOutside);
-        };
-    }, [isMinimized]);
-
-    // Initial scroll reset
-    React.useEffect(() => {
-        if (instances && instances.length > 0 && !hasResetScroll && scrollContainerRef.current) {
-            scrollContainerRef.current.scrollLeft = 0;
-            setHasResetScroll(true);
-        }
-    }, [instances, hasResetScroll]);
-
-    const handleWheel = (e) => {
-        if (scrollContainerRef.current && e.deltaY !== 0) {
-            scrollContainerRef.current.scrollBy({
-                left: e.deltaY,
-                behavior: 'smooth'
-            });
-        }
-    };
 
     return (
-        <div ref={panelRef} className={`absolute bottom-6 left-1/2 -translate-x-1/2 bg-slate-950/80 backdrop-blur-xl border border-white/10 rounded-3xl shadow-2xl z-40 animate-in slide-in-from-bottom-10 transition-all duration-700 ease-[cubic-bezier(0.32,0.72,0,1)] overflow-hidden ${className} ${isMinimized ? 'w-[90%] max-w-[240px] px-6 py-3 scale-95 opacity-80 hover:scale-100 hover:opacity-100' : 'w-[90%] max-w-5xl p-4 scale-100 opacity-100'}`}>
-            <div className={`flex items-center ${isMinimized ? 'justify-center relative' : 'justify-between mb-3 px-2'}`}>
-                <button
-                    onClick={() => setIsMinimized(!isMinimized)}
-                    className={`flex items-center gap-3 group focus:outline-none cursor-pointer transition-all ${isMinimized ? 'w-full justify-center' : ''}`}
-                >
-                    <span className="text-slate-500 group-hover:text-white transition-colors">
-                        {isMinimized ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
-                    </span>
-                    <span className="text-xs font-bold text-slate-500 uppercase tracking-wider whitespace-nowrap group-hover:text-white transition-colors">Quick Switch</span>
-                </button>
+        <div className={`flex flex-col p-2 rounded-2xl glass-spotlight shadow-2xl ${className}`}>
 
-                {!isMinimized && (
-                    <button
-                        onClick={onManageAll}
-                        className="flex items-center gap-1 text-slate-500 text-xs font-medium hover:text-white transition-colors"
-                    >
-                        Manage All <ChevronRight size={12} />
-                    </button>
-                )}
+            {/* Scrollable Instance List - Max height for ~5 items (64px * 5 = 320px) */}
+            <div className="flex flex-col gap-2 overflow-y-auto overflow-x-hidden max-h-[320px] custom-scrollbar no-scrollbar-buttons pr-0.5">
+                {instances.map((instance) => (
+                    <CompactInstanceItem
+                        key={instance.id}
+                        instance={instance}
+                        isSelected={selectedInstance?.id === instance.id}
+                        onClick={() => setSelectedInstance(instance)}
+                    />
+                ))}
             </div>
 
-            {!isMinimized && (
-                <div
-                    ref={scrollContainerRef}
-                    onWheel={handleWheel}
-                    className="flex items-center gap-3 overflow-x-auto custom-scrollbar pb-2 snap-x"
-                >
-                    {instances.map((instance) => (
-                        <QuickSelectCard
-                            key={instance.id}
-                            instance={instance}
-                            isSelected={selectedInstance?.id === instance.id}
-                            onClick={() => {
-                                setSelectedInstance(instance);
-                                setIsMinimized(true);
-                            }}
-                        />
-                    ))}
+            <div className="h-px bg-white/5 mx-2 my-2" />
 
-                    <button
-                        onClick={onNewCrop}
-                        className="focus:outline-none snap-center flex-shrink-0 w-12 h-[72px] rounded-xl border border-white/5 bg-white/5 hover:bg-white/10 hover:border-white/20 flex items-center justify-center transition-all group"
-                        title={t ? t('home_new_crop') : 'New Crop'}
-                    >
-                        <Plus size={20} className="text-slate-500 group-hover:text-emerald-400" />
-                    </button>
-                </div>
-            )}
+            {/* Static Actions Footer */}
+            <div className="flex flex-col gap-2">
+                <button
+                    onClick={onNewCrop}
+                    className="w-14 h-14 rounded-xl border border-white/5 bg-white/5 hover:bg-white/10 hover:border-emerald-500/30 flex flex-col items-center justify-center transition-all group gap-1 shrink-0"
+                    title={t ? t('home_new_crop') : 'New Crop'}
+                >
+                    <Plus size={20} className="text-slate-500 group-hover:text-emerald-400" />
+                </button>
+                <button
+                    onClick={onManageAll}
+                    className="w-14 h-10 rounded-xl border border-white/5 hover:bg-white/5 flex items-center justify-center transition-all group shrink-0"
+                    title="Manage All"
+                >
+                    <Archive size={16} className="text-slate-600 group-hover:text-slate-300" />
+                </button>
+            </div>
         </div>
     );
 };

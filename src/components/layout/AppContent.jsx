@@ -29,13 +29,17 @@ const AppContent = ({
 }) => {
     const { addToast } = useToast();
     const [hasOpenedMods, setHasOpenedMods] = React.useState(false);
+    const [hasOpenedDiscover, setHasOpenedDiscover] = React.useState(false);
+    const [hasOpenedMarket, setHasOpenedMarket] = React.useState(false);
+    const [hasOpenedWardrobe, setHasOpenedWardrobe] = React.useState(false);
 
-    // Track if mods tab has been opened to keep it alive
+    // Track if tabs have been active to keep them alive
     React.useEffect(() => {
-        if (activeTab === 'mods' && !hasOpenedMods) {
-            setHasOpenedMods(true);
-        }
-    }, [activeTab, hasOpenedMods]);
+        if (activeTab === 'mods' && !hasOpenedMods) setHasOpenedMods(true);
+        if (activeTab === 'discover' && !hasOpenedDiscover) setHasOpenedDiscover(true);
+        if (activeTab === 'market' && !hasOpenedMarket) setHasOpenedMarket(true);
+        if (activeTab === 'wardrobe' && !hasOpenedWardrobe) setHasOpenedWardrobe(true);
+    }, [activeTab, hasOpenedMods, hasOpenedDiscover, hasOpenedMarket, hasOpenedWardrobe]);
 
     // Wrapper for Play to check refreshing
     const onPlayWrapper = (...args) => {
@@ -123,7 +127,12 @@ const AppContent = ({
                     onReorder={reorderInstances}
                 />
             )}
-            {activeTab === 'wardrobe' && <WardrobeView skins={SKINS} theme={theme} activeAccount={activeAccount} />}
+            {/* Wardrobe View - Keep Alive */}
+            {(activeTab === 'wardrobe' || hasOpenedWardrobe) && (
+                <div className={`flex-1 flex-col h-full overflow-hidden ${activeTab === 'wardrobe' ? 'flex' : 'hidden'}`}>
+                    <WardrobeView skins={SKINS} theme={theme} activeAccount={activeAccount} />
+                </div>
+            )}
             {activeTab === 'settings' && (
                 <SettingsView
                     ram={ram} setRam={setRam}
@@ -153,9 +162,19 @@ const AppContent = ({
                     />
                 </div>
             )}
-            {activeTab === 'discover' && <DiscoverView selectedInstance={selectedInstance} activeAccount={activeAccount} />}
+            {/* Discover View - Keep Alive */}
+            {(activeTab === 'discover' || hasOpenedDiscover) && (
+                <div className={`flex-1 flex-col h-full overflow-hidden ${activeTab === 'discover' ? 'flex' : 'hidden'}`}>
+                    <DiscoverView selectedInstance={selectedInstance} activeAccount={activeAccount} />
+                </div>
+            )}
             {activeTab === 'profile' && <ProfileView activeAccount={activeAccount} accounts={accounts} instances={instances} theme={theme} onLogout={onLogoutWithToast} />}
-            {activeTab === 'market' && <MarketView />}
+            {/* Market View - Keep Alive */}
+            {(activeTab === 'market' || hasOpenedMarket) && (
+                <div className={`flex-1 flex-col h-full overflow-hidden ${activeTab === 'market' ? 'flex' : 'hidden'}`}>
+                    <MarketView />
+                </div>
+            )}
             {activeTab === 'rewards' && <BetaRewardsView theme={theme} selectedInstance={selectedInstance} />}
         </div>
     );
