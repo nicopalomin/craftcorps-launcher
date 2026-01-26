@@ -7,20 +7,28 @@ on:
         description: 'Version to build (e.g. 1.0.0). Leave empty to use package.json version.'
         required: false
         type: string
+      channel:
+        description: 'Release Channel'
+        required: true
+        default: 'Stable'
+        type: choice
+        options:
+          - Stable
+          - Canary
 
 jobs:
   build-and-publish:
-    name: Build & Publish ${{ matrix.os }}
+    name: Build & Publish ${{ matrix.os }} (${{ inputs.channel }})
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
         include:
           - os: windows-latest
-            build_script: ci:build:win
+            script_suffix: win
           - os: macos-latest
-            build_script: ci:build:mac
+            script_suffix: mac
           - os: ubuntu-latest
-            build_script: ci:build:linux
+            script_suffix: linux
 
     steps:
       - name: Checkout Code
@@ -44,7 +52,13 @@ jobs:
       - name: Build Application
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: npm run ${{ matrix.build_script }}
+        run: |
+          if [ "${{ inputs.channel }}" == "Canary" ]; then
+            npm run ci:build:canary:${{ matrix.script_suffix }}
+          else
+            npm run ci:build:${{ matrix.script_suffix }}
+          fi
+        shell: bash
 
       - name: Publish to R2
         env:

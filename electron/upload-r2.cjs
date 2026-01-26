@@ -60,9 +60,22 @@ async function main() {
 
     // Use brace expansion to catch all artifact types in a single glob pattern
     // This finds: .yml (auto-updater), .exe (Win), .zip/.dmg (Mac), .AppImage (Linux), and .blockmap (Delta updates)
-    const pattern = '*.{yml,exe,exe.blockmap,zip,dmg,dmg.blockmap,AppImage,AppImage.blockmap}';
+    // Updated to be recursive (**) to catch artifacts in subdirectories like release/canary/
+    const pattern = '**/*.{yml,exe,exe.blockmap,zip,dmg,dmg.blockmap,AppImage,AppImage.blockmap}';
 
-    const matches = await glob(pattern, { cwd: DIST_DIR, absolute: true });
+    const allMatches = await glob(pattern, { cwd: DIST_DIR, absolute: true });
+
+    // SAFETY: Ensure we never upload a 'latest.yml' from a canary build directory,
+    // as this would overwrite the stable release metadata in the bucket root (since we flatten paths).
+    const matches = allMatches.filter(filePath => {
+        const isCanaryDir = filePath.includes('canary') || filePath.includes('Canary');
+        const fileName = path.basename(filePath);
+        if (isCanaryDir && fileName === 'latest.yml') {
+            console.warn(`⚠️ Skipping dangerous artifact: ${filePath} (Would overwrite stable latest.yml)`);
+            return false;
+        }
+        return true;
+    });
 
     if (matches.length === 0) {
         console.warn('No artifacts found to upload. Did you run the build script?');
@@ -70,6 +83,102 @@ async function main() {
     }
 
     console.log(`Found ${matches.length} files to upload.`);
+
+    // --- Manual latest-canary.yml Generation ---
+    const crypto = require('crypto');
+    const path = require('path');
+
+    // Filter for Canary artifacts
+    const canaryArtifacts = matches.filter(m => m.includes('release\\canary') || m.includes('release/canary'));
+
+    // Process Windows EXE
+    const exeArtifact = canaryArtifacts.find(m => m.endsWith('.exe'));
+    if (exeArtifact) {
+        console.log('Found Canary EXE, generating latest-canary.yml...');
+        try {
+            const fileBuffer = fs.readFileSync(exeArtifact);
+            const hash = crypto.createHash('sha512').update(fileBuffer).digest('base64');
+            const size = fs.statSync(exeArtifact).size;
+            const fileName = path.basename(exeArtifact);
+
+            // Extract version from filename (CraftCorps-Canary-Setup-0.3.5.exe)
+            // Regex to find version number
+            const versionMatch = fileName.match(/(\d+\.\d+\.\d+)/);
+            const version = versionMatch ? versionMatch[0] : require('../package.json').version;
+
+            const ymlContent = `version: ${version}
+files:
+  - url: ${fileName}
+    sha512: ${hash}
+    size: ${size}
+path: ${fileName}
+sha512: ${hash}
+releaseDate: ${new Date().toISOString()}
+`;
+
+            const ymlPath = path.join(path.dirname(exeArtifact), 'latest-canary.yml');
+            fs.writeFileSync(ymlPath, ymlContent);
+            console.log(`Generated ${ymlPath}`);
+            matches.push(ymlPath); // Add to upload list
+        } catch (e) {
+            console.error('Failed to generate latest-canary.yml', e);
+        }
+    }
+
+    // Process Mac ZIP/DMG (Optional extension)
+    const macArtifact = canaryArtifacts.find(m => m.endsWith('.zip') && !m.includes('blockmap'));
+    if (macArtifact) {
+        console.log('Found Canary Mac Artifact, generating latest-canary-mac.yml...');
+        try {
+            const fileBuffer = fs.readFileSync(macArtifact);
+            const hash = crypto.createHash('sha512').update(fileBuffer).digest('base64');
+            const size = fs.statSync(macArtifact).size;
+            const fileName = path.basename(macArtifact);
+            const versionMatch = fileName.match(/(\d+\.\d+\.\d+)/);
+            const version = versionMatch ? versionMatch[0] : require('../package.json').version;
+
+            const ymlContent = `version: ${version}
+files:
+  - url: ${fileName}
+    sha512: ${hash}
+    size: ${size}
+path: ${fileName}
+sha512: ${hash}
+releaseDate: ${new Date().toISOString()}
+`;
+            const ymlPath = path.join(path.dirname(macArtifact), 'latest-canary-mac.yml');
+            fs.writeFileSync(ymlPath, ymlContent);
+            matches.push(ymlPath);
+        } catch (e) { console.error('Failed to generate mac yml', e); }
+    }
+
+    // Process Linux AppImage
+    const linuxArtifact = canaryArtifacts.find(m => m.endsWith('.AppImage') && !m.includes('blockmap'));
+    if (linuxArtifact) {
+        console.log('Found Canary Linux Artifact, generating latest-canary-linux.yml...');
+        try {
+            const fileBuffer = fs.readFileSync(linuxArtifact);
+            const hash = crypto.createHash('sha512').update(fileBuffer).digest('base64');
+            const size = fs.statSync(linuxArtifact).size;
+            const fileName = path.basename(linuxArtifact);
+            const versionMatch = fileName.match(/(\d+\.\d+\.\d+)/);
+            const version = versionMatch ? versionMatch[0] : require('../package.json').version;
+
+            const ymlContent = `version: ${version}
+files:
+  - url: ${fileName}
+    sha512: ${hash}
+    size: ${size}
+path: ${fileName}
+sha512: ${hash}
+releaseDate: ${new Date().toISOString()}
+`;
+            const ymlPath = path.join(path.dirname(linuxArtifact), 'latest-canary-linux.yml');
+            fs.writeFileSync(ymlPath, ymlContent);
+            matches.push(ymlPath);
+        } catch (e) { console.error('Failed to generate linux yml', e); }
+    }
+
 
     for (const filePath of matches) {
         await uploadFile(filePath);
