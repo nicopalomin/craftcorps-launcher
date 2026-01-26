@@ -173,7 +173,10 @@ async function createWindow() {
         setTimeout(() => {
             if (mainWindow && !mainWindow.isVisible() && !isHidden) {
                 console.warn('[MAIN] Splash timeout - forcing show');
-                if (splashWindow && !splashWindow.isDestroyed()) splashWindow.destroy();
+                if (splashWindow && !splashWindow.isDestroyed()) {
+                    splashWindow.destroy();
+                    splashWindow = null;
+                }
                 mainWindow.show();
             }
         }, 10000);
@@ -208,6 +211,16 @@ async function createWindow() {
                     // Destroy splash once main is fully opaque
                     if (splashWindow && !splashWindow.isDestroyed()) {
                         splashWindow.destroy();
+                        splashWindow = null;
+                    }
+
+                    // Memory Purge: Signal to Chromium that we are done with initial heavy lifting
+                    if (mainWindow && !mainWindow.isDestroyed()) {
+                        try {
+                            mainWindow.webContents.forceNextMemoryPurge();
+                        } catch (e) {
+                            console.warn('[MAIN] forceNextMemoryPurge failed:', e);
+                        }
                     }
                 } else {
                     mainWindow.setOpacity(opacity);
@@ -221,6 +234,7 @@ async function createWindow() {
             // Fallback if hidden or destroyed
             if (splashWindow && !splashWindow.isDestroyed()) {
                 splashWindow.destroy();
+                splashWindow = null;
             }
         }
     });
@@ -244,6 +258,10 @@ async function createWindow() {
         const session = mainWindow.webContents.session;
         session.clearCache().catch(() => { });
         session.clearHostResolverCache().catch(() => { });
+
+        try {
+            mainWindow.webContents.forceNextMemoryPurge();
+        } catch (e) { }
     });
 
     mainWindow.on('close', (e) => {
