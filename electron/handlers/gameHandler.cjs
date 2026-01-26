@@ -4,6 +4,7 @@ const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
 const GameLauncher = require('../GameLauncher.cjs');
+const nbt = require('prismarine-nbt');
 
 // Track multiple active launchers
 // Key: launchId (string), Value: { gameDir, launcher, options }
@@ -50,10 +51,12 @@ function setupGameHandlers(getMainWindow) {
     ipcMain.removeHandler('save-instance');
     ipcMain.removeHandler('get-new-instance-path');
     ipcMain.removeHandler('get-running-instances');
+    ipcMain.removeHandler('read-servers-dat');
 
     // --- IPC Handlers ---
 
     ipcMain.handle('get-running-instances', getRunningInstances);
+    ipcMain.handle('read-servers-dat', readServersDat);
 
     ipcMain.on('launch-game', async (event, options) => {
         const gameDir = options.gameDir;
@@ -628,6 +631,74 @@ const installFabricApi = async (instancePath, gameVersion) => {
     log.info('[FabricAPI] Installed successfully.');
 };
 
+const readServersDat = async (event, instancePath) => {
+    try {
+        if (!instancePath) return [];
+        const serversDatPath = path.join(instancePath, 'servers.dat');
+
+        if (!fs.existsSync(serversDatPath)) {
+            return [];
+        }
+
+        const data = await fs.promises.readFile(serversDatPath);
+
+        // nbt.parse returns a Promise in newer versions or can be awaited
+        const { parsed } = await nbt.parse(data);
+
+        // Parse NBT Structure
+        // Usually: { type: 'compound', value: { servers: { type: 'list', value: { type: 'compound', value: [...] } } } }
+
+        let serversList = [];
+
+        // Safe access using optional chaining
+        // servers tag is a List. The List's value is an object { type: 'compound', value: [...] } usually for lists of compounds?
+        // Actually prismarine-nbt structure for List is: { type: 'list', value: { type: 'compound', value: [ ...items... ] } }
+
+        const serversTag = parsed?.value?.servers;
+        if (serversTag?.value?.value && Array.isArray(serversTag.value.value)) {
+            serversList = serversTag.value.value;
+        }
+
+        // Alternative structure check just in case
+        if (serversList.length === 0 && parsed?.value?.servers?.value && Array.isArray(parsed.value.servers.value)) {
+            serversList = parsed.value.servers.value;
+        }
+
+        log.info(`[ServersDat] Found ${serversList.length} servers in ${instancePath}`);
+
+        // Map to clean object
+        const validServers = serversList.map((s, idx) => {
+            const name = s.name?.value || 'Minecraft Server';
+            const ip = s.ip?.value || 'Unknown IP';
+            let icon = s.icon?.value || null;
+
+            // Debug first server
+            if (idx === 0) {
+                log.info(`[ServersDat] Server 1: Name=${name}, IP=${ip}, HasIcon=${!!icon}`);
+                if (icon) log.info(`[ServersDat] Icon Start: ${icon.substring(0, 30)}...`);
+            }
+
+            if (icon && !icon.startsWith('data:image')) {
+                icon = `data:image/png;base64,${icon}`;
+            }
+
+            return { name, ip, icon };
+        });
+
+        // Deduplicate by IP
+        const seenIps = new Set();
+        return validServers.filter(s => {
+            if (seenIps.has(s.ip)) return false;
+            seenIps.add(s.ip);
+            return true;
+        });
+
+    } catch (e) {
+        log.error(`[ServersDat] Failed to read ${instancePath}:`, e);
+        return [];
+    }
+};
+
 module.exports = {
     setupGameHandlers,
     getInstances,
@@ -637,5 +708,6 @@ module.exports = {
     getNewInstancePath,
     isGameRunning,
     getRunningInstances,
-    handleFocusGame
+    handleFocusGame,
+    readServersDat
 };

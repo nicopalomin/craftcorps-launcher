@@ -3,7 +3,7 @@ import {
     Sprout, Pickaxe, Axe, Sword, Shield, Box,
     Map, Compass, Flame, Snowflake, Droplet,
     Zap, Heart, Skull, Ghost, Trophy, Server, X, Play, Loader2, ChevronRight, Clock, Puzzle,
-    Plus, User, Power, Activity
+    Plus, User, Power, Activity, Globe
 } from 'lucide-react';
 import { formatLastPlayed } from '../../utils/dateUtils';
 import { useTranslation } from 'react-i18next';
@@ -40,6 +40,14 @@ const InstanceHero = React.memo(({
     const [playTime, setPlayTime] = useState(null);
     const [showLaunchMenu, setShowLaunchMenu] = useState(false);
     const [showRunningMenu, setShowRunningMenu] = useState(false);
+    const [showServersMenu, setShowServersMenu] = useState(false);
+    const [serversList, setServersList] = useState([]);
+
+    useEffect(() => {
+        if (showServersMenu && selectedInstance?.path) {
+            window.electronAPI.readServersDat(selectedInstance.path).then(setServersList);
+        }
+    }, [showServersMenu, selectedInstance]);
 
     // Distinguish between content type and layout mode
     const isModdedContent = selectedInstance.loader !== 'Vanilla';
@@ -151,29 +159,94 @@ const InstanceHero = React.memo(({
                                     <X size={20} /> Launch Failed
                                 </button>
                             ) : (
-                                <div className="group relative w-full max-w-[320px]">
-                                    <button
-                                        disabled={launchCooldown}
-                                        onClick={(e) => {
-                                            e.stopPropagation();
-                                            telemetry.track('CLICK_PLAY', { instanceId: selectedInstance.id });
-                                            onPlay(selectedInstance);
-                                        }}
-                                        className={`btn-premium-emerald group w-full text-white rounded-2xl font-extrabold flex items-center ${launchCooldown ? 'opacity-70 cursor-wait' : ''} ${isHorizontalLayout ? 'py-4 text-xl justify-between px-6' : 'py-5 text-2xl justify-center gap-4'}`}
-                                    >
-                                        <div className="flex items-center gap-4 z-10 relative">
-                                            {launchCooldown ? <Clock size={isHorizontalLayout ? 24 : 28} className="animate-spin" /> : <Play size={isHorizontalLayout ? 24 : 28} fill="currentColor" strokeWidth={3} />}
-                                            <span className="flex flex-col items-start leading-none tracking-wider">
-                                                <span>{launchCooldown ? 'COOLDOWN' : t('home_playing')}</span>
-                                                {isHorizontalLayout && (
-                                                    <span className="text-[10px] font-bold text-emerald-50/70 font-sans tracking-[0.1em] mt-1.5 uppercase group-hover:text-white transition-colors">
-                                                        {lastPlayedText}
-                                                    </span>
-                                                )}
-                                            </span>
-                                        </div>
-                                        {isHorizontalLayout && <ChevronRight size={24} className="opacity-50 group-hover:opacity-100 group-hover:translate-x-1 transition-all z-10 relative" />}
-                                    </button>
+                                <div className="flex w-full max-w-[320px] gap-2">
+                                    <div className="group relative flex-1">
+                                        <button
+                                            disabled={launchCooldown}
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                telemetry.track('CLICK_PLAY', { instanceId: selectedInstance.id });
+                                                onPlay(selectedInstance);
+                                            }}
+                                            className={`btn-premium-emerald group w-full text-white rounded-2xl font-extrabold flex items-center ${launchCooldown ? 'opacity-70 cursor-wait' : ''} ${isHorizontalLayout ? 'py-4 text-xl justify-between px-6' : 'py-5 text-2xl justify-center gap-4'}`}
+                                        >
+                                            <div className="flex items-center gap-4 z-10 relative">
+                                                {launchCooldown ? <Clock size={isHorizontalLayout ? 24 : 28} className="animate-spin" /> : <Play size={isHorizontalLayout ? 24 : 28} fill="currentColor" strokeWidth={3} />}
+                                                <span className="flex flex-col items-start leading-none tracking-wider">
+                                                    <span>{launchCooldown ? 'COOLDOWN' : t('home_playing')}</span>
+                                                    {isHorizontalLayout && (
+                                                        <span className="text-[10px] font-bold text-emerald-50/70 font-sans tracking-[0.1em] mt-1.5 uppercase group-hover:text-white transition-colors">
+                                                            {lastPlayedText}
+                                                        </span>
+                                                    )}
+                                                </span>
+                                            </div>
+                                            {isHorizontalLayout && <ChevronRight size={24} className="opacity-50 group-hover:opacity-100 group-hover:translate-x-1 transition-all z-10 relative" />}
+                                        </button>
+                                    </div>
+
+                                    {/* Servers Menu (Visible in Idle) */}
+                                    <div className="relative">
+                                        <button
+                                            onClick={() => setShowServersMenu(!showServersMenu)}
+                                            className={`h-full px-4 rounded-xl border transition-all flex items-center justify-center shrink-0 ${showServersMenu ? 'bg-blue-500/10 border-blue-500/50 text-blue-400' : 'bg-slate-800 border-slate-700 text-slate-400 hover:text-blue-400 hover:border-blue-500/30'}`}
+                                            title="View Server List"
+                                        >
+                                            <Globe size={20} className={showServersMenu ? 'animate-pulse' : ''} />
+                                        </button>
+
+                                        {showServersMenu && (
+                                            <div className="absolute bottom-full right-0 mb-3 w-72 bg-slate-900/95 border border-white/10 rounded-2xl shadow-2xl overflow-hidden z-50 animate-in fade-in zoom-in-95 slide-in-from-bottom-4 duration-300 backdrop-blur-xl text-left">
+                                                <div className="px-3 py-2 border-b border-white/5 bg-white/[0.02]">
+                                                    <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Servers</span>
+                                                </div>
+                                                <div className="py-1 max-h-64 overflow-y-auto custom-scrollbar">
+                                                    {serversList.length === 0 ? (
+                                                        <div className="px-4 py-8 text-center">
+                                                            <p className="text-xs text-slate-500 italic">No servers found</p>
+                                                        </div>
+                                                    ) : (
+                                                        serversList.map((server, idx) => (
+                                                            <div key={idx} className="px-3 py-2 flex items-center gap-3 hover:bg-white/5 transition-colors group">
+                                                                <div className="w-8 h-8 rounded bg-slate-800 flex-shrink-0 flex items-center justify-center overflow-hidden border border-white/5">
+                                                                    {server.icon ? (
+                                                                        <img src={server.icon} alt="" className="w-full h-full" />
+                                                                    ) : (
+                                                                        <Server size={16} className="text-slate-500" />
+                                                                    )}
+                                                                </div>
+                                                                <div className="flex flex-col min-w-0 flex-1">
+                                                                    <span className="text-sm font-bold text-slate-200 truncate">{server.name}</span>
+                                                                    <span className="text-[10px] text-blue-400 font-medium truncate select-text">{server.ip}</span>
+                                                                </div>
+                                                                <button
+                                                                    onClick={(e) => {
+                                                                        e.stopPropagation();
+                                                                        telemetry.track('CLICK_JOIN_SERVER', { instanceId: selectedInstance.id, server: server.ip });
+                                                                        // Assuming onPlay supports overriding instance properties or we construct a temporary one
+                                                                        const launchParams = { ...selectedInstance, autoConnect: true, serverAddress: server.ip };
+                                                                        onPlay(launchParams);
+                                                                        setShowServersMenu(false);
+                                                                    }}
+                                                                    className="p-1.5 rounded-lg bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 hover:bg-emerald-500 hover:text-white transition-all opacity-0 group-hover:opacity-100"
+                                                                    title="Join Server"
+                                                                >
+                                                                    <Play size={10} fill="currentColor" />
+                                                                </button>
+                                                            </div>
+                                                        ))
+                                                    )}
+                                                </div>
+                                            </div>
+                                        )}
+                                        {/* Close Servers Menu if clicking outside */}
+                                        {showServersMenu && (
+                                            <div
+                                                className="fixed inset-0 z-40"
+                                                onClick={() => setShowServersMenu(false)}
+                                            />
+                                        )}
+                                    </div>
                                 </div>
                             )
                         ) : launchStatus === 'launching' ? (
@@ -400,21 +473,7 @@ const InstanceHero = React.memo(({
                                     )}
                                 </div>
 
-                                {/* Close Running Menu if clicking outside */}
-                                {showRunningMenu && (
-                                    <div
-                                        className="fixed inset-0 z-40"
-                                        onClick={() => setShowRunningMenu(false)}
-                                    />
-                                )}
 
-                                {/* Close Launch Menu if clicking outside */}
-                                {showLaunchMenu && (
-                                    <div
-                                        className="fixed inset-0 z-40"
-                                        onClick={() => setShowLaunchMenu(false)}
-                                    />
-                                )}
                             </div>
                         )}
                     </div>

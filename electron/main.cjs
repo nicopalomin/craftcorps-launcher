@@ -557,6 +557,11 @@ app.whenReady().then(async () => {
         return getNewInstancePath;
     });
 
+    lazyHandle('read-servers-dat', () => {
+        const { readServersDat } = require('./handlers/gameHandler.cjs');
+        return readServersDat;
+    });
+
     // Lazy: Import Handlers
     lazyHandle('import-instance-dialog', () => {
         const { handleImportDialog } = require('./handlers/importHandler.cjs');
