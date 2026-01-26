@@ -3,6 +3,7 @@ const fs = require('fs');
 const path = require('path');
 const mime = require('mime-types');
 const { glob } = require('glob');
+const crypto = require('crypto');
 require('dotenv').config();
 
 const ACCOUNT_ID = process.env.R2_ACCOUNT_ID;
@@ -85,8 +86,6 @@ async function main() {
     console.log(`Found ${matches.length} files to upload.`);
 
     // --- Manual latest-canary.yml Generation ---
-    const crypto = require('crypto');
-    const path = require('path');
 
     // Filter for Canary artifacts
     const canaryArtifacts = matches.filter(m => m.includes('release\\canary') || m.includes('release/canary'));
