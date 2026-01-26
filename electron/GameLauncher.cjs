@@ -8,6 +8,7 @@ const ForgeHandler = require('./launcher/ForgeHandler.cjs');
 const FabricHandler = require('./launcher/FabricHandler.cjs');
 const QuiltHandler = require('./launcher/QuiltHandler.cjs');
 const NeoForgeHandler = require('./launcher/NeoForgeHandler.cjs');
+const { getRpcPort } = require('./rpcServer.cjs');
 
 class GameLauncher extends EventEmitter {
     constructor() {
@@ -90,7 +91,8 @@ class GameLauncher extends EventEmitter {
                 '-XX:+PerfDisableSharedMem',
                 '-XX:MaxTenuringThreshold=1',
                 '-Dsun.rmi.dgc.server.gcInterval=2147483646',
-                '-Djava.net.preferIPv4Stack=true'
+                '-Djava.net.preferIPv4Stack=true',
+                `-Dcraftcorps.rpc.port=${getRpcPort()}`
             ].filter((v, i, a) => a.indexOf(v) === i), // Dedupe just in case
             overrides: {
                 detached: true,

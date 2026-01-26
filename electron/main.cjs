@@ -389,7 +389,10 @@ app.whenReady().then(async () => {
 
     // Discord RPC - Registers handlers immediately, defers connection internally (lightweight)
     const { initDiscordRPC } = require('./discordRpc.cjs');
+    const { startRpcServer } = require('./rpcServer.cjs');
+
     initDiscordRPC(isHidden);
+    startRpcServer();
 
     setupWindowHandlers(getMainWindow);
     setupAppHandlers(getMainWindow, store);
@@ -690,7 +693,10 @@ app.on('will-quit', () => {
     try {
         const { saveModCacheToDisk } = require('./handlers/localModHandler.cjs');
         if (saveModCacheToDisk) saveModCacheToDisk();
-    } catch (e) {
-        // Module might not have been loaded or other error
-    }
+    } catch (e) { }
+
+    try {
+        const { stopRpcServer } = require('./rpcServer.cjs');
+        stopRpcServer();
+    } catch (e) { }
 });

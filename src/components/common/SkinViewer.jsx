@@ -215,13 +215,27 @@ const SkinViewer = ({
         let isCancelled = false;
 
         const handleUpdate = async () => {
+            const STEVE_URL = "https://textures.minecraft.net/texture/3b60a1f6d5aa4abb850eb34673899478148b6154564c4786650bf6b1fd85a3";
+            const ALEX_URL = "https://textures.minecraft.net/texture/6063495048259ca54877fc388904791e84704383c070d6945a08331575810089";
+
             // 1. Load Skin
             if (skinUrl !== viewer._currentSkinUrl || model !== viewer._currentModel) {
-                const finalSkin = skinUrl || "https://textures.minecraft.net/texture/3b60a1f6d5aa4abb850eb34673899478148b6154564c4786650bf6b1fd85a3";
+                const finalSkin = skinUrl || (model === 'slim' ? ALEX_URL : STEVE_URL);
                 console.log(`[SkinViewer] Loading skin: ${model}`);
                 viewer._currentSkinUrl = skinUrl;
                 viewer._currentModel = model;
-                await viewer.loadSkin(finalSkin, { model: model });
+
+                try {
+                    await viewer.loadSkin(finalSkin, { model: model });
+                } catch (err) {
+                    console.warn(`[SkinViewer] Failed to load skin ${finalSkin}, falling back to default.`, err);
+                    const fallback = model === 'slim' ? ALEX_URL : STEVE_URL;
+                    try {
+                        await viewer.loadSkin(fallback, { model: model });
+                    } catch (err2) {
+                        console.error("[SkinViewer] Critical: Fallback skin also failed to load.");
+                    }
+                }
             }
 
             if (isCancelled) return;

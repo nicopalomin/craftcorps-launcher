@@ -3,7 +3,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { fetchPlayerCosmetics, equipCosmetic, getCosmeticTextureUrl, fetchAllCosmetics, fetchDetailedCosmetics } from '../utils/cosmeticsApi';
 import { FALLBACK_COSMETICS } from '../data/fallbackCosmetics';
 import { useToast } from '../contexts/ToastContext';
-import { normalizeSkin, categorizeCosmetics } from '../utils/wardrobeUtils';
+import { normalizeSkin, categorizeCosmetics, getDefaultModel } from '../utils/wardrobeUtils';
 
 export const useWardrobe = (activeAccount) => {
     const { addToast } = useToast();
@@ -148,7 +148,13 @@ export const useWardrobe = (activeAccount) => {
                     setSelectedSkin(newData);
                 }
             } else {
-                setCurrentSkin(prev => ({ ...prev, skinUrl: null }));
+                const defaultModel = getDefaultModel(activeAccount?.uuid);
+                setCurrentSkin(prev => ({
+                    ...prev,
+                    skinUrl: null,
+                    model: defaultModel,
+                    type: defaultModel === 'slim' ? 'Slim' : 'Classic'
+                }));
             }
         } catch (err) {
             console.error("Skin fetch error:", err);
@@ -485,9 +491,12 @@ export const useWardrobe = (activeAccount) => {
 
     const viewerSkin = useMemo(() => {
         const base = selectedSkin || currentSkin;
+        const STEVE_URL = "https://textures.minecraft.net/texture/3b60a1f6d5aa4abb850eb34673899478148b6154564c4786650bf6b1fd85a3";
+        const ALEX_URL = "https://textures.minecraft.net/texture/6063495048259ca54877fc388904791e84704383c070d6945a08331575810089";
+
         return {
             ...base,
-            skinUrl: base.skinUrl || "https://textures.minecraft.net/texture/3b60a1f6d5aa4abb850eb34673899478148b6154564c4786650bf6b1fd85a3",
+            skinUrl: base.skinUrl || (base.model === 'slim' ? ALEX_URL : STEVE_URL),
         };
     }, [selectedSkin, currentSkin]);
 

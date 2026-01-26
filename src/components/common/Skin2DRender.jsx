@@ -4,11 +4,21 @@ const Skin2DRender = ({ skinUrl, model = 'classic', scale = 10, className = "" }
     const canvasRef = useRef(null);
 
     useEffect(() => {
-        if (!skinUrl) return;
+        const STEVE_URL = "https://textures.minecraft.net/texture/3b60a1f6d5aa4abb850eb34673899478148b6154564c4786650bf6b1fd85a3";
+        const ALEX_URL = "https://textures.minecraft.net/texture/6063495048259ca54877fc388904791e84704383c070d6945a08331575810089";
 
         const img = new Image();
         img.crossOrigin = "Anonymous";
-        img.src = skinUrl;
+
+        img.onerror = () => {
+            console.warn(`[Skin2DRender] Failed to load skin: ${skinUrl}. Falling back to default.`);
+            const fallback = model === 'slim' ? ALEX_URL : STEVE_URL;
+            if (img.src !== fallback) {
+                img.src = fallback;
+            }
+        };
+
+        img.src = skinUrl || (model === 'slim' ? ALEX_URL : STEVE_URL);
 
         img.onload = () => {
             const canvas = canvasRef.current;
