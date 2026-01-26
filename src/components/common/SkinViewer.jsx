@@ -60,6 +60,9 @@ const createNameTag = (text) => {
     return sprite;
 };
 
+const FALLBACK_STEVE = "https://mc-heads.net/skin/steve";
+const FALLBACK_ALEX = "https://mc-heads.net/skin/alex";
+
 const SkinViewer = ({
     skinUrl,
     capeUrl,
@@ -82,11 +85,16 @@ const SkinViewer = ({
         if (!canvasRef.current) return;
 
         console.log("[SkinViewer] Initializing Premium Renderer...");
+        const STEVE_URL = FALLBACK_STEVE;
+        const ALEX_URL = FALLBACK_ALEX;
+        const isUrlValid = (url) => url && url !== 'null' && url !== 'undefined';
+        const initialSkin = isUrlValid(skinUrl) ? skinUrl : (model === 'slim' ? ALEX_URL : STEVE_URL);
+
         const viewer = new SkinViewer3D({
             canvas: canvasRef.current,
             width: width,
             height: height,
-            skin: skinUrl,
+            skin: initialSkin,
             cape: capeUrl,
             model: model,
             alpha: true // Always transparent for custom background FX
@@ -161,7 +169,7 @@ const SkinViewer = ({
         viewer.camera.lookAt(0, 0, 0);
 
         // Tracking for updates
-        viewer._currentSkinUrl = skinUrl;
+        viewer._currentSkinUrl = initialSkin;
         viewer._currentCapeUrl = capeUrl;
         viewer._currentModel = model;
         viewer._currentAnimName = animation;
@@ -215,25 +223,26 @@ const SkinViewer = ({
         let isCancelled = false;
 
         const handleUpdate = async () => {
-            const STEVE_URL = "https://textures.minecraft.net/texture/3b60a1f6d5aa4abb850eb34673899478148b6154564c4786650bf6b1fd85a3";
-            const ALEX_URL = "https://textures.minecraft.net/texture/6063495048259ca54877fc388904791e84704383c070d6945a08331575810089";
+            // Resolve target URL immediately to avoid loading /null or similar
+            const isUrlValid = (url) => url && url !== 'null' && url !== 'undefined';
+            const effectiveSkinUrl = isUrlValid(skinUrl) ? skinUrl : (model === 'slim' ? FALLBACK_ALEX : FALLBACK_STEVE);
 
-            // 1. Load Skin
-            if (skinUrl !== viewer._currentSkinUrl || model !== viewer._currentModel) {
-                const finalSkin = skinUrl || (model === 'slim' ? ALEX_URL : STEVE_URL);
-                console.log(`[SkinViewer] Loading skin: ${model}`);
-                viewer._currentSkinUrl = skinUrl;
-                viewer._currentModel = model;
+            if (effectiveSkinUrl !== viewer._currentSkinUrl || model !== viewer._currentModel) {
+                console.log(`[SkinViewer] Update triggered: ${model} | URL: ${effectiveSkinUrl}`);
 
                 try {
-                    await viewer.loadSkin(finalSkin, { model: model });
+                    await viewer.loadSkin(effectiveSkinUrl, { model: model });
+                    viewer._currentSkinUrl = effectiveSkinUrl;
+                    viewer._currentModel = model;
                 } catch (err) {
-                    console.warn(`[SkinViewer] Failed to load skin ${finalSkin}, falling back to default.`, err);
-                    const fallback = model === 'slim' ? ALEX_URL : STEVE_URL;
+                    console.warn(`[SkinViewer] Load failed for ${effectiveSkinUrl}, trying total fallback...`, err);
+                    const fallback = model === 'slim' ? FALLBACK_ALEX : FALLBACK_STEVE;
                     try {
                         await viewer.loadSkin(fallback, { model: model });
+                        viewer._currentSkinUrl = fallback;
+                        viewer._currentModel = model;
                     } catch (err2) {
-                        console.error("[SkinViewer] Critical: Fallback skin also failed to load.");
+                        console.error("[SkinViewer] All skin loads failed.");
                     }
                 }
             }

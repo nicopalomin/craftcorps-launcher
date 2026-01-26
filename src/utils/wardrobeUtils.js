@@ -62,12 +62,18 @@ export const categorizeCosmetics = (cosmetics) => {
 
     const result = {};
     order.forEach(key => {
-        result[key] = groups[key] || [];
+        const items = groups[key] || [];
+        // Sort: Owned first
+        items.sort((a, b) => (a.isOwned === b.isOwned ? 0 : a.isOwned ? -1 : 1));
+        result[key] = items;
         delete groups[key];
     });
 
     Object.keys(groups).sort().forEach(key => {
-        result[key] = groups[key];
+        const items = groups[key];
+        // Sort: Owned first
+        items.sort((a, b) => (a.isOwned === b.isOwned ? 0 : a.isOwned ? -1 : 1));
+        result[key] = items;
     });
 
     return result;

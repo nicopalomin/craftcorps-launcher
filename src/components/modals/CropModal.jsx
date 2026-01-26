@@ -12,11 +12,7 @@ import { LOADERS, COLORS, FALLBACK_VERSIONS, INSTANCE_ICONS } from '../../data/m
 import { fetchMinecraftVersions } from '../../utils/minecraftApi';
 import { useToast } from '../../contexts/ToastContext';
 
-const ICON_MAP = {
-    Sprout, Pickaxe, Axe, Sword, Shield, Box,
-    Map, Compass, Flame, Snowflake, Droplet,
-    Zap, Heart, Skull, Ghost, Trophy
-};
+import InstanceIcon from '../common/InstanceIcon';
 
 const PRESETS = [
     { id: 'survival', label: 'Survival', icon: 'Pickaxe' },
@@ -320,10 +316,7 @@ const CropModal = ({ isOpen, onClose, onSave, editingCrop, onDelete, instanceCou
             loader,
             version,
             // Map new simplified state to data model
-            iconColor: colorData.class,
-            iconKey: selectedPreset.icon,
             glyphColor: 'text-white', // Defaulting to white for legibility
-            bgGradient: colorData.grad,
 
             status: editingCrop ? editingCrop.status : 'Ready',
             lastPlayed: editingCrop ? editingCrop.lastPlayed : null,
@@ -336,8 +329,8 @@ const CropModal = ({ isOpen, onClose, onSave, editingCrop, onDelete, instanceCou
         onClose();
     };
 
-    const SelectedIcon = ICON_MAP[selectedPreset.icon] || Sprout;
-    const activeColorData = COLORS.find(c => c.name === selectedTheme.colorName) || COLORS[0];
+    // const SelectedIcon = ICON_MAP[selectedPreset.icon] || Sprout;
+    // const activeColorData = COLORS.find(c => c.name === selectedTheme.colorName) || COLORS[0];
 
     // Prepare options for custom selects
     const loaderOptions = LOADERS.map(l => ({
@@ -361,12 +354,8 @@ const CropModal = ({ isOpen, onClose, onSave, editingCrop, onDelete, instanceCou
                 {/* Header */}
                 <div className="shrink-0 p-6 pb-4 flex justify-between items-center relative z-10">
                     <h3 className="text-xl font-bold text-slate-200 flex items-center gap-2">
-                        <div className={`w-8 h-8 rounded-lg ${editingCrop?.icon ? '' : activeColorData.class} bg-opacity-20 flex items-center justify-center overflow-hidden`}>
-                            {editingCrop?.icon ? (
-                                <img src={editingCrop.icon} alt="" className="w-full h-full object-cover" />
-                            ) : (
-                                <SelectedIcon size={20} className="text-white" />
-                            )}
+                        <div className="w-10 h-10 rounded-lg overflow-hidden">
+                            <InstanceIcon instance={editingCrop || { name: name || 'New Crop' }} size={40} />
                         </div>
                         {editingCrop ? t('crop_title_edit') : t('crop_title_new')}
                     </h3>
@@ -415,86 +404,7 @@ const CropModal = ({ isOpen, onClose, onSave, editingCrop, onDelete, instanceCou
                             />
                         </div>
 
-                        {/* Icon Style (New Design) */}
-                        <div>
-                            <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-3">
-                                {t('crop_section_icon', { defaultValue: 'Icon Style' })}
-                            </label>
-
-                            {/* Presets Grid */}
-                            <div className="grid grid-cols-5 gap-2 mb-4">
-                                {editingCrop?.icon && (
-                                    <button
-                                        type="button"
-                                        className="flex flex-col items-center justify-center gap-2 p-3 rounded-xl border transition-all duration-200 bg-slate-800/80 border-emerald-500/50 shadow-lg cursor-default"
-                                    >
-                                        <div className="w-6 h-6 rounded bg-slate-950 border border-slate-700 overflow-hidden">
-                                            <img src={editingCrop.icon} alt="" className="w-full h-full object-cover" />
-                                        </div>
-                                        <span className="text-[10px] font-bold uppercase tracking-wide text-emerald-400">
-                                            Pack Icon
-                                        </span>
-                                    </button>
-                                )}
-                                {PRESETS.filter(p => !editingCrop?.icon || p.icon !== selectedPreset.icon).slice(0, editingCrop?.icon ? 4 : 5).map(preset => {
-                                    const Icon = ICON_MAP[preset.icon];
-                                    const isSelected = selectedPreset.id === preset.id && !editingCrop?.icon;
-                                    const isDisabled = !!editingCrop?.icon;
-                                    return (
-                                        <button
-                                            key={preset.id}
-                                            type="button"
-                                            onClick={() => {
-                                                if (isDisabled) return;
-                                                setSelectedPreset(preset);
-                                            }}
-                                            className={`flex flex-col items-center justify-center gap-2 p-3 rounded-xl border transition-all duration-200 ${isSelected
-                                                ? 'bg-slate-800 border-emerald-500 shadow-lg shadow-emerald-500/10'
-                                                : (isDisabled ? 'bg-slate-900/50 border-slate-800/50 opacity-30 cursor-not-allowed' : 'bg-slate-950/50 border-slate-800 hover:bg-slate-800 hover:border-slate-700')
-                                                }`}
-                                        >
-                                            <Icon
-                                                size={24}
-                                                className={`transition-colors ${isSelected ? 'text-emerald-400' : 'text-slate-500'}`}
-                                                strokeWidth={2}
-                                            />
-                                            <span className={`text-[10px] font-bold uppercase tracking-wide ${isSelected ? 'text-slate-200' : 'text-slate-500'}`}>
-                                                {preset.label}
-                                            </span>
-                                        </button>
-                                    );
-                                })}
-                            </div>
-
-                            {/* Themes Grid */}
-                            <div className={`grid grid-cols-5 gap-2 ${editingCrop?.icon ? 'opacity-30 pointer-events-none grayscale-[0.5]' : ''}`}>
-                                {THEMES.map(theme => {
-                                    const color = COLORS.find(c => c.name === theme.colorName);
-                                    const isSelected = selectedTheme.id === theme.id;
-                                    return (
-                                        <button
-                                            key={theme.id}
-                                            type="button"
-                                            onClick={() => setSelectedTheme(theme)}
-                                            className={`group relative h-10 rounded-lg overflow-hidden border transition-all duration-200 ${isSelected
-                                                ? 'border-white scale-105 ring-2 ring-slate-900 shadow-lg'
-                                                : 'border-transparent opacity-60 hover:opacity-100 hover:scale-105'
-                                                }`}
-                                        >
-                                            <div className={`absolute inset-0 ${color?.class}`} />
-                                            <span className="relative z-10 text-[10px] font-bold text-white uppercase tracking-wider shadow-sm drop-shadow-md">
-                                                {theme.label}
-                                            </span>
-                                        </button>
-                                    );
-                                })}
-                            </div>
-                            {editingCrop?.icon && (
-                                <p className="text-[10px] text-slate-500 mt-2 italic flex items-center gap-1.5 px-1">
-                                    <Box size={10} /> Brand styles are locked for this modpack
-                                </p>
-                            )}
-                        </div>
+                        {/* Icon Style Removed in favor of Dynamic Icons */}
 
                         {/* Loader & Version Row */}
                         <div className="grid grid-cols-2 gap-4">

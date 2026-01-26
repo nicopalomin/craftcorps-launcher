@@ -2,17 +2,7 @@ import React from 'react';
 import { Plus, Archive } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 // We'll reimplement the card inline for 'Compact' mode to avoid touching the main one extensively
-import {
-    Sprout, Pickaxe, Axe, Sword, Shield, Box,
-    Map, Compass, Flame, Snowflake, Droplet,
-    Zap, Heart, Skull, Ghost, Trophy
-} from 'lucide-react';
-
-const ICON_MAP = {
-    Sprout, Pickaxe, Axe, Sword, Shield, Box,
-    Map, Compass, Flame, Snowflake, Droplet,
-    Zap, Heart, Skull, Ghost, Trophy
-};
+import InstanceIcon from '../common/InstanceIcon';
 
 const CompactInstanceItem = React.memo(({ instance, isSelected, onClick }) => {
     return (
@@ -23,12 +13,8 @@ const CompactInstanceItem = React.memo(({ instance, isSelected, onClick }) => {
                 : 'bg-white/5 border-white/5 hover:bg-white/10 hover:border-white/10'
                 }`}
         >
-            <div className={`w-10 h-10 rounded-lg ${instance.icon ? 'bg-transparent' : instance.iconColor} flex items-center justify-center ${instance.glyphColor || 'text-slate-900'} overflow-hidden`}>
-                {instance.icon ? (
-                    <img src={instance.icon} alt={instance.name} className="w-full h-full object-cover" />
-                ) : (
-                    React.createElement(ICON_MAP[instance.iconKey] || Sprout, { size: 20 })
-                )}
+            <div className="w-10 h-10 rounded-lg overflow-hidden">
+                <InstanceIcon instance={instance} size={40} />
             </div>
 
             {/* Version Badge */}

@@ -150,6 +150,14 @@ export const useAccounts = () => {
         setShowProfileMenu(false);
     };
 
+    const handleLogoutAll = () => {
+        setAccounts([]);
+        setActiveAccount(null);
+        localStorage.removeItem('craftcorps_accounts');
+        localStorage.removeItem('craftcorps_active_account');
+        setShowProfileMenu(false);
+    };
+
     const handleRefreshBackend = async () => {
         console.log('[Auth] Manually triggering backend session refresh...');
         const result = await window.electronAPI.refreshBackendSession();
@@ -184,6 +192,7 @@ export const useAccounts = () => {
         handleAccountSwitch,
         handleAddAccount,
         handleLogout,
+        handleLogoutAll,
         handleRefreshBackend,
         isRefreshing,
         authError

@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Activity, Power, Globe, ExternalLink } from 'lucide-react';
+import InstanceIcon from './InstanceIcon';
 
 const ActiveInstances = ({ onInstanceClick }) => {
     const [instances, setInstances] = useState([]);
@@ -70,8 +71,9 @@ const ActiveInstances = ({ onInstanceClick }) => {
                             >
                                 <div className="flex items-center gap-2 overflow-hidden">
                                     {/* Icon */}
+                                    {/* Icon */}
                                     <div className="w-6 h-6 rounded bg-slate-800 flex items-center justify-center shrink-0 overflow-hidden">
-                                        {inst.icon ? <img src={inst.icon} className="w-full h-full object-cover" alt="" /> : <Globe size={12} className="text-slate-500" />}
+                                        <InstanceIcon instance={inst} size={24} />
                                     </div>
                                     <div className="flex flex-col overflow-hidden min-w-0">
                                         <span className="text-xs font-medium text-slate-200 truncate">{inst.name}</span>

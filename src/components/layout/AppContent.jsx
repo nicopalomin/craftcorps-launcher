@@ -17,7 +17,7 @@ const AppContent = ({
     activeAccount, setShowLoginModal, disableAnimations,
     selectedInstance, launchStatus, launchStep, launchProgress, launchFeedback, handlePlay, handleStop, isRefreshing,
     instances, setSelectedInstance, handleNewCrop, handleEditCrop,
-    accounts, onAccountSwitchWithToast, showProfileMenu, setShowProfileMenu, onLogoutWithToast,
+    accounts, onAccountSwitchWithToast, showProfileMenu, setShowProfileMenu, onLogoutWithToast, onLogoutAllWithToast,
     onDeleteCropWithToast, reorderInstances,
     ram, setRam, javaPath, setJavaPath, hideOnLaunch, setHideOnLaunch, setDisableAnimations, availableJavas, enableDiscordRPC, setEnableDiscordRPC,
     startOnStartup, setStartOnStartup,
@@ -173,7 +173,7 @@ const AppContent = ({
                     <DiscoverView selectedInstance={selectedInstance} activeAccount={activeAccount} />
                 </div>
             )}
-            {activeTab === 'profile' && <ProfileView activeAccount={activeAccount} accounts={accounts} instances={instances} theme={theme} onLogout={onLogoutWithToast} />}
+            {activeTab === 'profile' && <ProfileView activeAccount={activeAccount} accounts={accounts} instances={instances} theme={theme} onLogout={onLogoutWithToast} onLogoutAll={onLogoutAllWithToast} setActiveTab={setActiveTab} setShowProfileMenu={setShowProfileMenu} />}
             {/* Market View - Keep Alive */}
             {(activeTab === 'market' || hasOpenedMarket) && (
                 <div className={`flex-1 flex-col h-full overflow-hidden ${activeTab === 'market' ? 'flex' : 'hidden'}`}>

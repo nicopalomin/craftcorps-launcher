@@ -24,6 +24,8 @@ export const useWardrobe = (activeAccount) => {
 
     // Current Equipped Skin on Mojang
     const [currentSkin, setCurrentSkin] = useState({
+        id: 'current_mojang',
+        name: 'Current Skin',
         skinUrl: null,
         capeUrl: null,
         model: 'classic'
@@ -151,6 +153,8 @@ export const useWardrobe = (activeAccount) => {
                 const defaultModel = getDefaultModel(activeAccount?.uuid);
                 setCurrentSkin(prev => ({
                     ...prev,
+                    id: 'current_mojang',
+                    name: 'Current Skin',
                     skinUrl: null,
                     model: defaultModel,
                     type: defaultModel === 'slim' ? 'Slim' : 'Classic'
@@ -491,8 +495,8 @@ export const useWardrobe = (activeAccount) => {
 
     const viewerSkin = useMemo(() => {
         const base = selectedSkin || currentSkin;
-        const STEVE_URL = "https://textures.minecraft.net/texture/3b60a1f6d5aa4abb850eb34673899478148b6154564c4786650bf6b1fd85a3";
-        const ALEX_URL = "https://textures.minecraft.net/texture/6063495048259ca54877fc388904791e84704383c070d6945a08331575810089";
+        const STEVE_URL = "https://mc-heads.net/skin/steve";
+        const ALEX_URL = "https://mc-heads.net/skin/alex";
 
         return {
             ...base,

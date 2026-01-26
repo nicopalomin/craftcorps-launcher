@@ -95,15 +95,13 @@ const WardrobeLibrary = ({
                 {activeTab === 'skins' ? (
                     <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 pt-4 pb-8">
                         {/* Current Equipped Card */}
-                        {currentSkin.skinUrl && (
-                            <SkinCard
-                                skin={currentSkin}
-                                selectedSkin={selectedSkin}
-                                isCurrentMojang={true}
-                                theme={theme}
-                                setSelectedSkin={setSelectedSkin}
-                            />
-                        )}
+                        <SkinCard
+                            skin={currentSkin}
+                            selectedSkin={selectedSkin}
+                            isCurrentMojang={true}
+                            theme={theme}
+                            setSelectedSkin={setSelectedSkin}
+                        />
 
                         {savedSkins.map(skin => (
                             <SkinCard

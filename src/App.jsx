@@ -140,6 +140,7 @@ function App() {
         handleAccountSwitch,
         handleAddAccount,
         handleLogout,
+        handleLogoutAll,
         isRefreshing,
         authError
     } = useAccounts();
@@ -207,6 +208,12 @@ function App() {
     const onLogoutWithToast = () => {
         handleLogout();
         addToast(t('toast_logout'), 'info');
+    };
+
+    const onLogoutAllWithToast = () => {
+        handleLogoutAll();
+        addToast("Logged out of all accounts", 'info');
+        setActiveTab('home'); // Send back to welcome screen
     };
 
     const onAccountSwitchWithToast = (account) => {
@@ -365,7 +372,7 @@ function App() {
                             activeAccount={activeAccount} setShowLoginModal={setShowLoginModal} disableAnimations={disableAnimations}
                             selectedInstance={selectedInstance} launchStatus={launchStatus} launchStep={launchStep} launchProgress={launchProgress} launchFeedback={launchFeedback} handlePlay={handlePlay} handleStop={handleStop} isRefreshing={isRefreshing}
                             instances={instances} setSelectedInstance={setSelectedInstance} handleNewCrop={handleNewCrop} handleEditCrop={handleEditCrop}
-                            accounts={accounts} onAccountSwitchWithToast={onAccountSwitchWithToast} showProfileMenu={showProfileMenu} setShowProfileMenu={setShowProfileMenu} onLogoutWithToast={onLogoutWithToast}
+                            accounts={accounts} onAccountSwitchWithToast={onAccountSwitchWithToast} showProfileMenu={showProfileMenu} setShowProfileMenu={setShowProfileMenu} onLogoutWithToast={onLogoutWithToast} onLogoutAllWithToast={onLogoutAllWithToast}
                             onDeleteCropWithToast={onDeleteCropWithToast} reorderInstances={reorderInstances}
                             ram={ram} setRam={setRam} javaPath={javaPath} setJavaPath={setJavaPath} hideOnLaunch={hideOnLaunch} setHideOnLaunch={setHideOnLaunch} setDisableAnimations={setDisableAnimations} availableJavas={availableJavas} enableDiscordRPC={enableDiscordRPC} setEnableDiscordRPC={setEnableDiscordRPC}
                             startOnStartup={startOnStartup} setStartOnStartup={setStartOnStartup}

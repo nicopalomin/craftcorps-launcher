@@ -1,15 +1,5 @@
 import React from 'react';
-import {
-    Sprout, Pickaxe, Axe, Sword, Shield, Box,
-    Map, Compass, Flame, Snowflake, Droplet,
-    Zap, Heart, Skull, Ghost, Trophy
-} from 'lucide-react';
-
-const ICON_MAP = {
-    Sprout, Pickaxe, Axe, Sword, Shield, Box,
-    Map, Compass, Flame, Snowflake, Droplet,
-    Zap, Heart, Skull, Ghost, Trophy
-};
+import InstanceIcon from './InstanceIcon';
 
 const QuickSelectCard = ({ instance, isSelected, onClick }) => (
     <button
@@ -19,12 +9,8 @@ const QuickSelectCard = ({ instance, isSelected, onClick }) => (
             : 'bg-slate-900/50 border-slate-800 hover:bg-slate-800 hover:border-slate-700'
             }`}
     >
-        <div className={`w-10 h-10 rounded-lg ${instance.icon ? 'bg-transparent' : instance.iconColor} flex items-center justify-center ${instance.glyphColor || 'text-slate-900'} shadow-md overflow-hidden`}>
-            {instance.icon ? (
-                <img src={instance.icon} alt={instance.name} className="w-full h-full object-cover" />
-            ) : (
-                React.createElement(ICON_MAP[instance.iconKey] || Sprout, { size: 20 })
-            )}
+        <div className="w-10 h-10 rounded-lg overflow-hidden">
+            <InstanceIcon instance={instance} size={40} />
         </div>
         <div className="min-w-0">
             <h4 className={`text-sm font-bold truncate ${isSelected ? 'text-slate-200' : 'text-slate-400'}`}>{instance.name}</h4>

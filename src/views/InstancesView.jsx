@@ -1,14 +1,9 @@
 import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
-    Sprout, Edit3, Trash2, Plus, GripVertical, Server, X, Play,
-    Pickaxe, Axe, Sword, Shield, Box, Map, Compass, Flame, Snowflake, Droplet, Zap, Heart, Skull, Ghost, Trophy
+    Sprout, Edit3, Trash2, Plus, GripVertical, Server, X, Play
 } from 'lucide-react';
-const ICON_MAP = {
-    Sprout, Pickaxe, Axe, Sword, Shield, Box,
-    Map, Compass, Flame, Snowflake, Droplet,
-    Zap, Heart, Skull, Ghost, Trophy
-};
+import InstanceIcon from '../components/common/InstanceIcon';
 
 const InstancesView = ({ instances, onEditCrop, onDeleteCrop, onSelectInstance, onNewCrop, onReorder }) => {
     const [draggedIndex, setDraggedIndex] = useState(null);
@@ -157,12 +152,9 @@ const InstancesView = ({ instances, onEditCrop, onDeleteCrop, onSelectInstance, 
 
                             <div className="flex gap-4 mb-5 relative z-10 flex-1">
                                 {/* Icon */}
-                                <div className={`w-12 h-12 rounded-lg flex-shrink-0 ${inst.icon ? 'bg-transparent' : inst.iconColor} flex items-center justify-center ${inst.glyphColor || 'text-slate-900'} overflow-hidden shadow-inner`}>
-                                    {inst.icon ? (
-                                        <img src={inst.icon} alt={inst.name} className="w-full h-full object-cover" />
-                                    ) : (
-                                        React.createElement(ICON_MAP[inst.iconKey] || Sprout, { size: 24 })
-                                    )}
+                                {/* Icon */}
+                                <div className="w-12 h-12 rounded-lg flex-shrink-0 overflow-hidden">
+                                    <InstanceIcon instance={inst} size={48} />
                                 </div>
 
                                 {/* Content */}

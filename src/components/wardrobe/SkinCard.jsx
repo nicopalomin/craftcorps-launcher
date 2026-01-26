@@ -60,7 +60,7 @@ const SkinCard = ({
                 )}
             </div>
             <div className="px-1">
-                {editingSkinId === skin.id ? (
+                {(editingSkinId === skin.id && !isCurrentMojang) ? (
                     <input
                         type="text"
                         value={editName}

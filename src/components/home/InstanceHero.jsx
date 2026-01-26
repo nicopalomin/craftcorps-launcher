@@ -9,11 +9,7 @@ import { formatLastPlayed } from '../../utils/dateUtils';
 import { useTranslation } from 'react-i18next';
 import { telemetry } from '../../services/TelemetryService';
 
-const ICON_MAP = {
-    Sprout, Pickaxe, Axe, Sword, Shield, Box,
-    Map, Compass, Flame, Snowflake, Droplet,
-    Zap, Heart, Skull, Ghost, Trophy
-};
+import InstanceIcon from '../common/InstanceIcon';
 
 const formatPlayTime = (ms) => {
     if (!ms) return '0m';
@@ -89,14 +85,11 @@ const InstanceHero = React.memo(({
             <div className={`mx-auto glass-spotlight shadow-2xl transition-all duration-500 ${allowOverflow ? 'overflow-visible' : 'overflow-hidden'} ${isHorizontalLayout ? 'flex items-center gap-[4vw] text-left p-[clamp(1.5rem,3vw,3rem)] rounded-[clamp(2rem,5vw,4rem)] w-[clamp(500px,85vw,1100px)]' : 'flex flex-col items-center text-center p-[clamp(1.5rem,4vw,3.5rem)] rounded-[clamp(2rem,6vw,3.5rem)] w-[clamp(280px,90vw,600px)]'}`}>
 
                 {/* Instance Icon */}
+                {/* Instance Icon */}
                 <div
-                    className={`${isHorizontalLayout ? 'w-[clamp(4rem,10vw,6rem)] h-[clamp(4rem,10vw,6rem)] shrink-0' : 'w-[clamp(5rem,15vw,7rem)] h-[clamp(5rem,15vw,7rem)] mb-[clamp(1rem,3vw,1.5rem)]'} rounded-[clamp(1rem,2vw,1.5rem)] ${selectedInstance.icon ? 'bg-transparent' : selectedInstance.iconColor} flex items-center justify-center ${selectedInstance.glyphColor || 'text-slate-900'} shadow-2xl transition-all duration-300 ring-4 ring-white/5 overflow-hidden`}
+                    className={`${isHorizontalLayout ? 'w-[clamp(4rem,10vw,6rem)] h-[clamp(4rem,10vw,6rem)] shrink-0' : 'w-[clamp(5rem,15vw,7rem)] h-[clamp(5rem,15vw,7rem)] mb-[clamp(1rem,3vw,1.5rem)]'} rounded-[clamp(1rem,2vw,1.5rem)] transition-all duration-300 overflow-hidden`}
                 >
-                    {selectedInstance.icon ? (
-                        <img src={selectedInstance.icon} alt={selectedInstance.name} className="w-full h-full object-cover" />
-                    ) : (
-                        React.createElement(ICON_MAP[selectedInstance.iconKey] || Sprout, { size: isHorizontalLayout ? 40 : 48 })
-                    )}
+                    <InstanceIcon instance={selectedInstance} size={100} />
                 </div>
 
                 {/* Info & Play Content */}
