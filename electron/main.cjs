@@ -190,6 +190,8 @@ async function createWindow() {
             // Start main window at 0 opacity
             mainWindow.setOpacity(0);
             mainWindow.show();
+            mainWindow.setAlwaysOnTop(true);
+            mainWindow.setAlwaysOnTop(false);
             mainWindow.focus();
 
             // Smooth cross-fade
@@ -199,6 +201,9 @@ async function createWindow() {
                 if (opacity >= 1) {
                     mainWindow.setOpacity(1);
                     clearInterval(fadeInInterval);
+
+                    // Final focus push
+                    mainWindow.focus();
 
                     // Destroy splash once main is fully opaque
                     if (splashWindow && !splashWindow.isDestroyed()) {

@@ -32,7 +32,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
     linkProfile: (payload) => ipcRenderer.invoke('link-profile', payload),
 
     // Unified Wardrobe (Authenticated via main process)
-    fetchDetailedCosmetics: () => ipcRenderer.invoke('fetch-detailed-cosmetics'),
+    fetchDetailedCosmetics: (uuid) => ipcRenderer.invoke('fetch-detailed-cosmetics', uuid),
     equipCosmetic: (payload) => ipcRenderer.invoke('equip-cosmetic', payload),
 
     selectFile: () => ipcRenderer.invoke('select-file'),

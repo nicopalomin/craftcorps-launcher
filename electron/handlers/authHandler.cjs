@@ -285,9 +285,9 @@ function setupAuthHandlers(getMainWindow) {
 
     // --- Cosmetics ---
 
-    ipcMain.handle('fetch-detailed-cosmetics', async () => {
+    ipcMain.handle('fetch-detailed-cosmetics', async (event, uuid) => {
         try {
-            return await authService.getPlayerCosmetics();
+            return await authService.getPlayerCosmetics(uuid);
         } catch (error) {
             console.error('[AuthHandler] Fetch detailed cosmetics failed:', error);
             return null;
@@ -300,7 +300,7 @@ function setupAuthHandlers(getMainWindow) {
             const res = await authService.fetchAuthenticated(url, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ capeId: cosmeticId, playerUuid })
+                body: JSON.stringify({ cosmeticId: cosmeticId, playerUuid })
             });
 
             if (!res.ok) {

@@ -11,7 +11,8 @@ const WardrobePreview = ({
     selectedSkin,
     activeAccount,
     theme,
-    isActive = true // Default to true if not passed
+    isActive = true, // Default to true if not passed
+    isInitializing = false
 }) => {
     return (
         <div className="lg:w-2/5 flex flex-col gap-6 h-full">
@@ -25,7 +26,12 @@ const WardrobePreview = ({
 
                 {/* 3D Model Viewer */}
                 <div className="relative z-10 w-full h-full flex items-center justify-center">
-                    {isActive ? (
+                    {isInitializing ? (
+                        <div className="flex flex-col items-center justify-center gap-3 text-slate-400">
+                            <div className="w-8 h-8 rounded-full border-2 border-slate-700/50 border-t-emerald-500 animate-spin" />
+                            <span className="text-[10px] font-bold tracking-widest uppercase opacity-70">Loading Wardrobe...</span>
+                        </div>
+                    ) : isActive ? (
                         <SkinViewer
                             skinUrl={viewerSkin.skinUrl}
                             capeUrl={viewerSkin.capeUrl}

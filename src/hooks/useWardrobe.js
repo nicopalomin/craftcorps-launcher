@@ -51,7 +51,40 @@ export const useWardrobe = (activeAccount) => {
     }, [activeCosmetics, activeAccount]);
 
     // Available Cosmetics (Fetched from API)
-    const [ownedCosmetics, setOwnedCosmetics] = useState([]);
+    const [ownedCosmetics, setOwnedCosmetics] = useState(() => {
+        if (!activeAccount) return [];
+        try {
+            const accountId = activeAccount.uuid || activeAccount.id;
+
+            // 1. Try account-specific cache (Best: includes full enriched data + ownership)
+            const saved = localStorage.getItem(`craftcorps_owned_cosmetics_${accountId}`);
+            if (saved) return JSON.parse(saved);
+
+            // 2. Try global catalog + account's pre-fetched ownership (Good fallback)
+            const catalog = localStorage.getItem('craftcorps_cosmetic_catalog');
+            if (catalog) {
+                const parsed = JSON.parse(catalog);
+
+                // Extract owned IDs from account object if available
+                let ownedIds = [];
+                if (activeAccount.cosmetics) {
+                    const cosmetics = Array.isArray(activeAccount.cosmetics)
+                        ? activeAccount.cosmetics
+                        : activeAccount.cosmetics.cosmetics;
+
+                    if (Array.isArray(cosmetics)) {
+                        ownedIds = cosmetics.map(c => c.cosmeticId || c.id);
+                    }
+                }
+
+                return parsed.map(c => ({
+                    ...c,
+                    isOwned: ownedIds.includes(c.cosmeticId)
+                }));
+            }
+        } catch (e) { return []; }
+        return [];
+    });
     const [isLoadingCosmetics, setIsLoadingCosmetics] = useState(false);
 
     // Loading States
@@ -125,74 +158,65 @@ export const useWardrobe = (activeAccount) => {
     };
 
     // Load Cosmetics
-    const loadCosmetics = async (username) => {
-        console.log('[useWardrobe] loadCosmetics called for:', username);
+    const loadCosmetics = async (username, forceRefresh = false) => {
+        console.log('[useWardrobe] loadCosmetics called for:', username, 'force:', forceRefresh);
         setIsLoadingCosmetics(true);
         try {
-            console.log('[useWardrobe] Fetching catalog from API...');
-            // 1. Fetch Catalog (All)
-            const allCosmetics = await fetchAllCosmetics();
-            console.log('[useWardrobe] API returned:', allCosmetics.length, 'cosmetics');
+            // 1. Fetch Catalog & Ownership in parallel
+            console.log('[useWardrobe] Fetching catalog and ownership...');
+
+            const uuid = activeAccount?.uuid || activeAccount?.id;
+
+            // Define the fetches
+            const catalogPromise = fetchAllCosmetics();
+
+            // Only use cached detailed if not forcing refresh AND it's actually populated
+            const hasDetailedCache = !forceRefresh && activeAccount?.cosmetics?.cosmetics?.length > 0;
+            const ownershipPromise = hasDetailedCache
+                ? Promise.resolve(activeAccount.cosmetics)
+                : fetchDetailedCosmetics(activeAccount.backendAccessToken || activeAccount.accessToken, uuid);
+
+            const [allCosmetics, detailed] = await Promise.all([catalogPromise, ownershipPromise]);
 
             // Use fallback if API is not deployed yet
             const catalogData = allCosmetics.length > 0 ? allCosmetics : FALLBACK_COSMETICS;
 
-            // 2. Fetch Player Owned details
+            // 2. Extract Owned IDs
             let ownedIds = [];
             let activeSet = new Set();
 
-            if (activeAccount) {
-                let uuid = activeAccount.uuid || activeAccount.id;
-                if (!uuid || uuid.length < 32) {
-                    // Try to fetch UUID if missing
-                    const data = await window.electronAPI.getMinecraftSkin(activeAccount.name);
-                    if (data?.uuid) uuid = data.uuid;
+            if (detailed) {
+                if (detailed.cosmetics) {
+                    ownedIds = detailed.cosmetics.map(c => c.cosmeticId);
                 }
 
-                if (uuid && uuid.length >= 32) {
-                    // A. Use Authenticated Detailed Endpoint (Preferred)
-                    if (activeAccount.backendAccessToken || activeAccount.accessToken) {
-                        try {
-                            // First, check if we already have pre-fetched cosmetics in the account object
-                            let detailed = activeAccount.cosmetics;
-
-                            // If not, fetch from main process (which handles caching/refresh)
-                            if (!detailed) {
-                                detailed = await fetchDetailedCosmetics(activeAccount.backendAccessToken || activeAccount.accessToken);
-                            }
-
-                            if (detailed && detailed.cosmetics) {
-                                ownedIds = detailed.cosmetics.map(c => c.cosmeticId);
-                                detailed.cosmetics.forEach(c => {
-                                    if (c.isActive) activeSet.add(c.cosmeticId);
-                                });
-                                console.log('[useWardrobe] Loaded detailed cosmetics:', ownedIds);
-                            }
-                        } catch (err) {
-                            console.warn("Auth fetch failed, falling back to public", err);
-                        }
-                    }
-
-                    // B. Fallback to Public Endpoint if no auth or auth failed (and no owned found yet)
-                    if (ownedIds.length === 0) {
-                        ownedIds = await fetchPlayerCosmetics(uuid);
-                    }
+                // New Format: check activeCosmetics map
+                if (detailed.activeCosmetics) {
+                    Object.values(detailed.activeCosmetics).forEach(cosmeticId => {
+                        if (cosmeticId) activeSet.add(cosmeticId);
+                    });
+                } else if (detailed.cosmetics) {
+                    detailed.cosmetics.forEach(c => {
+                        if (c.isActive) activeSet.add(c.cosmeticId);
+                    });
                 }
             }
 
+            // Fallback to public endpoint if no auth found or empty
+            if (ownedIds.length === 0 && uuid) {
+                ownedIds = await fetchPlayerCosmetics(uuid);
+            }
+
             // 3. Merge & Update State
-            const enriched = catalogData.map(c => {
-                // Handle texture URL - convert relative paths to full API URLs
+            const enrich = (catalog) => catalog.map(c => {
                 let textureUrl = c.textureUrl;
                 if (textureUrl && textureUrl.startsWith('/')) {
-                    // Relative path from API - convert to full URL
                     textureUrl = `https://api.craftcorps.net${textureUrl}`;
                 } else if (!textureUrl) {
-                    // No texture URL - use the cosmetic ID endpoint
                     textureUrl = getCosmeticTextureUrl(c.cosmeticId);
                 }
 
-                const id = c.cosmeticId; // Normalize
+                const id = c.cosmeticId;
                 return {
                     ...c,
                     texture: textureUrl,
@@ -202,10 +226,21 @@ export const useWardrobe = (activeAccount) => {
                 };
             });
 
-            console.log('[useWardrobe] Enriched cosmetics:', enriched.length);
+            const enriched = enrich(catalogData);
+            console.log('[useWardrobe] Enriched cosmetics:', enriched.length, 'Owned:', ownedIds.length);
             setOwnedCosmetics(enriched);
 
-            // Sync Active Cosmetics from Server State
+            // 4. Update Cache
+            if (activeAccount) {
+                const accountId = activeAccount.uuid || activeAccount.id;
+                localStorage.setItem(`craftcorps_owned_cosmetics_${accountId}`, JSON.stringify(enriched));
+            }
+            localStorage.setItem('craftcorps_cosmetic_catalog', JSON.stringify(enriched.map(c => ({
+                ...c,
+                isOwned: false
+            }))));
+
+            // 5. Sync Active Cosmetics
             if (activeSet.size > 0) {
                 const activeItems = enriched.filter(c => activeSet.has(c.id));
                 setActiveCosmetics(activeItems);
@@ -223,23 +258,48 @@ export const useWardrobe = (activeAccount) => {
         }
     };
 
+    const [isInitializing, setIsInitializing] = useState(true);
+
     useEffect(() => {
         if (activeAccount?.name) {
             // Load cached cosmetics immediately for the new account
             const accountId = activeAccount.uuid || activeAccount.id;
             try {
-                const saved = localStorage.getItem(`craftcorps_active_cosmetics_${accountId}`);
-                if (saved) {
-                    setActiveCosmetics(JSON.parse(saved));
+                // 1. Sync Active (Equipped) items
+                const savedActive = localStorage.getItem(`craftcorps_active_cosmetics_${accountId}`);
+                if (savedActive) {
+                    setActiveCosmetics(JSON.parse(savedActive));
                 } else {
                     setActiveCosmetics([]);
                 }
+
+                // 2. Sync Owned list (to avoid "locked" look)
+                const savedOwned = localStorage.getItem(`craftcorps_owned_cosmetics_${accountId}`);
+                if (savedOwned) {
+                    setOwnedCosmetics(JSON.parse(savedOwned));
+                } else {
+                    // Start fresh if no cache
+                    setOwnedCosmetics([]);
+                }
             } catch (e) {
                 setActiveCosmetics([]);
+                setOwnedCosmetics([]);
             }
 
-            loadCurrentSkin(activeAccount.name);
-            loadCosmetics(activeAccount.name);
+            // Defer heavy network calls to let UI mount smoothly
+            setIsInitializing(true);
+            const timer = setTimeout(() => {
+                Promise.all([
+                    loadCurrentSkin(activeAccount.name),
+                    loadCosmetics(activeAccount.name)
+                ]).finally(() => {
+                    setIsInitializing(false);
+                });
+            }, 200); // Reduced delay for snappier feel
+
+            return () => clearTimeout(timer);
+        } else {
+            setIsInitializing(false);
         }
     }, [activeAccount]);
 
@@ -438,7 +498,7 @@ export const useWardrobe = (activeAccount) => {
 
     const refreshCosmetics = () => {
         if (activeAccount?.name) {
-            loadCosmetics(activeAccount.name);
+            loadCosmetics(activeAccount.name, true);
         }
     };
 
@@ -466,6 +526,7 @@ export const useWardrobe = (activeAccount) => {
         categorizedCosmetics,
         viewerSkin,
         unequippedCosmeticSlots,
-        refreshCosmetics
+        refreshCosmetics,
+        isInitializing
     };
 };

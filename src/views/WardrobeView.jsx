@@ -34,7 +34,8 @@ const WardrobeView = ({ theme, activeAccount, isActive }) => {
         categorizedCosmetics,
         viewerSkin,
         unequippedCosmeticSlots,
-        refreshCosmetics
+        refreshCosmetics,
+        isInitializing
     } = useWardrobe(activeAccount);
 
     return (
@@ -78,6 +79,7 @@ const WardrobeView = ({ theme, activeAccount, isActive }) => {
                     activeAccount={activeAccount}
                     theme={theme}
                     isActive={isActive}
+                    isInitializing={isInitializing}
                 />
 
                 {/* Right Column: Library */}

@@ -301,12 +301,15 @@ class AuthService {
         return await res.json();
     }
 
-    async getPlayerCosmetics() {
-        log.info('[AuthService] Fetching player cosmetics...');
+    async getPlayerCosmetics(uuid) {
+        log.info(`[AuthService] Fetching player cosmetics${uuid ? ` for ${uuid}` : ''}...`);
         try {
-            const res = await this.fetchAuthenticated(`https://api.craftcorps.net/cosmetics/player`);
+            const url = `https://api.craftcorps.net/cosmetics/player${uuid ? `?uuid=${uuid}` : ''}`;
+            const res = await this.fetchAuthenticated(url);
+            log.info("Response: " + res.ok);
             if (res.ok) {
                 const data = await res.json();
+                log.info("Data: " + JSON.stringify(data));
                 if (this.store && this.userId) {
                     this.store.set(`player_cosmetics_${this.userId}`, data);
                 }

@@ -192,21 +192,25 @@ export const useGameLaunch = (selectedInstance, ram, activeAccount, updateLastPl
 
             if (gameDir && gameDir !== selectedInstance.path) return;
 
-            // setLaunchStatus('idle'); // Handled by runningInstances mostly
             setLaunchStep("Game exited.");
-            const exitMsg = `Process exited with code ${code} `;
-            setLogs(prev => [...prev, { time: "Now", type: "INFO", message: exitMsg }]);
+            const now = new Date();
+            const timeStr = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}:${now.getSeconds().toString().padStart(2, '0')} `;
+
+            const exitMsg = `Process exited with code ${code}`;
+            setLogs(prev => [...prev, { time: timeStr, type: code === 0 ? "INFO" : "ERROR", message: exitMsg }]);
 
             if (window.electronAPI) {
                 window.electronAPI.show();
             }
 
-            if (launchStatusRef.current === 'launching' && code !== 0 && code !== -1) {
-                setLaunchFeedback((prev) => prev === 'error' ? 'error' : 'error');
-                setLaunchStep("Launch Failed.");
-
-                if (code !== 1) {
-                    setShowConsole(true);
+            // Always show console on non-zero exit (error/crash) to help with debugging
+            if (code !== 0 && code !== -1) {
+                setShowConsole(true);
+                if (launchStatusRef.current === 'launching') {
+                    setLaunchFeedback('error');
+                    setLaunchStep("Launch Failed.");
+                } else {
+                    setLaunchStep("Game Crashed.");
                 }
                 setTimeout(() => setLaunchFeedback(null), 3000);
             }

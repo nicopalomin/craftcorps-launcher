@@ -74,14 +74,14 @@ const ProfileView = ({ activeAccount, accounts, instances, theme, onLogout }) =>
                 let uuid = activeAccount.uuid || activeAccount.id;
 
                 // Try to use authenticated endpoint first
-                if (activeAccount.accessToken) {
+                if (window.electronAPI?.fetchDetailedCosmetics) {
                     try {
-                        const detailed = await fetchDetailedCosmetics(activeAccount.accessToken, uuid);
+                        const detailed = await window.electronAPI.fetchDetailedCosmetics(uuid);
                         if (detailed && detailed.cosmetics) {
                             ownedIds = detailed.cosmetics.map(c => c.cosmeticId);
                         }
                     } catch (e) {
-                        // Fallback
+                        console.warn("Profile detailed fetch failed", e);
                     }
                 }
 

@@ -27,15 +27,17 @@ export const fetchPlayerCosmetics = async (playerUuid) => {
  * Endpoint: GET /cosmetics/player
  * @param {string} token 
  */
-export const fetchDetailedCosmetics = async (token) => {
+export const fetchDetailedCosmetics = async (token, uuid) => {
     try {
         // Use Electron IPC to handle authenticated request with auto-refresh
         if (window.electronAPI?.fetchDetailedCosmetics) {
-            return await window.electronAPI.fetchDetailedCosmetics();
+            return await window.electronAPI.fetchDetailedCosmetics(uuid);
         }
 
+        const url = `${BASE_URL}/cosmetics/player${uuid ? `?uuid=${uuid}` : ''}`;
+
         // Fallback for dev/browser if needed (though session token management is complex there)
-        const response = await fetch(`${BASE_URL}/cosmetics/player`, {
+        const response = await fetch(url, {
             method: 'GET',
             headers: {
                 'Authorization': `Bearer ${token}`,
@@ -58,7 +60,7 @@ export const fetchDetailedCosmetics = async (token) => {
  */
 export const fetchAllCosmetics = async () => {
     try {
-        const response = await fetch(`${BASE_URL}/cosmetics/catalog`);
+        const response = await fetch(`${BASE_URL}/cosmetics/catalog?t=${Date.now()}`);
         if (response.ok) {
             const data = await response.json();
             return data;

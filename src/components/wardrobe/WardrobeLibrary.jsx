@@ -133,12 +133,12 @@ const WardrobeLibrary = ({
                     </div>
                 ) : (
                     <div className="space-y-12 pb-8">
-                        {isLoadingCosmetics ? (
+                        {isLoadingCosmetics && Object.keys(categorizedCosmetics).every(cat => categorizedCosmetics[cat].length === 0) ? (
                             <div className="py-20 text-center">
                                 <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-emerald-500 mx-auto mb-4 shadow-[0_0_15px_rgba(16,185,129,0.3)]"></div>
                                 <p className="text-slate-500 font-medium">Synchronizing wardrobe...</p>
                             </div>
-                        ) : Object.keys(categorizedCosmetics).length === 0 && unequippedCosmeticSlots.length === 0 ? (
+                        ) : Object.keys(categorizedCosmetics).every(cat => categorizedCosmetics[cat].length === 0) && unequippedCosmeticSlots.length === 0 ? (
                             <div className="py-20 text-center text-slate-500 flex flex-col items-center gap-4">
                                 <div className="w-16 h-16 bg-slate-900/40 rounded-full flex items-center justify-center border border-white/5">
                                     <Sparkles size={32} className="opacity-20" />
