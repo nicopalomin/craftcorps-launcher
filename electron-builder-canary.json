@@ -11,7 +11,7 @@
         "artifactName": "CraftCorps-Canary-Setup-${version}.exe"
     },
     "mac": {
-        "artifactName": "CraftCorps-Canary-Setup-${version}.${ext}"
+        "artifactName": "CraftCorps-Canary-Setup-${version}-${arch}.${ext}"
     },
     "linux": {
         "artifactName": "CraftCorps-Canary-Setup-${version}.${ext}"

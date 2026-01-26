@@ -56,7 +56,7 @@
       },
       "category": "public.app-category.games",
       "icon": "public/icon.png",
-      "artifactName": "CraftCorps Setup ${version}.${ext}"
+      "artifactName": "CraftCorps Setup ${version} ${arch}.${ext}"
     },
     "compression": "maximum",
     "linux": {
