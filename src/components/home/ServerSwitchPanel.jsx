@@ -86,15 +86,19 @@ const ServerSwitchPanel = React.memo(({
     useEffect(() => {
         if (selectedInstance?.path) {
             setIsLoading(true);
-            window.electronAPI.readServersDat(selectedInstance.path)
-                .then(list => {
-                    setServers(list || []);
-                    setIsLoading(false);
-                })
-                .catch(() => {
-                    setServers([]);
-                    setIsLoading(false);
-                });
+            // Defer server loading to reduce startup contention
+            const timer = setTimeout(() => {
+                window.electronAPI.readServersDat(selectedInstance.path)
+                    .then(list => {
+                        setServers(list || []);
+                        setIsLoading(false);
+                    })
+                    .catch(() => {
+                        setServers([]);
+                        setIsLoading(false);
+                    });
+            }, 500);
+            return () => clearTimeout(timer);
         }
     }, [selectedInstance?.path]);
 
