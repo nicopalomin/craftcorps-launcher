@@ -191,13 +191,33 @@ async function syncPlayTime() {
             const serverTotalMs = totalSeconds * 1000;
 
             log.info(`[PlayTime] DEBUG: Storing total: ${serverTotalMs}ms (${totalSeconds}s)`);
-            store.set('playTime.total', serverTotalMs);
+
+            // Calculate robust total from instance breakdowns
+            const localTracker = store.get('playTime.tracker', {});
+            // We just updated syncedTracker in memory, let's use the one we just built
+            // Note: syncedTracker is defined inside this scope in previous lines (re-read file to be sure, yes line 168)
+
+            let calculatedTotal = 0;
+            const allIds = new Set([...Object.keys(localTracker), ...Object.keys(syncedTracker)]);
+            allIds.forEach(id => {
+                calculatedTotal += Math.max(localTracker[id] || 0, syncedTracker[id] || 0);
+            });
+
+            log.info(`[PlayTime] DEBUG: Calculated Sum of Instances: ${calculatedTotal}ms`);
+
+            // Fix: Total should be at least the Server Total OR the Sum of known instances
+            // Preserves local progress (calculatedTotal) and historical/deleted data (serverTotalMs)
+            const currentTotal = store.get('playTime.total', 0);
+            const finalTotal = Math.max(currentTotal, serverTotalMs, calculatedTotal);
+
+            store.set('playTime.total', finalTotal);
+
             store.set('playTime.syncedTotal', serverTotalMs);
 
             log.info(`[PlayTime] DEBUG: Storing syncedTracker: ${JSON.stringify(syncedTracker)}`);
             store.set('playTime.syncedTracker', syncedTracker);
 
-            log.info(`[PlayTime] Sync complete. Total: ${totalSeconds}s`);
+            log.info(`[PlayTime] Sync complete. Total: ${Math.round(finalTotal / 1000)}s`);
         } else {
             log.warn(`[PlayTime] DEBUG: Summary was null or undefined`);
         }

@@ -93,6 +93,7 @@ const ProfileView = ({ activeAccount, accounts, instances, theme, onLogout, onLo
     const [linkedAccounts, setLinkedAccounts] = useState([]);
     const [isLoadingProfile, setIsLoadingProfile] = useState(false);
     const [totalPlayTime, setTotalPlayTime] = useState(0);
+    const [joinedDate, setJoinedDate] = useState(null);
 
     // Secure Account State
     const [isSecuring, setIsSecuring] = useState(false);
@@ -112,6 +113,11 @@ const ProfileView = ({ activeAccount, accounts, instances, theme, onLogout, onLo
                 if (res.success && res.profile) {
                     // Expect profile.linkedAccounts = [{ provider, id, username, ... }]
                     setLinkedAccounts(res.profile.linkedAccounts || []);
+
+                    if (res.profile.createdAt) {
+                        const date = new Date(res.profile.createdAt);
+                        setJoinedDate(date.toLocaleDateString('en-US', { month: 'long', year: 'numeric' }));
+                    }
                 }
             }
 
@@ -298,6 +304,13 @@ const ProfileView = ({ activeAccount, accounts, instances, theme, onLogout, onLo
                                             Auth ID: <span className="text-slate-400 select-all cursor-text">{activeAccount?.id || 'N/A'}</span>
                                         </span>
                                     </div>
+                                    {joinedDate && (
+                                        <div className="flex justify-center md:justify-start">
+                                            <span className="text-slate-500 font-mono text-[10px] uppercase tracking-widest pl-1">
+                                                Member Since: <span className="text-slate-400 select-all cursor-text">{joinedDate}</span>
+                                            </span>
+                                        </div>
+                                    )}
                                     {linkedAccounts.length > 0 && (
                                         <div className="flex justify-center md:justify-start">
                                             <span className="text-slate-500 font-mono text-[10px] uppercase tracking-widest pl-1">
@@ -416,133 +429,60 @@ const ProfileView = ({ activeAccount, accounts, instances, theme, onLogout, onLo
                                 </h2>
 
                                 {/* Link Actions */}
-                                <div className="space-y-3">
-                                    <h3 className="text-xs font-bold text-slate-500 mb-2 uppercase tracking-wider">Linked Accounts</h3>
+                                <div className="relative">
+                                    {/* Blurred Content */}
+                                    <div className="space-y-3 blur-[2px] pointer-events-none opacity-40">
+                                        <h3 className="text-xs font-bold text-slate-500 mb-2 uppercase tracking-wider">Linked Accounts</h3>
 
-                                    {/* Microsoft */}
-                                    <button
-                                        onClick={handleLinkMicrosoft}
-                                        disabled={!!microsoftLink}
-                                        className={`w-full flex items-center justify-between p-3 rounded-xl transition-all group border ${microsoftLink ? 'bg-slate-900/80 border-emerald-500/30 cursor-default' : 'bg-slate-900/50 hover:bg-slate-800 border-white/5'}`}
-                                    >
-                                        <div className="flex items-center gap-3">
-                                            <div className="w-8 h-8 rounded-full bg-[#0078D4]/20 text-[#0078D4] flex items-center justify-center">
-                                                <Globe size={16} />
-                                            </div>
-                                            <div className="text-left">
-                                                <div className="text-sm font-medium text-slate-200">
-                                                    {microsoftLink ? (microsoftLink.username || 'Microsoft Account') : 'Microsoft Account'}
+                                        {/* Microsoft */}
+                                        <div className="w-full flex items-center justify-between p-3 rounded-xl bg-slate-900/50 border border-white/5">
+                                            <div className="flex items-center gap-3">
+                                                <div className="w-8 h-8 rounded-full bg-[#0078D4]/20 text-[#0078D4] flex items-center justify-center">
+                                                    <Globe size={16} />
                                                 </div>
-                                                <div className="text-[10px] text-slate-500">
-                                                    {microsoftLink ? 'Account Linked' : 'Link your Minecraft Profile'}
+                                                <div className="text-left">
+                                                    <div className="text-sm font-medium text-slate-200">Microsoft Account</div>
+                                                    <div className="text-[10px] text-slate-500">Link your Minecraft Profile</div>
                                                 </div>
                                             </div>
+                                            <Plus size={16} className="text-slate-500" />
                                         </div>
-                                        {microsoftLink ? (
-                                            <CheckCircle2 size={16} className="text-emerald-500" />
-                                        ) : (
-                                            <Plus size={16} className="text-slate-500 group-hover:text-white transition-colors" />
-                                        )}
-                                    </button>
 
-                                    {/* Discord */}
-                                    <button
-                                        onClick={handleLinkDiscord}
-                                        disabled={!!discordLink}
-                                        className={`w-full flex items-center justify-between p-3 rounded-xl transition-all group border ${discordLink ? 'bg-slate-900/80 border-emerald-500/30 cursor-default' : 'bg-slate-900/50 hover:bg-slate-800 border-white/5'}`}
-                                    >
-                                        <div className="flex items-center gap-3">
-                                            <div className="w-8 h-8 rounded-full bg-[#5865F2]/20 text-[#5865F2] flex items-center justify-center">
-                                                <Gamepad2 size={16} />
-                                            </div>
-                                            <div className="text-left">
-                                                <div className="text-sm font-medium text-slate-200">
-                                                    {discordLink ? (discordLink.username || 'Discord') : 'Discord'}
+                                        {/* Discord */}
+                                        <div className="w-full flex items-center justify-between p-3 rounded-xl bg-slate-900/50 border border-white/5">
+                                            <div className="flex items-center gap-3">
+                                                <div className="w-8 h-8 rounded-full bg-[#5865F2]/20 text-[#5865F2] flex items-center justify-center">
+                                                    <Gamepad2 size={16} />
                                                 </div>
-                                                <div className="text-[10px] text-slate-500">
-                                                    {discordLink ? 'Account Linked' : 'Link for community rewards'}
+                                                <div className="text-left">
+                                                    <div className="text-sm font-medium text-slate-200">Discord</div>
+                                                    <div className="text-[10px] text-slate-500">Link for community rewards</div>
                                                 </div>
                                             </div>
+                                            <Plus size={16} className="text-slate-500" />
                                         </div>
-                                        {discordLink ? (
-                                            <CheckCircle2 size={16} className="text-emerald-500" />
-                                        ) : (
-                                            <Plus size={16} className="text-slate-500 group-hover:text-white transition-colors" />
-                                        )}
-                                    </button>
 
-                                    {/* Link Credentials (Secure Account) - If not linked */}
-                                    {!hasCredentials && (
                                         <div className="pt-4 border-t border-white/5 space-y-3">
                                             <div className="flex items-center gap-2 text-amber-400">
                                                 <ShieldAlert size={16} />
                                                 <span className="text-xs font-bold">Unsecured Account</span>
                                             </div>
-
-                                            {isSecuring ? (
-                                                <div className="space-y-2 animate-in fade-in slide-in-from-top-2">
-                                                    <input
-                                                        type="email"
-                                                        placeholder="Email Address"
-                                                        value={secEmail}
-                                                        onChange={(e) => setSecEmail(e.target.value)}
-                                                        className="w-full bg-slate-950/50 border border-amber-500/20 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-amber-500/50"
-                                                    />
-                                                    <input
-                                                        type="password"
-                                                        placeholder="Create Password"
-                                                        value={secPass}
-                                                        onChange={(e) => setSecPass(e.target.value)}
-                                                        className="w-full bg-slate-950/50 border border-amber-500/20 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-amber-500/50"
-                                                    />
-                                                    <div className="flex gap-2 pt-1">
-                                                        <button
-                                                            onClick={async () => {
-                                                                if (!secEmail || !secPass) return;
-                                                                try {
-                                                                    if (window.electronAPI) {
-                                                                        addToast('Securing account...', 'info');
-                                                                        const res = await window.electronAPI.linkCredentials({ email: secEmail, password: secPass });
-                                                                        if (res.success) {
-                                                                            addToast('Account Secured Successfully!', 'success');
-                                                                            setIsSecuring(false);
-                                                                            refreshProfile();
-                                                                        } else {
-                                                                            throw new Error(res.error);
-                                                                        }
-                                                                    }
-                                                                } catch (e) {
-                                                                    console.error(e);
-                                                                    addToast('Failed to secure: ' + e.message, 'error');
-                                                                }
-                                                            }}
-                                                            className="flex-1 py-1.5 bg-amber-500 hover:bg-amber-400 text-slate-900 text-xs font-bold rounded-lg transition-colors"
-                                                        >
-                                                            Confirm
-                                                        </button>
-                                                        <button
-                                                            onClick={() => setIsSecuring(false)}
-                                                            className="px-3 py-1.5 bg-transparent hover:bg-slate-800 text-slate-400 text-xs font-medium rounded-lg transition-colors border border-transparent hover:border-slate-700"
-                                                        >
-                                                            Cancel
-                                                        </button>
-                                                    </div>
-                                                </div>
-                                            ) : (
-                                                <>
-                                                    <p className="text-[10px] text-amber-200/70 leading-relaxed">
-                                                        Link an email and password to secure your progress.
-                                                    </p>
-                                                    <button
-                                                        onClick={() => setIsSecuring(true)}
-                                                        className="w-full py-2 bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 text-xs font-bold rounded-lg transition-colors border border-amber-500/20"
-                                                    >
-                                                        Link Email & Password
-                                                    </button>
-                                                </>
-                                            )}
+                                            <p className="text-[10px] text-amber-200/70">Link an email and password to secure progress.</p>
                                         </div>
-                                    )}
+                                    </div>
+
+                                    {/* Coming Soon Overlay */}
+                                    <div className="absolute inset-0 z-20 flex flex-col items-center justify-center text-center p-6 bg-slate-900/10 rounded-2xl">
+                                        <div className="bg-slate-900/60 backdrop-blur-md rounded-2xl p-6 border border-white/10 shadow-2xl flex flex-col items-center gap-2 max-w-[240px]">
+                                            <div className="w-10 h-10 rounded-full bg-blue-500/20 flex items-center justify-center mb-1">
+                                                <Shield size={20} className="text-blue-400" />
+                                            </div>
+                                            <span className="text-lg font-black text-white uppercase tracking-tighter">Coming Soon</span>
+                                            <p className="text-xs font-medium text-slate-400 leading-relaxed">
+                                                We're adding new way to help you login faster.
+                                            </p>
+                                        </div>
+                                    </div>
                                 </div>
 
                                 {/* Logout Action */}

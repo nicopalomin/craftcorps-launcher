@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import {
-    Box, X, Play, Clock, Activity, Paintbrush, Settings, Folder, ExternalLink, Power, Plus
+    Box, X, Play, Clock, Activity, Paintbrush, Settings, Folder, ExternalLink, Power, Plus, Pencil, Zap
 } from 'lucide-react';
 import { formatLastPlayed } from '../../utils/dateUtils';
 import { useTranslation } from 'react-i18next';
@@ -29,12 +29,17 @@ const InstanceHero = React.memo(({
     launchCooldown = false,
     modCount = 0,
     runningInstances = [],
-    accounts = []
+    accounts = [],
+    activeAccount = null,
+    onSaveCrop,
+    setShowProfileMenu
 }) => {
     const { t } = useTranslation();
     const [playTime, setPlayTime] = useState(0);
     const [showRunningPopover, setShowRunningPopover] = useState(false);
     const [showLaunchAsPopover, setShowLaunchAsPopover] = useState(false);
+    const [isEditingName, setIsEditingName] = useState(false);
+    const [tempName, setTempName] = useState(selectedInstance?.name || '');
     const popoverRef = React.useRef(null);
     const launchAsRef = React.useRef(null);
 
@@ -78,6 +83,24 @@ const InstanceHero = React.memo(({
             }
         };
     }, [selectedInstance?.id, launchStatus]);
+
+    useEffect(() => {
+        setTempName(selectedInstance?.name || '');
+        setIsEditingName(false);
+    }, [selectedInstance?.path]);
+
+    const handleSaveName = () => {
+        if (!tempName || tempName.trim() === '') {
+            setTempName(selectedInstance.name);
+            setIsEditingName(false);
+            return;
+        }
+
+        if (tempName !== selectedInstance.name) {
+            onSaveCrop({ ...selectedInstance, name: tempName.trim() });
+        }
+        setIsEditingName(false);
+    };
 
     const timeString = formatPlayTime(playTime);
     const isModdedContent = selectedInstance.loader !== 'Vanilla';
@@ -125,9 +148,29 @@ const InstanceHero = React.memo(({
                                     {selectedInstance.version}
                                 </span>
                             </div>
-                            <h2 className="text-4xl font-extrabold text-white leading-none tracking-tight shadow-black drop-shadow-lg">
-                                {selectedInstance.name}
-                            </h2>
+                            <div
+                                onClick={() => !isEditingName && setIsEditingName(true)}
+                                className="group/name flex items-center gap-3 cursor-pointer"
+                            >
+                                {isEditingName ? (
+                                    <input
+                                        autoFocus
+                                        className="text-4xl font-extrabold text-white leading-none tracking-tight bg-black/30 border-b-2 border-emerald-500 outline-none w-full py-1 px-2 rounded-t-lg backdrop-blur-sm"
+                                        value={tempName}
+                                        onChange={(e) => setTempName(e.target.value)}
+                                        onBlur={handleSaveName}
+                                        onKeyDown={(e) => e.key === 'Enter' && handleSaveName()}
+                                        onClick={(e) => e.stopPropagation()}
+                                    />
+                                ) : (
+                                    <>
+                                        <h2 className="text-4xl font-extrabold text-white leading-none tracking-tight shadow-black drop-shadow-lg group-hover/name:text-emerald-400 transition-colors">
+                                            {selectedInstance.name}
+                                        </h2>
+                                        <Pencil size={20} className="text-slate-500 opacity-0 group-hover/name:opacity-100 transition-all transform group-hover/name:scale-110" />
+                                    </>
+                                )}
+                            </div>
                             <div className="flex items-center gap-2 text-xs font-medium text-slate-400 mt-1">
                                 <span>Last played: {lastPlayedText}</span>
                             </div>
@@ -147,18 +190,18 @@ const InstanceHero = React.memo(({
                                 {isModdedContent && (
                                     <button
                                         onClick={(e) => { e.stopPropagation(); setShowAdvanced(!isAdvanced); }}
-                                        className={`p-3 rounded-xl border transition-all group ${isAdvanced ? 'bg-indigo-500/20 border-indigo-500/30 text-indigo-400' : 'bg-white/5 border-white/5 hover:bg-white/10 hover:text-indigo-400'}`}
-                                        title="Toggle Details"
+                                        className={`flex items-center gap-2 px-4 py-2.5 rounded-xl border transition-all group ${isAdvanced ? 'bg-indigo-500/20 border-indigo-500/30 text-indigo-400' : 'bg-white/5 border-white/5 hover:bg-white/10 hover:text-indigo-400'}`}
                                     >
-                                        <Settings size={16} className={`opacity-70 group-hover:opacity-100 ${isAdvanced ? 'text-indigo-400' : ''}`} />
+                                        <span className="text-[10px] font-bold uppercase tracking-wider">Edit</span>
+                                        <Settings size={14} className={`opacity-70 group-hover:opacity-100 ${isAdvanced ? 'text-indigo-400' : ''}`} />
                                     </button>
                                 )}
                                 <button
                                     onClick={(e) => { e.stopPropagation(); onEditCrop(selectedInstance); }}
-                                    className="p-3 rounded-xl bg-white/5 border border-white/5 hover:bg-white/10 hover:text-emerald-400 transition-all group"
-                                    title="Customize"
+                                    className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white/5 border border-white/5 hover:bg-white/10 hover:text-emerald-400 transition-all group"
                                 >
-                                    <Paintbrush size={16} className="opacity-70 group-hover:opacity-100" />
+                                    <span className="text-[10px] font-bold uppercase tracking-wider">Customize</span>
+                                    <Paintbrush size={14} className="opacity-70 group-hover:opacity-100" />
                                 </button>
                             </div>
                         </div>
@@ -271,7 +314,7 @@ const InstanceHero = React.memo(({
                                                         <span>{launchCooldown ? 'COOLDOWN' : 'PLAY NOW'}</span>
                                                         {!launchCooldown && (
                                                             <span className="text-[10px] font-bold text-emerald-50/70 font-sans tracking-[0.1em] mt-1 uppercase group-hover:text-white transition-colors text-left">
-                                                                Start your harvest
+                                                                Start your adventure
                                                             </span>
                                                         )}
                                                     </span>
@@ -289,7 +332,7 @@ const InstanceHero = React.memo(({
                                     className={`w-[71px] h-[71px] rounded-2xl border transition-all hover:scale-105 flex flex-col items-center justify-center gap-1 ${showLaunchAsPopover ? 'bg-indigo-500/20 border-indigo-500/40 text-indigo-400' : 'bg-white/5 border-white/10 text-slate-400 hover:text-white hover:bg-white/10'}`}
                                     title="Launch As..."
                                 >
-                                    <Plus size={24} />
+                                    <Zap size={24} />
                                 </button>
 
                                 {showLaunchAsPopover && (
@@ -298,31 +341,51 @@ const InstanceHero = React.memo(({
                                             <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Launch a new game as...</span>
                                         </div>
                                         <div className="p-2 max-h-64 overflow-y-auto flex flex-col gap-1">
-                                            {accounts.filter(acc => acc.type === 'microsoft' || acc.type === 'offline').map((acc) => (
-                                                <button
-                                                    key={acc.id}
-                                                    onClick={() => {
-                                                        onPlay(selectedInstance, null, acc);
-                                                        setShowLaunchAsPopover(false);
-                                                    }}
-                                                    className="w-full p-2 rounded-xl hover:bg-white/10 flex items-center gap-3 transition-colors text-left group"
-                                                >
-                                                    <div className="w-8 h-8 rounded-lg overflow-hidden bg-slate-800 shrink-0 border border-white/10">
-                                                        <img
-                                                            src={`https://mc-heads.net/avatar/${acc.uuid || acc.name}/64`}
-                                                            alt={acc.name}
-                                                            className="w-full h-full object-cover"
-                                                            onError={(e) => { e.target.src = 'https://mc-heads.net/avatar/Steve/64'; }}
-                                                        />
-                                                    </div>
-                                                    <div className="flex flex-col min-w-0">
-                                                        <span className="text-xs font-bold text-white truncate group-hover:text-indigo-400 transition-colors">{acc.name}</span>
-                                                        <span className="text-[10px] text-slate-500 truncate capitalize">{acc.type} Account</span>
-                                                    </div>
-                                                </button>
-                                            ))}
+                                            {(() => {
+                                                const validTypes = ['microsoft', 'offline'];
+                                                const allDisplayAccounts = accounts.length > 0 ? accounts : (activeAccount ? [activeAccount] : []);
+                                                const filtered = allDisplayAccounts.filter(acc =>
+                                                    acc.type && validTypes.includes(acc.type.toLowerCase())
+                                                );
+
+                                                if (filtered.length === 0) {
+                                                    return (
+                                                        <div className="py-4 px-3 text-center">
+                                                            <span className="text-[10px] text-slate-500 uppercase font-bold">No suitable accounts found</span>
+                                                        </div>
+                                                    );
+                                                }
+
+                                                return filtered.map((acc) => (
+                                                    <button
+                                                        key={acc.id || acc.uuid}
+                                                        onClick={() => {
+                                                            onPlay(selectedInstance, null, acc);
+                                                            setShowLaunchAsPopover(false);
+                                                        }}
+                                                        className="w-full p-2 rounded-xl hover:bg-white/10 flex items-center gap-3 transition-colors text-left group"
+                                                    >
+                                                        <div className="w-8 h-8 rounded-lg overflow-hidden bg-slate-800 shrink-0 border border-white/10">
+                                                            <img
+                                                                src={`https://mc-heads.net/avatar/${acc.uuid || acc.name}/64`}
+                                                                alt={acc.name}
+                                                                className="w-full h-full object-cover"
+                                                                onError={(e) => { e.target.src = 'https://mc-heads.net/avatar/Steve/64'; }}
+                                                            />
+                                                        </div>
+                                                        <div className="flex flex-col min-w-0">
+                                                            <span className="text-xs font-bold text-white truncate group-hover:text-indigo-400 transition-colors">{acc.name}</span>
+                                                            <span className="text-[10px] text-slate-500 truncate capitalize">{acc.type} Account</span>
+                                                        </div>
+                                                    </button>
+                                                ));
+                                            })()}
                                             <div className="my-1 h-px bg-white/5" />
                                             <button
+                                                onClick={() => {
+                                                    setShowLaunchAsPopover(false);
+                                                    setShowProfileMenu(true);
+                                                }}
                                                 className="w-full p-2 rounded-xl text-center text-xs font-medium text-slate-500 hover:text-white hover:bg-white/5 transition-colors"
                                             >
                                                 Manage Accounts
@@ -332,40 +395,31 @@ const InstanceHero = React.memo(({
                                 )}
                             </div>
 
-                            <div className="flex gap-3 relative" ref={popoverRef}>
-                                {/* Running Instances Badge */}
-                                <button
-                                    onClick={() => setShowRunningPopover(!showRunningPopover)}
-                                    className={`w-[71px] h-[71px] rounded-2xl border transition-all hover:scale-105 relative flex flex-col items-center justify-center gap-1 ${showRunningPopover ? 'bg-emerald-500/10 border-emerald-500/40 text-emerald-400 shadow-[0_0_20px_rgba(16,185,129,0.1)]' : 'bg-white/5 border-white/10 text-slate-400 hover:text-white hover:bg-white/10'}`}
-                                    title="Active Instances"
-                                >
-                                    <Activity size={24} className={runningInstances.length > 0 ? 'animate-pulse' : ''} />
-                                    {runningInstances.length > 0 && (
+                            {runningInstances.length > 0 && (
+                                <div className="flex gap-3 relative" ref={popoverRef}>
+                                    {/* Running Instances Badge */}
+                                    <button
+                                        onClick={() => setShowRunningPopover(!showRunningPopover)}
+                                        className={`w-[71px] h-[71px] rounded-2xl border transition-all hover:scale-105 relative flex flex-col items-center justify-center gap-1 ${showRunningPopover ? 'bg-emerald-500/10 border-emerald-500/40 text-emerald-400 shadow-[0_0_20px_rgba(16,185,129,0.1)]' : 'bg-white/5 border-white/10 text-slate-400 hover:text-white hover:bg-white/10'}`}
+                                        title="Active Instances"
+                                    >
+                                        <Activity size={24} className="animate-pulse" />
                                         <span className="absolute -top-1 -right-1 w-5 h-5 bg-emerald-500 rounded-full text-[10px] font-bold text-white flex items-center justify-center shadow-lg border-2 border-slate-900 animate-in zoom-in duration-300">
                                             {runningInstances.length}
                                         </span>
-                                    )}
-                                </button>
+                                    </button>
 
-                                {/* Popover */}
-                                {showRunningPopover && (
-                                    <div className="absolute bottom-full left-0 mb-3 w-72 bg-[#0F172A]/95 backdrop-blur-xl border border-white/10 rounded-2xl shadow-2xl overflow-hidden z-50 animate-in slide-in-from-bottom-2 fade-in duration-200">
-                                        <div className="px-4 py-3 border-b border-white/5 bg-white/5 flex items-center justify-between">
-                                            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Active Instances</span>
-                                            {runningInstances.length > 0 && (
+                                    {/* Popover */}
+                                    {showRunningPopover && (
+                                        <div className="absolute bottom-full left-0 mb-3 w-72 bg-[#0F172A]/95 backdrop-blur-xl border border-white/10 rounded-2xl shadow-2xl overflow-hidden z-50 animate-in slide-in-from-bottom-2 fade-in duration-200">
+                                            <div className="px-4 py-3 border-b border-white/5 bg-white/5 flex items-center justify-between">
+                                                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Active Instances</span>
                                                 <span className="text-[10px] font-bold text-emerald-500 bg-emerald-500/10 px-2 py-0.5 rounded-full border border-emerald-500/20">
                                                     {runningInstances.length} Running
                                                 </span>
-                                            )}
-                                        </div>
+                                            </div>
 
-                                        <div className="p-2 max-h-64 overflow-y-auto">
-                                            {runningInstances.length === 0 ? (
-                                                <div className="py-8 px-4 flex flex-col items-center justify-center gap-2 opacity-50">
-                                                    <Activity size={32} className="text-slate-600" />
-                                                    <span className="text-sm font-medium text-slate-400 whitespace-nowrap">No active instances</span>
-                                                </div>
-                                            ) : (
+                                            <div className="p-2 max-h-64 overflow-y-auto">
                                                 <div className="flex flex-col gap-1">
                                                     {runningInstances.map((inst) => (
                                                         <div key={inst.id || inst.gameDir} className="p-2 rounded-xl bg-white/5 hover:bg-white/10 border border-transparent hover:border-white/5 transition-all flex items-center justify-between group">
@@ -402,11 +456,11 @@ const InstanceHero = React.memo(({
                                                         </div>
                                                     ))}
                                                 </div>
-                                            )}
+                                            </div>
                                         </div>
-                                    </div>
-                                )}
-                            </div>
+                                    )}
+                                </div>
+                            )}
                         </div>
 
                         {/* Right Group: Final Actions */}

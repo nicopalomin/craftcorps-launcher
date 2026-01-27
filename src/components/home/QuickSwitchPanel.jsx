@@ -44,7 +44,13 @@ const QuickSwitchPanel = React.memo(({
     const { t } = useTranslation();
 
     return (
-        <div className={`flex items-center gap-2 p-2 rounded-2xl shadow-xl bg-black/20 backdrop-blur-md border border-white/5 ${className}`}>
+        <div className={`flex items-center gap-2 bg-black/5 backdrop-blur-md ${className}`}>
+            <div className="flex flex-col gap-0.5 pr-8 shrink-0">
+                <h4 className="text-xl font-bold text-white tracking-tight">{t('home_quick_switch')}</h4>
+                <p className="text-sm text-slate-500 font-medium">Switch between your instances easily</p>
+            </div>
+
+            <div className="w-px h-10 bg-white/10 shrink-0 mr-4" />
 
             {/* Scrollable Instance List - Now Horizontal */}
             <div className="flex-1 flex flex-row gap-3 overflow-x-auto overflow-y-hidden custom-scrollbar no-scrollbar-buttons pb-1 px-2">

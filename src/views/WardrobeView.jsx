@@ -10,6 +10,27 @@ import { useWardrobe } from '../hooks/useWardrobe';
  * Uses useWardrobe hook for state and business logic.
  */
 const WardrobeView = ({ theme, activeAccount, isActive }) => {
+    // Unified Seeds State (Fetched from backend profile)
+    const [seeds, setSeeds] = React.useState(0);
+
+    React.useEffect(() => {
+        let isMounted = true;
+
+        if (activeAccount && window.electronAPI?.getUserProfile) {
+            window.electronAPI.getUserProfile().then(res => {
+                if (isMounted && res.success && res.profile) {
+                    setSeeds(res.profile.seeds || 0);
+                }
+            }).catch(err => {
+                console.error("[Wardrobe] Failed to fetch seeds:", err);
+                if (isMounted) setSeeds(0);
+            });
+        } else {
+            setSeeds(0);
+        }
+
+        return () => { isMounted = false; };
+    }, [activeAccount]);
     const {
         activeTab,
         setActiveTab,
@@ -60,7 +81,11 @@ const WardrobeView = ({ theme, activeAccount, isActive }) => {
                             <button className="ml-1 text-[9px] hover:underline opacity-60">Learn more</button>
                         </div>
                     )}
-                    <div className="status-pill text-slate-400">
+                    <div className="status-pill text-emerald-500/90 border-emerald-500/20 bg-emerald-500/5 group/seeds cursor-help transition-all hover:bg-emerald-500/10 hover:border-emerald-500/30 justify-center min-w-[64px]">
+                        <span key={seeds} className="tabular-nums font-bold animate-in fade-in zoom-in-95 duration-300">{seeds}</span>
+                        <span className="opacity-60 text-[9px] uppercase tracking-tighter">Seeds</span>
+                    </div>
+                    <div className="status-pill text-slate-400 border-white/5 bg-white/5">
                         <User size={12} />
                         <span>{activeAccount?.name || 'Guest'}</span>
                     </div>

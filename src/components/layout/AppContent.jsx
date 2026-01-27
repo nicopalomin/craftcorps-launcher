@@ -106,6 +106,8 @@ const AppContent = ({
                         onEditCrop={handleEditCrop}
                         onBrowseMods={handleBrowseMods}
                         onBrowseShaders={handleBrowseShaders}
+                        onSaveCrop={onSaveCropWithToast}
+                        setActiveTab={setActiveTab}
                         // Account System Props
                         accounts={accounts}
                         onSwitchAccount={onAccountSwitchWithToast}

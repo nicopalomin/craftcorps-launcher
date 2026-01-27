@@ -4,6 +4,44 @@ import { useTranslation } from 'react-i18next';
 
 const ServerItem = React.memo(({ server, onJoin }) => {
     const { t } = useTranslation();
+    const [onlinePlayers, setOnlinePlayers] = useState(null);
+    const [isOnline, setIsOnline] = useState(false);
+    const [statusText, setStatusText] = useState('Pinging...');
+
+    useEffect(() => {
+        let active = true;
+        const fetchStatus = async () => {
+            // Fallback for missing IP
+            const ip = server.ip || server.address;
+            if (!ip) {
+                if (active) setStatusText('Unknown Host');
+                return;
+            }
+
+            try {
+                const res = await fetch(`https://api.mcsrvstat.us/3/${ip}`);
+                const data = await res.json();
+                if (active) {
+                    if (data.online) {
+                        setOnlinePlayers(data.players.online);
+                        setIsOnline(true);
+                        setStatusText(`${data.players.online} Players Online`);
+                    } else {
+                        setIsOnline(false);
+                        setStatusText('Offline');
+                    }
+                }
+            } catch (e) {
+                if (active) {
+                    setIsOnline(false);
+                    setStatusText('Unreachable');
+                }
+            }
+        };
+
+        fetchStatus();
+        return () => { active = false; };
+    }, [server.ip, server.address]);
 
     return (
         <button
@@ -22,13 +60,10 @@ const ServerItem = React.memo(({ server, onJoin }) => {
                 <span className="text-sm font-bold text-slate-100 truncate w-full group-hover:text-white transition-colors">
                     {server.ip || server.address || 'Localhost'}
                 </span>
-                <span className="text-[10px] font-medium text-slate-500 font-sans mt-0.5">
-                    Last played: {server.lastPlayed || '2 hours ago'}
-                </span>
                 <div className="flex items-center gap-1.5 mt-0.5">
-                    <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]" />
-                    <span className="text-[10px] font-bold text-emerald-400 uppercase tracking-tight">
-                        {Math.floor(Math.random() * 200) + 50} Players Online
+                    <div className={`w-1.5 h-1.5 rounded-full shadow-[0_0_8px_rgba(0,0,0,0.5)] ${isOnline ? 'bg-emerald-500 shadow-emerald-500/50' : 'bg-rose-500'}`} />
+                    <span className={`text-[10px] font-bold uppercase tracking-tight ${isOnline ? 'text-emerald-400' : 'text-slate-500'}`}>
+                        {statusText}
                     </span>
                 </div>
             </div>
