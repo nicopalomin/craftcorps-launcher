@@ -6,7 +6,7 @@ import {
     Pickaxe, Axe, Sword, Shield, Box,
     Map, Compass, Flame, Snowflake, Droplet,
     Zap, Heart, Skull, Ghost, Trophy, Loader2, ChevronDown,
-    FlaskConical
+    FlaskConical, Clock
 } from 'lucide-react';
 import { LOADERS, COLORS, FALLBACK_VERSIONS, INSTANCE_ICONS } from '../../data/mockData';
 import { fetchMinecraftVersions } from '../../utils/minecraftApi';
@@ -179,6 +179,10 @@ const CropModal = ({ isOpen, onClose, onSave, editingCrop, onDelete, instanceCou
     const [serverAddress, setServerAddress] = useState('');
     const [isImporting, setIsImporting] = useState(false);
     const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
+    const [pendingLoader, setPendingLoader] = useState(null);
+    const [isLoaderWarningOpen, setIsLoaderWarningOpen] = useState(false);
+    const [pendingVersion, setPendingVersion] = useState(null);
+    const [isVersionWarningOpen, setIsVersionWarningOpen] = useState(false);
 
     // RAM Override State
     const [ramOverride, setRamOverride] = useState(false);
@@ -242,6 +246,10 @@ const CropModal = ({ isOpen, onClose, onSave, editingCrop, onDelete, instanceCou
                 setSelectedPreset(randomPreset);
                 setSelectedTheme(randomTheme);
             }
+            setIsLoaderWarningOpen(false);
+            setPendingLoader(null);
+            setIsVersionWarningOpen(false);
+            setPendingVersion(null);
         }
     }, [isOpen, editingCrop, versions]);
 
@@ -344,6 +352,31 @@ const CropModal = ({ isOpen, onClose, onSave, editingCrop, onDelete, instanceCou
         label: index === 0 ? `${v} ${t('crop_version_latest')}` : v
     }));
 
+    const handleLoaderChange = (newLoader) => {
+        // If we have an editing crop and it's not currently Vanilla, 
+        // they might have mods. Or simply if they HAVE mods listed in the crop object.
+        const hasMods = editingCrop && (editingCrop.mods?.length > 0 || editingCrop.loader !== 'Vanilla');
+
+        if (hasMods && newLoader !== loader) {
+            setPendingLoader(newLoader);
+            setIsLoaderWarningOpen(true);
+        } else {
+            setLoader(newLoader);
+        }
+    };
+
+    const handleVersionChange = (newVersion) => {
+        const hasMods = editingCrop && (editingCrop.mods?.length > 0 || editingCrop.loader !== 'Vanilla');
+
+        if (hasMods && newVersion !== version) {
+            setPendingVersion(newVersion);
+            setIsVersionWarningOpen(true);
+        } else {
+            setVersion(newVersion);
+            if (errors.version) setErrors(prev => ({ ...prev, version: false }));
+        }
+    };
+
     return (
         <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 animate-in fade-in duration-200">
             <div className="bg-slate-900 w-full max-w-lg rounded-2xl border border-slate-700 shadow-2xl relative flex flex-col max-h-[85vh] overflow-hidden">
@@ -357,7 +390,7 @@ const CropModal = ({ isOpen, onClose, onSave, editingCrop, onDelete, instanceCou
                         <div className="w-10 h-10 rounded-lg overflow-hidden">
                             <InstanceIcon instance={editingCrop || { name: name || 'New Crop' }} size={40} />
                         </div>
-                        {editingCrop ? t('crop_title_edit') : t('crop_title_new')}
+                        {editingCrop ? t('crop_title_edit', 'Edit Instance') : t('crop_title_new', 'Create Instance')}
                     </h3>
                     <div className="flex items-center gap-2">
                         {!editingCrop && (
@@ -414,7 +447,7 @@ const CropModal = ({ isOpen, onClose, onSave, editingCrop, onDelete, instanceCou
                                 </label>
                                 <CustomSelect
                                     value={loader}
-                                    onChange={setLoader}
+                                    onChange={handleLoaderChange}
                                     options={loaderOptions}
                                     disabled={editingCrop && editingCrop.modpackProjectId}
                                 />
@@ -426,10 +459,7 @@ const CropModal = ({ isOpen, onClose, onSave, editingCrop, onDelete, instanceCou
                                     </label>
                                     <button
                                         type="button"
-                                        onClick={() => {
-                                            setVersion(versions[0]);
-                                            if (errors.version) setErrors(prev => ({ ...prev, version: false }));
-                                        }}
+                                        onClick={() => handleVersionChange(versions[0])}
                                         disabled={loadingVersions || (editingCrop && editingCrop.modpackProjectId)}
                                         className="text-xs font-bold text-emerald-500 hover:text-emerald-400 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                                     >
@@ -438,10 +468,7 @@ const CropModal = ({ isOpen, onClose, onSave, editingCrop, onDelete, instanceCou
                                 </div>
                                 <CustomSelect
                                     value={version}
-                                    onChange={(val) => {
-                                        setVersion(val);
-                                        if (errors.version) setErrors(prev => ({ ...prev, version: false }));
-                                    }}
+                                    onChange={handleVersionChange}
                                     options={versionOptions}
                                     loading={loadingVersions}
                                     disabled={loadingVersions || (editingCrop && editingCrop.modpackProjectId)}
@@ -653,6 +680,87 @@ const CropModal = ({ isOpen, onClose, onSave, editingCrop, onDelete, instanceCou
                         <Loader2 size={48} className="text-emerald-500 animate-spin mb-4" />
                         <h4 className="text-lg font-bold text-slate-200 mb-1">Importing Modpack...</h4>
                         <p className="text-slate-400 text-sm">Copying files via Warp Drive</p>
+                    </div>
+                )}
+
+                {/* Loader Change Warning Overlay */}
+                {isLoaderWarningOpen && (
+                    <div className="absolute inset-0 bg-slate-950/95 backdrop-blur-sm z-[100] flex flex-col items-center justify-center p-6 text-center animate-in fade-in duration-200">
+                        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-64 h-64 bg-amber-500/10 rounded-full blur-3xl pointer-events-none" />
+
+                        <div className="relative z-10 w-16 h-16 bg-amber-500/10 rounded-full flex items-center justify-center mb-4 text-amber-500 animate-in zoom-in duration-300 ring-1 ring-amber-500/20">
+                            <Zap size={32} />
+                        </div>
+                        <h4 className="relative z-10 text-xl font-bold text-slate-200 mb-2">Change Mod Loader?</h4>
+                        <p className="relative z-10 text-slate-400 mb-8 max-w-xs text-sm">
+                            Switching from <span className="font-bold text-slate-200">{loader}</span> to <span className="font-bold text-slate-200">{pendingLoader}</span> may cause your installed mods to stop working.
+                            <br /><br />
+                            <span className="text-amber-400/80">Mods are usually built for a specific loader (e.g. Fabric mods won't work on Forge).</span>
+                        </p>
+                        <div className="relative z-10 flex gap-3 w-full">
+                            <button
+                                type="button"
+                                onClick={() => {
+                                    setIsLoaderWarningOpen(false);
+                                    setPendingLoader(null);
+                                }}
+                                className="flex-1 px-4 py-3 rounded-xl font-bold text-slate-400 hover:bg-slate-800 transition-colors"
+                            >
+                                Keep Current
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => {
+                                    setLoader(pendingLoader);
+                                    setIsLoaderWarningOpen(false);
+                                    setPendingLoader(null);
+                                }}
+                                className="flex-1 bg-amber-600 hover:bg-amber-500 text-white px-4 py-3 rounded-xl font-bold shadow-lg shadow-amber-900/20 transition-all active:scale-95"
+                            >
+                                Switch Anyway
+                            </button>
+                        </div>
+                    </div>
+                )}
+
+                {/* Version Change Warning Overlay */}
+                {isVersionWarningOpen && (
+                    <div className="absolute inset-0 bg-slate-950/95 backdrop-blur-sm z-[100] flex flex-col items-center justify-center p-6 text-center animate-in fade-in duration-200">
+                        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-64 h-64 bg-amber-500/10 rounded-full blur-3xl pointer-events-none" />
+
+                        <div className="relative z-10 w-16 h-16 bg-amber-500/10 rounded-full flex items-center justify-center mb-4 text-amber-500 animate-in zoom-in duration-300 ring-1 ring-amber-500/20">
+                            <Clock size={32} />
+                        </div>
+                        <h4 className="relative z-10 text-xl font-bold text-slate-200 mb-2">Change Game Version?</h4>
+                        <p className="relative z-10 text-slate-400 mb-8 max-w-xs text-sm">
+                            Switching from <span className="font-bold text-slate-200">{version}</span> to <span className="font-bold text-slate-200">{pendingVersion}</span> will likely break your currently installed mods.
+                            <br /><br />
+                            <span className="text-amber-400/80">Most Minecraft mods are version-locked and will not run on a different game version.</span>
+                        </p>
+                        <div className="relative z-10 flex gap-3 w-full">
+                            <button
+                                type="button"
+                                onClick={() => {
+                                    setIsVersionWarningOpen(false);
+                                    setPendingVersion(null);
+                                }}
+                                className="flex-1 px-4 py-3 rounded-xl font-bold text-slate-400 hover:bg-slate-800 transition-colors"
+                            >
+                                Keep Current
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => {
+                                    setVersion(pendingVersion);
+                                    setIsVersionWarningOpen(false);
+                                    setPendingVersion(null);
+                                    if (errors.version) setErrors(prev => ({ ...prev, version: false }));
+                                }}
+                                className="flex-1 bg-amber-600 hover:bg-amber-500 text-white px-4 py-3 rounded-xl font-bold shadow-lg shadow-amber-900/20 transition-all active:scale-95"
+                            >
+                                Switch Anyway
+                            </button>
+                        </div>
                     </div>
                 )}
             </div>

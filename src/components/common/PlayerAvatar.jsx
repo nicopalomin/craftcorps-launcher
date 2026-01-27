@@ -5,7 +5,7 @@ const PlayerAvatar = ({ name, uuid, size = 64 }) => {
     const [error, setError] = useState(false);
 
     const identifier = uuid || name;
-    const src = identifier ? `https://minotar.net/helm/${identifier}/${size}.png` : null;
+    const src = identifier ? `https://mc-heads.net/avatar/${identifier}/${size}` : null;
 
     return (
         <>
@@ -19,7 +19,7 @@ const PlayerAvatar = ({ name, uuid, size = 64 }) => {
                 <img
                     src={src}
                     alt={name}
-                    className={`absolute inset-0 w-full h-full object-cover rounded-full transition-opacity duration-300 ${loaded ? 'opacity-100' : 'opacity-0'}`}
+                    className={`absolute inset-0 w-full h-full object-cover rounded-[inherit] transition-opacity duration-300 ${loaded ? 'opacity-100' : 'opacity-0'}`}
                     onLoad={() => setLoaded(true)}
                     onError={() => setError(true)}
                     loading="lazy"

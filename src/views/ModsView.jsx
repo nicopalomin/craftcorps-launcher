@@ -338,20 +338,20 @@ const ModsView = ({ selectedInstance, instances = [], onInstanceCreated, onSwitc
         return `${parseFloat((bytes / Math.pow(k, i)).toFixed(dm))} ${sizes[i]}`;
     }
 
-    const loadInstalledMods = async () => {
+    const loadInstalledMods = async (force = false) => {
         if (!selectedInstance || !window.electronAPI) return;
         try {
-            const mods = await window.electronAPI.getInstanceMods(selectedInstance.path);
+            const mods = await window.electronAPI.getInstanceMods(selectedInstance.path, force);
             setInstalledMods(mods || []);
         } catch (e) {
             console.error("Failed to load mods", e);
         }
     }
 
-    const loadInstalledShaders = async () => {
+    const loadInstalledShaders = async (force = false) => {
         if (!selectedInstance || !window.electronAPI) return;
         try {
-            const shaders = await window.electronAPI.getInstanceShaders(selectedInstance.path);
+            const shaders = await window.electronAPI.getInstanceShaders(selectedInstance.path, force);
             setInstalledShaders(shaders || []);
         } catch (e) {
             console.error("Failed to load shaders", e);
@@ -490,9 +490,9 @@ const ModsView = ({ selectedInstance, instances = [], onInstanceCreated, onSwitc
                 if (res.success) {
                     if (!silent) addToast(`Installed ${res.file}`, 'success');
                     if (project.project_type === 'shader') {
-                        loadInstalledShaders();
+                        loadInstalledShaders(true);
                     } else {
-                        loadInstalledMods();
+                        loadInstalledMods(true);
                     }
                 } else {
                     addToast(`Failed: ${res.error}`, 'error');
@@ -566,10 +566,20 @@ const ModsView = ({ selectedInstance, instances = [], onInstanceCreated, onSwitc
         } else if (project.project_type === 'mod') {
             // Check against installed mods in selected instance
             if (!installedMods) return { installed: false };
-            const slug = project.slug; // Modrinth Slug usually matches internal modId (e.g. 'fabric-api')
+            const slug = project.slug?.toLowerCase();
+            const title = project.title?.toLowerCase().replace(/\s+/g, '-');
 
-            // Check by modId (from metadata) or fallback to slug in filename (less reliable)
-            const found = installedMods.find(m => m.modId === slug);
+            // 1. Check by modId (from metadata)
+            let found = installedMods.find(m => m.modId === slug || m.modId === project.project_id);
+
+            // 2. Fuzzy match against filename (slug or title without version/dots)
+            if (!found) {
+                found = installedMods.find(m => {
+                    const fname = m.fileName?.toLowerCase() || '';
+                    return fname.includes(slug) || (title && fname.includes(title));
+                });
+            }
+
             if (found) return { installed: true, fileName: found.fileName };
         } else if (project.project_type === 'shader') {
             if (!installedShaders) return { installed: false };
@@ -648,11 +658,11 @@ const ModsView = ({ selectedInstance, instances = [], onInstanceCreated, onSwitc
                     isLoadingMore={isLoadingMore}
                     searchError={searchError}
                     results={results}
-                    onProjectSelect={setSelectedProject}
                     setSelectedProject={setSelectedProject}
                     selectedInstance={selectedInstance}
                     onLoadMore={() => performSearch(searchQuery, true)}
                     onSwitchInstance={onSwitchInstance}
+                    getInstallStatus={getInstallStatus}
                 />
             )}
         </div>

@@ -142,7 +142,8 @@ function App() {
         handleLogout,
         handleLogoutAll,
         isRefreshing,
-        authError
+        authError,
+        refreshAccounts
     } = useAccounts();
 
     const {
@@ -339,12 +340,7 @@ function App() {
                 </div>
             ) : (
                 <>
-                    <GlobalBackground
-                        selectedInstance={selectedInstance}
-                        theme={theme}
-                        disableAnimations={disableAnimations}
-                        activeTab={activeTab}
-                    />
+                    {/* GlobalBackground Removed for static theme */}
 
                     <Sidebar
                         activeTab={navigatingTab}
@@ -361,6 +357,7 @@ function App() {
                             isRefreshing={isRefreshing}
                             authError={authError}
                             onOpenConsole={() => setShowConsole(true)}
+                            onRefreshAuth={refreshAccounts}
                             updateStatus={updateStatus}
                             updateInfo={updateInfo}
                             onOpenUpdateModal={() => setShowUpdateModal(true)}

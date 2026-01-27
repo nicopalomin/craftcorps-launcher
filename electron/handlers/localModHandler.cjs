@@ -179,11 +179,11 @@ const verifyInstanceMods = async (event, instancePath) => {
 /**
  * Get Installed Mods
  */
-const getInstanceMods = async (event, instancePath) => {
+const getInstanceMods = async (event, instancePath, force = false) => {
     if (!instancePath) return [];
 
-    // 1. Return Cache Immediately if available
-    if (modCache[instancePath]) {
+    // 1. Return Cache Immediately if available (unless forced)
+    if (modCache[instancePath] && !force) {
         // Trigger background verification
         verifyInstanceMods(event, instancePath).catch(err => console.error(err));
 

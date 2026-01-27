@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Paintbrush, Box, Layers, Settings, Aperture } from 'lucide-react';
+import { Paintbrush, Box, Layers, Settings, Aperture, Globe } from 'lucide-react';
 import { useToast } from '../contexts/ToastContext';
 import { useTranslation } from 'react-i18next';
 
@@ -11,6 +11,7 @@ import ResourcePacksList from '../components/home/ResourcePacksList';
 import ShadersList from '../components/home/ShadersList';
 import EmptyState from '../components/home/EmptyState';
 import QuickSwitchPanel from '../components/home/QuickSwitchPanel';
+import ServerSwitchPanel from '../components/home/ServerSwitchPanel';
 import HomeSkeleton from '../components/home/HomeSkeleton';
 
 const HomeView = ({
@@ -411,8 +412,16 @@ const HomeView = ({
         setResourcePacks([]);
         setInstalledShaders([]);
         setHasLoadedMods(false);
-        // We preserve showAdvanced state across instance switches
-    }, [selectedInstance]);
+
+        // Immediately trigger metadata load for modded instances to avoid "0 mods" text
+        if (selectedInstance && selectedInstance.loader !== 'Vanilla') {
+            handleRefreshMods();
+            // We can keep these lazy or trigger them too
+            handleRefreshResourcePacks();
+            handleRefreshShaders();
+            setHasLoadedMods(true);
+        }
+    }, [selectedInstance]); // No need to add handleRefresh... because they are stable or we want them fresh
 
     useEffect(() => {
         if (!selectedInstance || selectedInstance.loader === 'Vanilla' || hasLoadedMods) return;
@@ -460,12 +469,19 @@ const HomeView = ({
     const isModded = selectedInstance && selectedInstance.loader !== 'Vanilla';
 
     return (
-        <div className={`flex-1 flex flex-col relative select-none overflow-hidden ${isModded && showAdvanced ? 'justify-start' : 'justify-center'}`}>
+        <div className={`flex-1 flex relative select-none overflow-hidden ${isModded && showAdvanced ? 'justify-start' : 'justify-center'}`}>
+
+            {/* Voxel Blueprint Layer */}
+            <div className="isometric-grid opacity-60" />
+
+            {/* Background Depth */}
+            <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_30%,_rgba(30,41,59,0.4),_transparent_70%)] pointer-events-none" />
 
             {/* Top Right Control Cluster (Account + Actions) */}
             <div className="absolute top-8 right-8 flex flex-col items-end gap-3 z-50 pointer-events-none">
+
                 {/* Profile Widget */}
-                <div className="glass-spotlight p-2 rounded-full shadow-2xl relative z-[100] pointer-events-auto">
+                <div className="glass-spotlight p-2 rounded-2xl shadow-2xl relative z-[100] pointer-events-auto">
                     <AccountProfile
                         activeAccount={activeAccount}
                         accounts={accounts}
@@ -477,178 +493,171 @@ const HomeView = ({
                     />
                 </div>
 
-                {/* Actions Widget */}
-                {selectedInstance && (
-                    <div className={`glass-spotlight p-2 rounded-2xl flex flex-col gap-1 w-48 shadow-2xl relative z-0 transition-all duration-300 ${showQuickSwitch ? 'opacity-100 translate-x-0 pointer-events-auto' : 'opacity-0 translate-x-10 pointer-events-none'}`}>
-                        <button
-                            onClick={() => onEditCrop(selectedInstance)}
-                            className="flex items-center justify-between gap-3 px-4 py-2.5 rounded-xl text-slate-300 hover:text-white hover:bg-white/5 transition-all group"
-                            title={t('customize', 'Customize')}
-                        >
-                            <span className="font-bold text-[11px] uppercase tracking-[0.15em]">Customize</span>
-                            <Paintbrush size={14} className="group-hover:text-emerald-400 transition-colors opacity-70 group-hover:opacity-100" />
-                        </button>
-
-                        {isModded && (
-                            <button
-                                onClick={() => setShowAdvanced(!showAdvanced)}
-                                className={`flex items-center justify-between gap-3 px-4 py-2.5 rounded-xl transition-all group ${showAdvanced
-                                    ? 'text-white bg-indigo-500/20 border border-indigo-500/30'
-                                    : 'text-slate-300 hover:text-white hover:bg-white/5'}`}
-                                title={showAdvanced ? t('Hide Advanced') : t('Advanced Settings')}
-                            >
-                                <span className="font-bold text-[11px] uppercase tracking-[0.15em]">Edit</span>
-                                <Settings size={14} className={`transition-colors opacity-70 group-hover:opacity-100 ${showAdvanced ? 'text-indigo-400' : 'group-hover:text-indigo-400'}`} />
-                            </button>
-                        )}
-                    </div>
-                )}
-
-                {/* Quick Switch Panel - Right Side Vertical */}
-                <QuickSwitchPanel
-                    instances={instances}
-                    selectedInstance={selectedInstance}
-                    setSelectedInstance={setSelectedInstance}
-                    onManageAll={onManageAll}
-                    onNewCrop={onNewCrop}
-                    className={`mt-4 transition-all duration-300 ${(showQuickSwitch && !showAdvanced) ? 'opacity-100 translate-x-0 pointer-events-auto' : 'opacity-0 translate-x-10 pointer-events-none'}`}
-                />
             </div>
 
-            {/* Main Content Scrollable Area */}
-            <div
-                className="relative z-10 flex-1 w-full overflow-y-auto custom-scrollbar flex flex-col items-center transition-all duration-500"
-                onScroll={handleScroll}
-            >
-                {/* Top Spacer - animates flex-grow to slide content up */}
-                <div className={`w-full transition-all duration-500 ease-in-out ${(!isModded || !showAdvanced) ? 'flex-1 min-h-[10%]' : 'flex-none h-0'}`} />
+            {/* Pinned Quick Switch at Bottom */}
+            {selectedInstance && !showAdvanced && (
+                <div className="absolute bottom-8 left-8 right-8 z-[100] flex flex-col gap-3">
+                    <div className="flex flex-col gap-0.5 px-0">
+                        <h4 className="text-xl font-bold text-white tracking-tight">Quick Switch</h4>
+                        <p className="text-sm text-slate-500 font-medium">Switch between your instances easily</p>
+                    </div>
+                    <QuickSwitchPanel
+                        instances={instances}
+                        selectedInstance={selectedInstance}
+                        setSelectedInstance={setSelectedInstance}
+                        onManageAll={onManageAll}
+                        onNewCrop={onNewCrop}
+                        className="w-full bg-slate-950/90 backdrop-blur-3xl shadow-[0_-20px_50px_-20px_rgba(0,0,0,0.6)] border border-white/10"
+                    />
+                </div>
+            )}
 
-                {selectedInstance ? (
-                    <>
-                        <InstanceHero
-                            selectedInstance={selectedInstance}
-                            launchStatus={launchStatus}
-                            launchStep={launchStep}
-                            launchProgress={launchProgress}
-                            launchFeedback={launchFeedback}
-                            onPlay={onPlay}
-                            onStop={onStop}
-                            theme={theme}
-                            isAdvanced={showAdvanced}
-                            accounts={accounts}
-                            runningInstances={runningInstances}
-                            launchCooldown={launchCooldown}
-                        />
+            {/* Main Content Area - Split View */}
+            <div className="flex-1 flex overflow-hidden relative z-10 pt-12 pl-8">
 
-                        {/* Modded Details Section */}
-                        <div className={`w-full transition-all duration-700 ease-in-out ${isModded && showAdvanced ? 'opacity-100 max-h-[2000px] translate-y-0' : 'opacity-0 max-h-0 translate-y-20 overflow-hidden'}`}>
-                            {isModded && (
-                                <div ref={modsSectionRef} className="w-full max-w-7xl mx-auto px-8 pb-8 mt-4 animate-in slide-in-from-bottom-10 fade-in duration-700 delay-100">
-                                    {/* Unified Glass Card */}
-                                    <div
-                                        className={`flex flex-col h-[750px] overflow-hidden relative transition-all duration-300 ${theme === 'white' ? 'bg-white/90 border border-white/50 shadow-xl rounded-3xl' : 'bg-slate-950/80 border border-slate-800/50 shadow-2xl rounded-[2rem]'}`}
-                                    >
+                {/* Left Column: Hero & Greetings - Now Full Width (minus right padding for overlapping controls) */}
+                <div className="flex-1 flex flex-col items-start gap-8 min-w-0 pr-24 overflow-y-auto custom-scrollbar pb-24">
+                    {selectedInstance ? (
+                        <div className="flex flex-col gap-8 animate-in fade-in slide-in-from-bottom-4 duration-500 w-full">
 
-                                        {/* Internal Tab Switcher */}
-                                        <div className={`flex items-center justify-center pt-6 pb-4 border-b ${theme === 'white' ? 'border-slate-200 bg-slate-50/50' : 'border-white/5 bg-white/[0.02]'}`}>
-                                            <div className={`flex p-1 rounded-xl border relative ${theme === 'white' ? 'bg-slate-200/50 border-slate-300/50' : 'bg-slate-950/50 border-white/10'}`}>
-                                                <button
-                                                    onClick={() => setActiveTab('mods')}
-                                                    className={`relative px-8 py-2 rounded-lg font-medium text-sm transition-all duration-300 flex items-center justify-center gap-2 min-w-[140px] z-10 ${activeTab === 'mods'
-                                                        ? 'text-white bg-indigo-600 shadow-lg shadow-indigo-500/20'
-                                                        : (theme === 'white' ? 'text-slate-600 hover:text-slate-900 hover:bg-white/60' : 'text-slate-400 hover:text-white hover:bg-white/5')
-                                                        }`}
-                                                >
-                                                    <Box size={16} />
-                                                    <span>Mods</span>
-                                                </button>
-                                                <button
-                                                    onClick={() => setActiveTab('resourcepacks')}
-                                                    className={`relative px-8 py-2 rounded-lg font-medium text-sm transition-all duration-300 flex items-center justify-center gap-2 min-w-[140px] z-10 ${activeTab === 'resourcepacks'
-                                                        ? 'text-white bg-pink-600 shadow-lg shadow-pink-500/20'
-                                                        : (theme === 'white' ? 'text-slate-600 hover:text-slate-900 hover:bg-white/60' : 'text-slate-400 hover:text-white hover:bg-white/5')
-                                                        }`}
-                                                >
-                                                    <Layers size={16} />
-                                                    <span>Resource Packs</span>
-                                                </button>
-                                                <button
-                                                    onClick={() => setActiveTab('shaders')}
-                                                    className={`relative px-8 py-2 rounded-lg font-medium text-sm transition-all duration-300 flex items-center justify-center gap-2 min-w-[140px] z-10 ${activeTab === 'shaders'
-                                                        ? 'text-white bg-cyan-600 shadow-lg shadow-cyan-500/20'
-                                                        : (theme === 'white' ? 'text-slate-600 hover:text-slate-900 hover:bg-white/60' : 'text-slate-400 hover:text-white hover:bg-white/5')
-                                                        }`}
-                                                >
-                                                    <Aperture size={16} />
-                                                    <span>Shaders</span>
-                                                </button>
-                                            </div>
+                            <div className="flex flex-col gap-2 w-full">
+                                <h4 className="text-sm font-bold text-slate-500 uppercase tracking-widest flex items-center gap-2">
+                                    Continue Playing
+                                </h4>
+                                <InstanceHero
+                                    selectedInstance={selectedInstance}
+                                    launchStatus={launchStatus}
+                                    launchStep={launchStep}
+                                    launchProgress={launchProgress}
+                                    launchFeedback={launchFeedback}
+                                    onPlay={onPlay}
+                                    onStop={onStop}
+                                    theme={theme}
+                                    isAdvanced={showAdvanced}
+                                    setShowAdvanced={setShowAdvanced}
+                                    onEditCrop={onEditCrop}
+                                    accounts={accounts}
+                                    runningInstances={runningInstances}
+                                    launchCooldown={launchCooldown}
+                                    allowOverflow={false}
+                                    modCount={installedMods?.length || 0}
+                                />
+                            </div>
+
+                            {/* Section: Server Bar */}
+                            {!showAdvanced && (
+                                <div className="flex flex-col gap-4 w-full mt-4">
+                                    <div className="flex items-center justify-between w-full pr-4">
+                                        <div className="flex flex-col gap-0.5">
+                                            <h4 className="text-xl font-bold text-white tracking-tight">Continue on Servers</h4>
+                                            <p className="text-sm text-slate-500 font-medium">Continue playing on the latest servers you were playing</p>
                                         </div>
-
-                                        {/* Content Area */}
-                                        <div className="flex-1 overflow-hidden relative">
-                                            {activeTab === 'mods' && (
-                                                <ModsList
-                                                    installedMods={installedMods}
-                                                    selectedInstance={selectedInstance}
-                                                    isLoading={isLoadingMods}
-                                                    onRefresh={handleRefreshMods}
-                                                    onAdd={handleAddMods}
-                                                    onBrowse={onBrowseMods}
-                                                    onDelete={handleDeleteMod}
-                                                    isDraggingGlobal={isDragging}
-                                                    onDragOver={handleDragOver}
-                                                    onDragLeave={handleDragLeave}
-                                                    onDrop={handleDrop}
-                                                    theme={theme}
-                                                    className="!bg-transparent !border-none !rounded-none !shadow-none !h-full !p-6 animate-in fade-in duration-300"
-                                                />
-                                            )}
-                                            {activeTab === 'resourcepacks' && (
-                                                <ResourcePacksList
-                                                    resourcePacks={resourcePacks}
-                                                    selectedInstance={selectedInstance}
-                                                    isLoading={isLoadingResourcePacks}
-                                                    onRefresh={handleRefreshResourcePacks}
-                                                    onAdd={handleAddResourcePacks}
-                                                    onDelete={handleDeleteResourcePack}
-                                                    isDraggingGlobal={isDragging}
-                                                    onDragOver={handleDragOver}
-                                                    onDragLeave={handleDragLeave}
-                                                    onDrop={handleResourcePackDrop}
-                                                    theme={theme}
-                                                    className="!bg-transparent !border-none !rounded-none !shadow-none !h-full !p-6 animate-in fade-in duration-300"
-                                                />
-                                            )}
-                                            {activeTab === 'shaders' && (
-                                                <ShadersList
-                                                    shaders={installedShaders}
-                                                    selectedInstance={selectedInstance}
-                                                    isLoading={isLoadingShaders}
-                                                    onRefresh={handleRefreshShaders}
-                                                    onAdd={handleAddShaders}
-                                                    onBrowse={onBrowseShaders}
-                                                    onDelete={handleDeleteShader}
-                                                    isDraggingGlobal={isDragging}
-                                                    onDragOver={handleDragOver}
-                                                    onDragLeave={handleDragLeave}
-                                                    onDrop={handleShaderDrop}
-                                                    theme={theme}
-                                                    className="!bg-transparent !border-none !rounded-none !shadow-none !h-full !p-6 animate-in fade-in duration-300"
-                                                />
-                                            )}
-                                        </div>
+                                        <button
+                                            onClick={() => setActiveTab('discover')}
+                                            className="w-10 h-10 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center text-slate-400 hover:text-emerald-400 hover:border-emerald-500/30 hover:bg-white/10 transition-all group"
+                                            title="Browse All Servers"
+                                        >
+                                            <Globe size={20} className="group-hover:scale-110 transition-transform" />
+                                        </button>
                                     </div>
+                                    <ServerSwitchPanel
+                                        selectedInstance={selectedInstance}
+                                        onJoinServer={(server) => {
+                                            const launchParams = { ...selectedInstance, autoConnect: true, serverAddress: server.ip };
+                                            onPlay(launchParams);
+                                        }}
+                                        className="w-full"
+                                    />
                                 </div>
                             )}
-                        </div>
-                    </>
-                ) : (
-                    isLoadingInstances ? null : <EmptyState onNewCrop={onNewCrop} />
-                )}
 
-                {/* Bottom Spacer - animates flex-grow to slide content up */}
-                <div className={`w-full transition-all duration-500 ease-in-out ${(!isModded || !showAdvanced) ? 'flex-1 min-h-[10%]' : 'flex-none h-0'}`} />
+                            {/* Modded Details Section (Collapsible) */}
+                            <div className={`w-full transition-all duration-700 ease-in-out ${isModded && showAdvanced ? 'opacity-100 max-h-[2000px] translate-y-0' : 'opacity-0 max-h-0 translate-y-20 overflow-hidden'}`}>
+                                {isModded && (
+                                    <div ref={modsSectionRef} className="w-full mt-4">
+                                        {/* Unified Glass Card */}
+                                        <div
+                                            className={`flex flex-col h-[750px] overflow-hidden relative transition-all duration-300 bg-slate-900/50 border border-white/5 shadow-xl rounded-3xl`}
+                                        >
+                                            {/* Internal Tab Switcher */}
+                                            <div className="flex items-center justify-start px-6 pt-6 pb-4 border-b border-white/5">
+                                                <div className="flex gap-4">
+                                                    {['mods', 'resourcepacks', 'shaders'].map(tab => (
+                                                        <button
+                                                            key={tab}
+                                                            onClick={() => setActiveTab(tab)}
+                                                            className={`text-sm font-bold uppercase tracking-wider pb-1 border-b-2 transition-colors ${activeTab === tab ? 'text-white border-white' : 'text-slate-500 border-transparent hover:text-slate-300'}`}
+                                                        >
+                                                            {tab}
+                                                        </button>
+                                                    ))}
+                                                </div>
+                                            </div>
+
+                                            {/* Content Area */}
+                                            <div className="flex-1 overflow-hidden relative">
+                                                {activeTab === 'mods' && (
+                                                    <ModsList
+                                                        installedMods={installedMods}
+                                                        selectedInstance={selectedInstance}
+                                                        isLoading={isLoadingMods}
+                                                        onRefresh={handleRefreshMods}
+                                                        onAdd={handleAddMods}
+                                                        onBrowse={onBrowseMods}
+                                                        onDelete={handleDeleteMod}
+                                                        isDraggingGlobal={isDragging}
+                                                        onDragOver={handleDragOver}
+                                                        onDragLeave={handleDragLeave}
+                                                        onDrop={handleDrop}
+                                                        theme={theme}
+                                                        className="!bg-transparent !border-none !rounded-none !shadow-none !h-full !p-6"
+                                                    />
+                                                )}
+                                                {/* Other tabs... simplified for brevity in replacement but keeping logic */}
+                                                {activeTab === 'resourcepacks' && (
+                                                    <ResourcePacksList
+                                                        resourcePacks={resourcePacks}
+                                                        selectedInstance={selectedInstance}
+                                                        isLoading={isLoadingResourcePacks}
+                                                        onRefresh={handleRefreshResourcePacks}
+                                                        onAdd={handleAddResourcePacks}
+                                                        onDelete={handleDeleteResourcePack}
+                                                        isDraggingGlobal={isDragging}
+                                                        onDragOver={handleDragOver}
+                                                        onDragLeave={handleDragLeave}
+                                                        onDrop={handleResourcePackDrop}
+                                                        theme={theme}
+                                                        className="!bg-transparent !border-none !rounded-none !shadow-none !h-full !p-6"
+                                                    />
+                                                )}
+                                                {activeTab === 'shaders' && (
+                                                    <ShadersList
+                                                        shaders={installedShaders}
+                                                        selectedInstance={selectedInstance}
+                                                        isLoading={isLoadingShaders}
+                                                        onRefresh={handleRefreshShaders}
+                                                        onAdd={handleAddShaders}
+                                                        onBrowse={onBrowseShaders}
+                                                        onDelete={handleDeleteShader}
+                                                        isDraggingGlobal={isDragging}
+                                                        onDragOver={handleDragOver}
+                                                        onDragLeave={handleDragLeave}
+                                                        onDrop={handleShaderDrop}
+                                                        theme={theme}
+                                                        className="!bg-transparent !border-none !rounded-none !shadow-none !h-full !p-6"
+                                                    />
+                                                )}
+                                            </div>
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    ) : (
+                        isLoadingInstances ? null : <EmptyState onNewCrop={onNewCrop} />
+                    )}
+                </div>
             </div>
         </div>
     );

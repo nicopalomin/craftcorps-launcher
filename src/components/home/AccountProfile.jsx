@@ -28,29 +28,29 @@ const AccountProfile = ({
         <div className="relative z-50 pointer-events-auto" ref={profileMenuRef}>
             <button
                 onClick={() => setShowProfileMenu(!showProfileMenu)}
-                className={`flex items-center gap-3.5 bg-transparent border transition-all duration-300 cursor-pointer group pl-1.5 pr-5 py-1.5 rounded-full ${showProfileMenu
+                className={`flex items-center gap-4 bg-slate-900/50 border transition-all duration-300 cursor-pointer group pl-2.5 pr-8 py-2.5 rounded-2xl ${showProfileMenu
                     ? 'border-emerald-500/50 ring-4 ring-emerald-500/10'
-                    : 'border-white/10 hover:border-emerald-500/40 hover:bg-white/5'
+                    : 'border-white/10 hover:border-emerald-500/40 hover:bg-slate-800'
                     }`}
             >
-                <div className={`w-10 h-10 rounded-full ${activeAccount?.avatarColor || 'bg-slate-600'} flex items-center justify-center shadow-inner relative ring-2 ring-white/5 group-hover:ring-emerald-500/30 transition-all`}>
+                <div className={`w-12 h-12 rounded-xl ${activeAccount?.avatarColor || 'bg-slate-600'} flex items-center justify-center shadow-inner relative ring-1 ring-white/10 group-hover:ring-emerald-500/30 transition-all overflow-hidden`}>
                     <PlayerAvatar name={activeAccount?.name} uuid={activeAccount?.uuid} />
                     {/* Status Dot */}
-                    <div className="absolute bottom-0 right-0 w-3 h-3 bg-emerald-500 border-[2.5px] border-slate-900 rounded-full shadow-sm"></div>
+                    <div className="absolute bottom-0 right-0 w-3 h-3 bg-emerald-500 border-2 border-slate-900 rounded-full shadow-sm transform translate-x-[20%] translate-y-[20%]"></div>
                 </div>
 
-                <div className="flex flex-col items-start gap-0.5">
-                    <span className="font-bold text-[15px] text-slate-200 transition-colors leading-none tracking-tight">
+                <div className="flex flex-col items-start gap-1">
+                    <span className="font-bold text-[17px] text-slate-200 transition-colors leading-none tracking-tight">
                         {activeAccount?.name}
                     </span>
-                    <span className="text-[10px] font-medium text-emerald-400 uppercase tracking-wider bg-emerald-500/10 px-1.5 py-0.5 rounded leading-none border border-emerald-500/10">
+                    <span className="text-[11px] font-bold text-emerald-400 uppercase tracking-widest bg-emerald-500/10 px-2 py-0.5 rounded leading-none border border-emerald-500/10">
                         {activeAccount?.type}
                     </span>
                 </div>
 
                 <ChevronRight
-                    size={14}
-                    className={`text-slate-500 group-hover:text-slate-300 transition-transform duration-300 ml-1 ${showProfileMenu ? 'rotate-90' : ''}`}
+                    size={16}
+                    className={`text-slate-500 group-hover:text-slate-300 transition-transform duration-300 ml-2 ${showProfileMenu ? 'rotate-90' : ''}`}
                 />
             </button>
 
@@ -75,7 +75,7 @@ const AccountProfile = ({
                                         : 'hover:bg-slate-800 text-slate-300'
                                         }`}
                                 >
-                                    <div className={`w-6 h-6 rounded-full ${acc.avatarColor} flex items-center justify-center text-[10px] font-bold shadow-sm relative`}>
+                                    <div className={`w-6 h-6 rounded-lg ${acc.avatarColor} flex items-center justify-center text-[10px] font-bold shadow-sm relative`}>
                                         <PlayerAvatar name={acc.name} uuid={acc.uuid} size={32} />
                                     </div>
                                     <div className="flex-1 text-left min-w-0">

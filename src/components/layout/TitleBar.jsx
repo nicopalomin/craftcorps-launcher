@@ -8,6 +8,7 @@ function TitleBar({
     isRefreshing,
     authError,
     onOpenConsole,
+    onRefreshAuth,
     updateStatus,
     updateInfo,
     onOpenUpdateModal,
@@ -33,12 +34,15 @@ function TitleBar({
                 )}
                 {!isRefreshing && authError && (
                     <div className="relative group ml-3 no-drag">
-                        <div className="flex items-center gap-1.5 text-red-400 bg-red-500/10 px-2 py-0.5 rounded-full border border-red-500 cursor-help">
+                        <button
+                            onClick={onRefreshAuth}
+                            className="flex items-center gap-1.5 text-red-400 bg-red-500/10 px-2 py-0.5 rounded-full border border-red-500 hover:bg-red-500/20 transition-colors cursor-pointer"
+                        >
                             <X size={10} />
-                            <span className="font-medium">Auth Failed</span>
-                        </div>
+                            <span className="font-medium">Minecraft Login Failed</span>
+                        </button>
                         <div className="absolute top-full left-0 mt-2 w-64 p-2.5 bg-slate-900/95 backdrop-blur border border-red-500/30 rounded-lg shadow-xl text-xs text-slate-300 opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none z-[100]">
-                            Auth failed due to internet connection missing, mojang auth servers are down or due to VPN use
+                            Minecraft authentication failed. This can be due to internet connection issues, Mojang servers being down, or VPN usage. Click to retry.
                         </div>
                     </div>
                 )}

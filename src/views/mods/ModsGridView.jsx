@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Package, Box, Search, Loader2, Download, Layers, AlertTriangle, Aperture } from 'lucide-react';
+import { Package, Box, Search, Loader2, Download, Layers, AlertTriangle, Aperture, Check } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 
 export const ModsGridView = ({
@@ -17,12 +17,12 @@ export const ModsGridView = ({
     isSearching,
     searchError,
     results,
-    onProjectSelect,
-    setSelectedProject, // Added prop
-    selectedInstance, // Added prop
-    onLoadMore, // Added prop
-    isLoadingMore, // Added prop
-    onSwitchInstance // Added prop
+    onLoadMore,
+    isLoadingMore,
+    onSwitchInstance,
+    getInstallStatus,
+    setSelectedProject,
+    selectedInstance
 }) => {
     const { t } = useTranslation();
 
@@ -197,7 +197,8 @@ export const ModsGridView = ({
                                 <ModsGridCard
                                     key={project.project_id}
                                     project={project}
-                                    onClick={() => onProjectSelect(project)}
+                                    onClick={() => setSelectedProject(project)}
+                                    installStatus={getInstallStatus?.(project)}
                                 />
                             ))}
                         </div>
@@ -231,7 +232,8 @@ export const ModsGridView = ({
 };
 
 // Extracted internal component for cleaner code
-const ModsGridCard = ({ project, onClick }) => {
+const ModsGridCard = ({ project, onClick, installStatus }) => {
+    const isInstalled = installStatus?.installed;
     const loaders = project.categories?.filter(c => ['fabric', 'forge', 'quilt', 'neoforge'].includes(c)) || [];
     const gameVersions = project.versions || [];
     const displayVersions = gameVersions.slice(0, 2);
@@ -253,9 +255,17 @@ const ModsGridCard = ({ project, onClick }) => {
                     )}
                 </div>
                 <div className="flex-1 min-w-0">
-                    <h3 className="text-base font-bold text-slate-200 truncate group-hover:text-emerald-400 transition-colors">
-                        {project.title}
-                    </h3>
+                    <div className="flex items-center justify-between gap-2">
+                        <h3 className="text-base font-bold text-slate-200 truncate group-hover:text-emerald-400 transition-colors">
+                            {project.title}
+                        </h3>
+                        {isInstalled && (
+                            <span className="flex items-center gap-1 text-[10px] font-bold text-emerald-500 uppercase bg-emerald-500/10 px-1.5 py-0.5 rounded border border-emerald-500/20 shrink-0">
+                                <Check size={10} strokeWidth={3} />
+                                {project.project_type === 'modpack' ? 'Owned' : 'Inst'}
+                            </span>
+                        )}
+                    </div>
                     <p className="text-xs text-emerald-500/80 mb-1 font-medium">
                         by {project.author}
                     </p>

@@ -145,12 +145,28 @@ export const useGameLaunch = (selectedInstance, ram, activeAccount, updateLastPl
             const timeStr = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}:${now.getSeconds().toString().padStart(2, '0')} `;
             setLogs(prev => [...prev, { ...log, time: timeStr }]);
 
-            if (log.message.includes('Downloading assets')) {
+            const msg = log.message;
+
+            if (msg.includes('Downloading assets')) {
                 // Handled by progress event
-            } else if (log.message.includes('Starting MCLC')) {
+            } else if (msg.includes('Starting MCLC')) {
                 setLaunchStep("Preparing version manifest...");
-            } else if (log.message.includes('Game process started')) {
-                setLaunchStep("Game started!");
+            } else if (msg.includes('Setting user')) {
+                setLaunchStep("Authenticating session...");
+            } else if (msg.includes('Unpacking natives') || msg.includes('extracting native')) {
+                setLaunchStep("Preparing game environment...");
+            } else if (msg.includes('Backend library')) {
+                setLaunchStep("Verifying libraries...");
+            } else if (msg.includes('LWJGL Version')) {
+                setLaunchStep("Initializing Graphics Engine...");
+            } else if (msg.includes('OpenAL initialized')) {
+                setLaunchStep("Initializing Audio Engine...");
+            } else if (msg.includes('Reloading ResourceManager')) {
+                setLaunchStep("Loading Game Resources...");
+            } else if (msg.includes('Created:')) {
+                setLaunchStep("Creating Game Window...");
+            } else if (msg.includes('Game process started')) {
+                setLaunchStep("Starting Game Process...");
                 setLaunchProgress(100);
 
                 // [TELEMETRY] Track Duration
@@ -168,10 +184,12 @@ export const useGameLaunch = (selectedInstance, ram, activeAccount, updateLastPl
                 setLaunchStatus('loading_window');
                 setTimeout(() => {
                     setLaunchStatus(prev => prev === 'loading_window' ? 'running' : prev);
-                }, 10000);
+                }, 15000); // 15s grace for window creation
             } else {
-                if (log.message && log.message.length < 50 && !log.message.includes('DEBUG')) {
-                    setLaunchStep(log.message);
+                // Ignore lengthy debug logs or generic info
+                if (msg && msg.length < 60 && !msg.includes('DEBUG') && !msg.includes('INFO') && !msg.match(/^\[.*\]/)) {
+                    // Only update if it looks like a readable status (heuristic)
+                    // setLaunchStep(msg);
                 }
             }
         };
@@ -179,7 +197,15 @@ export const useGameLaunch = (selectedInstance, ram, activeAccount, updateLastPl
         const handleGameProgress = (data) => {
             if (data.gameDir && data.gameDir !== selectedInstance.path) return;
             setLaunchProgress(data.percent);
-            setLaunchStep(`Downloading ${data.type} (${data.percent}%)`);
+
+            let typeName = data.type;
+            const t = (data.type || '').toLowerCase();
+            if (t.includes('asset')) typeName = 'Assets';
+            else if (t.includes('native')) typeName = 'Native Libraries';
+            else if (t.includes('class') || t.includes('jar')) typeName = 'Game Libraries';
+            else if (t.includes('version')) typeName = 'Version Manifest';
+
+            setLaunchStep(`Downloading ${typeName} (${data.percent}%)`);
         };
 
         const handleGameExit = (data) => {
@@ -205,7 +231,7 @@ export const useGameLaunch = (selectedInstance, ram, activeAccount, updateLastPl
 
             // Always show console on non-zero exit (error/crash) to help with debugging
             if (code !== 0 && code !== -1) {
-                setShowConsole(true);
+                // setShowConsole(true);
                 if (launchStatusRef.current === 'launching') {
                     setLaunchFeedback('error');
                     setLaunchStep("Launch Failed.");

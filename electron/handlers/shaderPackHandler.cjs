@@ -8,7 +8,7 @@ const AdmZip = require('adm-zip');
  * Get Instance Shaders
  * Scans the shaderpacks directory and optionsshaders.txt
  */
-const getInstanceShaders = async (event, instancePath) => {
+const getInstanceShaders = async (event, instancePath, force = false) => {
     if (!instancePath || !fs.existsSync(instancePath)) return [];
 
     const shadersDir = path.join(instancePath, 'shaderpacks');

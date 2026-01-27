@@ -8,7 +8,10 @@ export const useAppSettings = () => {
 
     const [ram, setRam] = useState(() => parseFloat(localStorage.getItem('settings_ram')) || 4);
     const [javaPath, setJavaPath] = useState(() => localStorage.getItem('settings_javaPath') || "C:\\Program Files\\Java\\jdk-17.0.2\\bin\\javaw.exe");
-    const [hideOnLaunch, setHideOnLaunch] = useState(() => localStorage.getItem('settings_hideOnLaunch') === 'true');
+    const [hideOnLaunch, setHideOnLaunch] = useState(() => {
+        const stored = localStorage.getItem('settings_hideOnLaunch');
+        return stored !== null ? stored === 'true' : true;
+    });
     const [disableAnimations, setDisableAnimations] = useState(() => localStorage.getItem('settings_disableAnimations') === 'true');
     const [theme, setTheme] = useState(() => localStorage.getItem('settings_theme') || 'classic');
     const [minimizeOnClose, setMinimizeOnClose] = useState(() => {

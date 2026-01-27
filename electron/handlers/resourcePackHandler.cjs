@@ -8,7 +8,7 @@ const AdmZip = require('adm-zip');
  * Get Instance Resource Packs
  * Scans the resourcepacks directory and options.txt
  */
-const getInstanceResourcePacks = async (event, instancePath) => {
+const getInstanceResourcePacks = async (event, instancePath, force = false) => {
     if (!instancePath || !fs.existsSync(instancePath)) return [];
 
     const packsDir = path.join(instancePath, 'resourcepacks');

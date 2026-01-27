@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 
 export const useAccounts = () => {
     const [accounts, setAccounts] = useState(() => {
@@ -34,83 +34,93 @@ export const useAccounts = () => {
         activeAccountIdRef.current = activeAccount?.id;
     }, [activeAccount]);
 
-    // Auto-refresh tokens on startup
-    useEffect(() => {
-        const refreshTokens = async () => {
-            // Prevent double refresh (Strict Mode)
-            if (hasRefreshedRef.current || !window.electronAPI?.microsoftRefresh) return;
+    const refreshAccounts = useCallback(async () => {
+        // Prevent double refresh
+        if (isRefreshing || !window.electronAPI?.microsoftRefresh) return;
 
-            const accountsToRefresh = accounts.filter(a => a.type === 'Microsoft' && (a.minecraftRefreshToken || a.refreshToken));
-            if (accountsToRefresh.length === 0) return;
+        const accountsToRefresh = accounts.filter(a => a.type === 'Microsoft' && (a.minecraftRefreshToken || a.refreshToken));
+        if (accountsToRefresh.length === 0) return;
 
-            // Mark as running
-            hasRefreshedRef.current = true;
-            setIsRefreshing(true);
-            setAuthError(false);
-            console.log(`[Auth] Attempting to refresh ${accountsToRefresh.length} accounts sequentially...`);
+        setIsRefreshing(true);
+        setAuthError(false);
+        console.log(`[Auth] Attempting to refresh ${accountsToRefresh.length} accounts sequentially...`);
 
-            let updatesMade = false;
-            let errorOccurred = false;
-            let currentAccounts = [...accounts]; // Local copy to update incrementally if needed
+        let updatesMade = false;
+        let errorOccurred = false;
+        let currentAccounts = [...accounts];
 
-            // Sequential Loop
-            for (const acc of accountsToRefresh) {
-                try {
-                    const msToken = acc.minecraftRefreshToken || acc.refreshToken;
-                    console.log(`[Auth] Refreshing ${acc.name}. CC Token: ${!!acc.accessToken}, MS Token: ${!!msToken}`);
-                    const result = await window.electronAPI.microsoftRefresh(msToken);
+        for (const acc of accountsToRefresh) {
+            try {
+                const msToken = acc.minecraftRefreshToken || acc.refreshToken;
+                console.log(`[Auth] Refreshing ${acc.name}. CC Token: ${!!acc.accessToken}, MS Token: ${!!msToken}`);
+                const result = await window.electronAPI.microsoftRefresh(msToken);
 
-                    if (result.success && result.account) {
-                        console.log(`[Auth] Success: ${acc.name}`);
-                        // Update local copy
-                        const idx = currentAccounts.findIndex(a => a.id === acc.id);
-                        if (idx !== -1) {
-                            currentAccounts[idx] = { ...currentAccounts[idx], ...result.account };
-                            updatesMade = true;
-                        }
-                    } else {
-                        console.warn(`[Auth] Failed to refresh ${acc.name}:`, result.error);
-                        errorOccurred = true;
+                if (result.success && result.account) {
+                    console.log(`[Auth] Success: ${acc.name}`);
+                    const idx = currentAccounts.findIndex(a => a.id === acc.id);
+                    if (idx !== -1) {
+                        currentAccounts[idx] = { ...currentAccounts[idx], ...result.account };
+                        updatesMade = true;
                     }
-
-                    // Delay between requests to avoid Rate Limiting (TOO_MANY_REQUESTS)
-                    if (accountsToRefresh.length > 1) {
-                        await new Promise(r => setTimeout(r, 1500));
-                    }
-                } catch (e) {
-                    console.error(`[Auth] Error refreshing ${acc.name}:`, e);
+                } else {
+                    console.warn(`[Auth] Failed to refresh ${acc.name}:`, result.error);
                     errorOccurred = true;
                 }
-            }
 
-            if (updatesMade) {
-                setAccounts(currentAccounts);
-                localStorage.setItem('craftcorps_accounts', JSON.stringify(currentAccounts));
-
-                // Update active account if matches ref
-                if (activeAccountIdRef.current) {
-                    const updatedActive = currentAccounts.find(a => a.id === activeAccountIdRef.current);
-                    if (updatedActive) {
-                        setActiveAccount(updatedActive);
-                        localStorage.setItem('craftcorps_active_account', JSON.stringify(updatedActive));
-                    }
+                if (accountsToRefresh.length > 1) {
+                    await new Promise(r => setTimeout(r, 1500));
                 }
-                console.log(`[Auth] Refresh cycle complete. Updates made.`);
-            } else {
-                console.log(`[Auth] Refresh cycle complete. No updates.`);
+            } catch (e) {
+                console.error(`[Auth] Error refreshing ${acc.name}:`, e);
+                errorOccurred = true;
             }
+        }
 
-            if (errorOccurred) {
-                setAuthError(true);
+        if (updatesMade) {
+            setAccounts(currentAccounts);
+            localStorage.setItem('craftcorps_accounts', JSON.stringify(currentAccounts));
+
+            if (activeAccountIdRef.current) {
+                const updatedActive = currentAccounts.find(a => a.id === activeAccountIdRef.current);
+                if (updatedActive) {
+                    setActiveAccount(updatedActive);
+                    localStorage.setItem('craftcorps_active_account', JSON.stringify(updatedActive));
+                }
             }
+            console.log(`[Auth] Refresh cycle complete. Updates made.`);
+        } else {
+            console.log(`[Auth] Refresh cycle complete. No updates.`);
+        }
 
-            // Keep visible briefly
-            setTimeout(() => setIsRefreshing(false), 500);
+        if (errorOccurred) {
+            setAuthError(true);
+        }
+
+        setTimeout(() => setIsRefreshing(false), 500);
+    }, [accounts, isRefreshing]);
+
+    // Auto-refresh tokens on startup
+    useEffect(() => {
+        if (!hasRefreshedRef.current) {
+            hasRefreshedRef.current = true;
+            refreshAccounts();
+        }
+    }, [refreshAccounts]); // Run once on mount via ref
+
+    // Auto-retry on error every 60 seconds
+    useEffect(() => {
+        let interval;
+        if (authError && !isRefreshing) {
+            console.log('[Auth] Automatic retry scheduled in 60s...');
+            interval = setInterval(() => {
+                console.log('[Auth] Executing scheduled automatic retry...');
+                refreshAccounts();
+            }, 60000);
+        }
+        return () => {
+            if (interval) clearInterval(interval);
         };
-
-        refreshTokens();
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, []); // Run once on mount
+    }, [authError, isRefreshing, refreshAccounts]);
 
     const handleAccountSwitch = (account) => {
         setActiveAccount(account);
@@ -195,6 +205,7 @@ export const useAccounts = () => {
         handleLogoutAll,
         handleRefreshBackend,
         isRefreshing,
-        authError
+        authError,
+        refreshAccounts
     };
 };

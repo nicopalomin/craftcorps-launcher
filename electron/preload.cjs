@@ -84,7 +84,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
     removeInstallProgressListeners: () => ipcRenderer.removeAllListeners('install-progress'),
     modrinthGetTags: (type) => ipcRenderer.invoke('modrinth-get-tags', { type }),
     modrinthInstallMod: (params) => ipcRenderer.invoke('modrinth-install-mod', params),
-    getInstanceMods: (instancePath) => ipcRenderer.invoke('get-instance-mods', instancePath),
+    getInstanceMods: (instancePath, force) => ipcRenderer.invoke('get-instance-mods', instancePath, force),
     onInstanceModsUpdated: (callback) => ipcRenderer.on('instance-mods-updated', (_event, value) => callback(value)),
     removeInstanceModsListener: () => ipcRenderer.removeAllListeners('instance-mods-updated'),
     deleteMod: (filePath) => ipcRenderer.invoke('delete-mod', filePath),
@@ -99,7 +99,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
     selectModFiles: () => ipcRenderer.invoke('select-mod-files'),
     modrinthInstallModpack: (params) => ipcRenderer.invoke('modrinth-install-modpack', params),
     modrinthCancelInstall: (projectId) => ipcRenderer.invoke('modrinth-cancel-install', { projectId }),
-    getInstanceResourcePacks: (instancePath) => ipcRenderer.invoke('get-instance-resource-packs', instancePath),
+    getInstanceResourcePacks: (instancePath, force) => ipcRenderer.invoke('get-instance-resource-packs', instancePath, force),
     selectResourcePackFiles: () => ipcRenderer.invoke('select-resource-pack-files'),
     addInstanceResourcePacks: async (instancePath, filePaths) => {
         try {
@@ -112,7 +112,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
     deleteResourcePack: (filePath) => ipcRenderer.invoke('delete-resource-pack', filePath),
 
     // Shaders
-    getInstanceShaders: (instancePath) => ipcRenderer.invoke('get-instance-shaders', instancePath),
+    getInstanceShaders: (instancePath, force) => ipcRenderer.invoke('get-instance-shaders', instancePath, force),
     selectShaderFiles: () => ipcRenderer.invoke('select-shader-files'),
     addInstanceShaders: async (instancePath, filePaths) => {
         try {
