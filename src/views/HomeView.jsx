@@ -52,10 +52,14 @@ const HomeView = ({
     const { activeCosmetics, isLoadingCosmetics, refreshCosmetics } = useWardrobe(activeAccount);
 
     useEffect(() => {
-        if (activeAccount) {
-            refreshCosmetics();
-        }
-    }, []);
+        // Give time for backend caches and auth state to settle
+        const timer = setTimeout(() => {
+            if (activeAccount) {
+                refreshCosmetics();
+            }
+        }, 200);
+        return () => clearTimeout(timer);
+    }, [activeAccount]);
 
     const [installedMods, setInstalledMods] = useState([]);
     const [isLoadingMods, setIsLoadingMods] = useState(false);

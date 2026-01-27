@@ -177,14 +177,23 @@ export const useWardrobe = (activeAccount) => {
 
             const uuid = activeAccount?.uuid || activeAccount?.id;
 
+            // 15s Caching Check
+            if (!forceRefresh && uuid) {
+                const lastFetch = localStorage.getItem(`craftcorps_cosmetics_last_fetch_${uuid}`);
+                if (lastFetch && (Date.now() - parseInt(lastFetch) < 15000)) {
+                    console.log('[useWardrobe] Using 15s cached cosmetics');
+                    setIsLoadingCosmetics(false);
+                    return;
+                }
+            }
+
             // Define the fetches
             const catalogPromise = fetchAllCosmetics();
 
             // Only use cached detailed if not forcing refresh AND it's actually populated
-            const hasDetailedCache = !forceRefresh && activeAccount?.cosmetics?.cosmetics?.length > 0;
-            const ownershipPromise = hasDetailedCache
-                ? Promise.resolve(activeAccount.cosmetics)
-                : fetchDetailedCosmetics(activeAccount.backendAccessToken || activeAccount.accessToken, uuid);
+            // CORTEX FIX: Removed activeAccount.cosmetics shortcut because it can be stale on startup, caused equipped items to vanish.
+            const hasDetailedCache = false;
+            const ownershipPromise = fetchDetailedCosmetics(activeAccount.backendAccessToken || activeAccount.accessToken, uuid);
 
             const [allCosmetics, detailed] = await Promise.all([catalogPromise, ownershipPromise]);
 
@@ -249,6 +258,11 @@ export const useWardrobe = (activeAccount) => {
                 ...c,
                 isOwned: false
             }))));
+
+            // Update timestamp
+            if (activeAccount) {
+                localStorage.setItem(`craftcorps_cosmetics_last_fetch_${activeAccount.uuid || activeAccount.id}`, Date.now().toString());
+            }
 
             // 5. Sync Active Cosmetics
             if (activeSet.size > 0) {
@@ -332,6 +346,11 @@ export const useWardrobe = (activeAccount) => {
                 if (activeAccount?.type?.toLowerCase() !== 'offline') {
                     await equipCosmetic(activeAccount.backendAccessToken || activeAccount.accessToken, cosmetic.id, activeAccount.uuid || activeAccount.id);
                     addToast(`Equipped ${cosmetic.name}`, 'success');
+
+                    // Update fetch timestamp to prevent stale server data from overriding local state immediately
+                    if (activeAccount) {
+                        localStorage.setItem(`craftcorps_cosmetics_last_fetch_${activeAccount.uuid || activeAccount.id}`, Date.now().toString());
+                    }
                 } else {
                     addToast(`Previewing ${cosmetic.name} (Offline Mode)`, 'info');
                 }
@@ -473,6 +492,11 @@ export const useWardrobe = (activeAccount) => {
                 await new Promise(resolve => setTimeout(resolve, 4000));
                 await loadCurrentSkin(activeAccount.name);
                 addToast("Skin applied successfully!", "success");
+
+                // Update fetch timestamp to preserve local changes
+                if (activeAccount) {
+                    localStorage.setItem(`craftcorps_cosmetics_last_fetch_${activeAccount.uuid || activeAccount.id}`, Date.now().toString());
+                }
             } else {
                 addToast(`Upload failed: ${uploadRes.error}`, "error");
             }
@@ -511,7 +535,7 @@ export const useWardrobe = (activeAccount) => {
 
     const refreshCosmetics = () => {
         if (activeAccount?.name) {
-            loadCosmetics(activeAccount.name, true);
+            loadCosmetics(activeAccount.name, false);
         }
     };
 
