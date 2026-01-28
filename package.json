@@ -44,7 +44,7 @@
     "win": {
       "target": "nsis",
       "icon": "public/icon.png",
-      "artifactName": "CraftCorps Setup ${version}.exe"
+      "artifactName": "CraftCorps-${version}-windows.exe"
     },
     "mac": {
       "target": {
@@ -56,14 +56,14 @@
       },
       "category": "public.app-category.games",
       "icon": "public/icon.png",
-      "artifactName": "CraftCorps Setup ${version} ${arch}.${ext}"
+      "artifactName": "CraftCorps-${version}-mac-${arch}.${ext}"
     },
     "compression": "maximum",
     "linux": {
       "target": "AppImage",
       "icon": "public/icon.png",
       "category": "Game",
-      "artifactName": "CraftCorps Setup ${version}.${ext}"
+      "artifactName": "CraftCorps-${version}-linux.${ext}"
     },
     "nsis": {
       "oneClick": true,
@@ -71,7 +71,7 @@
       "allowToChangeInstallationDirectory": false,
       "createDesktopShortcut": true,
       "createStartMenuShortcut": true,
-      "artifactName": "CraftCorps Setup ${version}.exe",
+      "artifactName": "CraftCorps-${version}-windows.exe",
       "include": "build/installer.nsh",
       "license": "build/license.txt",
       "installerHeader": "build/installer/header.png",
