@@ -162,6 +162,22 @@ async function createWindow() {
     mainWindow.on('resize', scheduleBoundsSave);
     mainWindow.on('move', scheduleBoundsSave);
 
+    // Renderer error handling
+    mainWindow.webContents.on('crashed', (event, killed) => {
+        console.error('[MAIN] Renderer crashed! Killed:', killed);
+        log.error('[MAIN] Renderer crashed! Killed:', killed);
+    });
+
+    mainWindow.webContents.on('did-fail-load', (event, errorCode, errorDescription, validatedURL) => {
+        console.error(`[MAIN] Failed to load: ${errorCode} - ${errorDescription} - ${validatedURL}`);
+        log.error(`[MAIN] Failed to load: ${errorCode} - ${errorDescription} - ${validatedURL}`);
+    });
+
+    mainWindow.webContents.on('render-process-gone', (event, details) => {
+        console.error('[MAIN] Render process gone:', details);
+        log.error('[MAIN] Render process gone:', details);
+    });
+
     const startUrl = process.env.ELECTRON_START_URL || `file://${path.join(__dirname, '../dist/index.html')}`;
 
     mainWindow.once('ready-to-show', () => {
@@ -190,46 +206,18 @@ async function createWindow() {
         console.log('[MAIN] Received app-ready from renderer');
 
         if (mainWindow && !mainWindow.isDestroyed() && !isHidden) {
-            // Start main window at 0 opacity
-            mainWindow.setOpacity(0);
+            // Destroy splash first
+            if (splashWindow && !splashWindow.isDestroyed()) {
+                splashWindow.destroy();
+                splashWindow = null;
+            }
+
+            // Show main window immediately
             mainWindow.show();
             mainWindow.setAlwaysOnTop(true);
             mainWindow.setAlwaysOnTop(false);
             mainWindow.focus();
 
-            // Smooth cross-fade
-            let opacity = 0;
-            const fadeInInterval = setInterval(() => {
-                opacity += 0.05;
-                if (opacity >= 1) {
-                    mainWindow.setOpacity(1);
-                    clearInterval(fadeInInterval);
-
-                    // Final focus push
-                    mainWindow.focus();
-
-                    // Destroy splash once main is fully opaque
-                    if (splashWindow && !splashWindow.isDestroyed()) {
-                        splashWindow.destroy();
-                        splashWindow = null;
-                    }
-
-                    // Memory Purge: Signal to Chromium that we are done with initial heavy lifting
-                    if (mainWindow && !mainWindow.isDestroyed()) {
-                        try {
-                            mainWindow.webContents.forceNextMemoryPurge();
-                        } catch (e) {
-                            console.warn('[MAIN] forceNextMemoryPurge failed:', e);
-                        }
-                    }
-                } else {
-                    mainWindow.setOpacity(opacity);
-                    // Optionally fade out splash simultaneously
-                    if (splashWindow && !splashWindow.isDestroyed()) {
-                        splashWindow.setOpacity(1 - opacity);
-                    }
-                }
-            }, 16); // ~60fps
         } else {
             // Fallback if hidden or destroyed
             if (splashWindow && !splashWindow.isDestroyed()) {
@@ -289,14 +277,42 @@ async function createWindow() {
         }
     });
 
+    // Universal fallback: Force show after 15 seconds no matter what
+    // This runs independently of ready-to-show in case content fails to load
+    setTimeout(() => {
+        if (splashWindow && !splashWindow.isDestroyed()) {
+            console.warn('[MAIN] Universal splash timeout (15s) - forcing show');
+            log.warn('[MAIN] Universal splash timeout (15s) - forcing show');
+            splashWindow.destroy();
+            splashWindow = null;
+        }
+        if (mainWindow && !mainWindow.isDestroyed() && !mainWindow.isVisible() && !isHidden) {
+            mainWindow.show();
+            mainWindow.focus();
+        }
+    }, 15000);
+
     console.time('[MAIN] loadURL');
-    if (process.env.NODE_ENV === 'development') {
-        await mainWindow.loadURL('http://localhost:51173');
-        // mainWindow.webContents.openDevTools({ mode: 'detach' });
-    } else {
-        await mainWindow.loadURL(startUrl);
+    try {
+        if (process.env.NODE_ENV === 'development') {
+            await mainWindow.loadURL('http://localhost:51173');
+            // mainWindow.webContents.openDevTools({ mode: 'detach' });
+        } else {
+            await mainWindow.loadURL(startUrl);
+        }
+        console.timeEnd('[MAIN] loadURL');
+    } catch (err) {
+        console.error('[MAIN] Failed to load main window:', err);
+        log.error('[MAIN] Failed to load main window:', err);
+        // Show window anyway so user can see error
+        if (splashWindow && !splashWindow.isDestroyed()) {
+            splashWindow.destroy();
+            splashWindow = null;
+        }
+        if (mainWindow && !mainWindow.isDestroyed()) {
+            mainWindow.show();
+        }
     }
-    console.timeEnd('[MAIN] loadURL');
 
     // Create Tray if not exists
     if (!tray) {

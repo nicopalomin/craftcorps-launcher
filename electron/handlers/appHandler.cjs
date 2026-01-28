@@ -7,6 +7,15 @@ const os = require('os');
 // const si = require('systeminformation'); // Lazy loaded
 
 function setupAppHandlers(getMainWindow, store) {
+    // Remove existing handlers to prevent duplicate registration on hot-reload
+    const handlers = [
+        'get-system-info', 'get-app-version', 'select-file', 'select-folder',
+        'open-logs-folder', 'open-path', 'upload-logs-manually', 'get-device-id',
+        'capture-marketing-shot', 'get-unread-count', 'get-notifications', 'mark-notifications-read'
+    ];
+    handlers.forEach(h => {
+        try { ipcMain.removeHandler(h); } catch (e) { /* ignore */ }
+    });
 
     // System Info for Telemetry
     ipcMain.handle('get-system-info', async () => {
@@ -47,17 +56,6 @@ function setupAppHandlers(getMainWindow, store) {
 
     ipcMain.handle('get-app-version', () => {
         return app.getVersion();
-    });
-
-    // Open path in file explorer
-    ipcMain.handle('open-path', async (event, pathToOpen) => {
-        try {
-            await shell.openPath(pathToOpen);
-            return { success: true };
-        } catch (error) {
-            log.error('Failed to open path:', pathToOpen, error);
-            return { success: false, error: error.message };
-        }
     });
 
     ipcMain.handle('get-device-id', async () => {

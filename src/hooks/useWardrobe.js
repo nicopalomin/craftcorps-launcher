@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { v4 as uuidv4 } from 'uuid';
 import { fetchPlayerCosmetics, equipCosmetic, getCosmeticTextureUrl, fetchAllCosmetics, fetchDetailedCosmetics } from '../utils/cosmeticsApi';
 import { FALLBACK_COSMETICS } from '../data/fallbackCosmetics';
