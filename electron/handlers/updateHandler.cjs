@@ -18,13 +18,18 @@ function setupUpdateHandlers(getMainWindow) {
     autoUpdater.setFeedURL({
         provider: 'generic',
         url: 'https://download.craftcorps.net/',
-        channel: 'latest'
+        channel: 'latest',
+        useMultipleRangeRequest: false // Disable range requests to fix download issues
     });
 
     // Force using default request options (no proxy, standard headers)
     autoUpdater.requestHeaders = {
-        'User-Agent': 'CraftCorps-Launcher'
+        'User-Agent': 'CraftCorps-Launcher',
+        'Cache-Control': 'no-cache'
     };
+
+    // Disable differential downloads (use full download instead)
+    autoUpdater.disableDifferentialDownload = true;
 
     // Disable auto-downloading if you want to ask the user first
     // autoUpdater.autoDownload = false; 
