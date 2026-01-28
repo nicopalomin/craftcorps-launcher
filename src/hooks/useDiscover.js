@@ -29,9 +29,10 @@ export const useDiscover = (selectedInstance, activeAccount) => {
         }
     }, []);
 
-    // State for request deduplication
+    // State for request deduplication and cancellation
     const loadingRef = useRef(false);
     const requestIdRef = useRef(0);
+    const abortControllerRef = useRef(null);
 
     // Load Servers
     const loadServers = useCallback(
@@ -41,6 +42,15 @@ export const useDiscover = (selectedInstance, activeAccount) => {
                 log(`Skipping redundant initial load`);
                 return;
             }
+
+            // Cancel previous request
+            if (abortControllerRef.current) {
+                abortControllerRef.current.abort();
+            }
+
+            // Create new abort controller for this request
+            const abortController = new AbortController();
+            abortControllerRef.current = abortController;
 
             const currentId = ++requestIdRef.current;
             log(`loadServers called. isInitial=${isInitial} reqId=${currentId}`);
@@ -69,7 +79,7 @@ export const useDiscover = (selectedInstance, activeAccount) => {
                 const { category, version, language } = activeFilters;
                 const isOfflineAccount = activeAccount?.type === 'Offline';
 
-                const data = await discovery.fetchServers(offset, 36, category, version, language, query, isOfflineAccount);
+                const data = await discovery.fetchServers(offset, 36, category, version, language, query, isOfflineAccount, abortController.signal);
 
                 const serversFromApi = data.servers || (Array.isArray(data) ? data : []);
                 log(`fetchServers response received:`, {
@@ -91,6 +101,12 @@ export const useDiscover = (selectedInstance, activeAccount) => {
                     setHasMore(data.hasMore === undefined ? false : data.hasMore);
                 }
             } catch (err) {
+                // Ignore if cancelled
+                if (err.name === 'AbortError') {
+                    log('[useDiscover] Request cancelled');
+                    return;
+                }
+
                 // Ignore if stale
                 if (currentId !== requestIdRef.current) return;
 
@@ -164,6 +180,13 @@ export const useDiscover = (selectedInstance, activeAccount) => {
         if (servers.length === 0) {
             loadServers(true);
         }
+
+        // Cleanup: cancel in-flight requests
+        return () => {
+            if (abortControllerRef.current) {
+                abortControllerRef.current.abort();
+            }
+        };
     }, [activeAccount?.id, activeAccount?.name, loadServers, log]);
 
     useEffect(() => {

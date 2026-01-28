@@ -251,29 +251,8 @@ function App() {
         launchCooldown
     } = useGameLaunch(selectedInstance, ram, activeAccount, () => updateLastPlayed(selectedInstance?.id), hideOnLaunch, javaPath, setJavaPath);
 
-    // Auto Update
-    const { updateStatus, updateInfo, downloadProgress, downloadUpdate, quitAndInstall } = useAutoUpdate();
-    const [showUpdateModal, setShowUpdateModal] = useState(false);
-
-    // Silently auto-download significant updates
-    useEffect(() => {
-        if (updateStatus === 'available' && updateInfo?.version) {
-            try {
-                const currentVersion = typeof __APP_VERSION__ !== 'undefined' ? __APP_VERSION__ : '0.0.0';
-                const parseVer = (v) => v.split('.').map(n => parseInt(n, 10) || 0);
-                const [curMajor, curMinor] = parseVer(currentVersion);
-                const [newMajor, newMinor] = parseVer(updateInfo.version);
-                const isSignificant = newMajor > curMajor || (newMajor === curMajor && newMinor > curMinor);
-
-                if (isSignificant) {
-                    console.log(`[AutoUpdate] Significant update detected (${currentVersion} -> ${updateInfo.version}). Auto-downloading...`);
-                    downloadUpdate();
-                }
-            } catch (e) {
-                console.error('[AutoUpdate] Failed to compare versions:', e);
-            }
-        }
-    }, [updateStatus, updateInfo, downloadUpdate]);
+    // Auto Update (Discord-style: fully automatic)
+    const { updateStatus, updateInfo, downloadProgress, isUpdating } = useAutoUpdate();
 
     // Update Discord RPC
     useEffect(() => {
@@ -346,9 +325,6 @@ function App() {
                         activeTab={navigatingTab}
                         onTabChange={handleTabChange}
                         theme={theme}
-                        updateStatus={updateStatus} updateInfo={updateInfo} downloadProgress={downloadProgress}
-                        onDownloadUpdate={downloadUpdate}
-                        onInstallUpdate={quitAndInstall}
                     />
 
                     <main className={`flex-1 flex flex-col min-w-0 relative overflow-hidden transition-colors duration-700 ${activeTab === 'home' ? 'bg-transparent' : (theme === 'white' ? 'bg-slate-50' : (theme === 'midnight' ? 'bg-[#050505]' : 'bg-slate-900'))}`}>
@@ -358,9 +334,6 @@ function App() {
                             authError={authError}
                             onOpenConsole={() => setShowConsole(true)}
                             onRefreshAuth={refreshAccounts}
-                            updateStatus={updateStatus}
-                            updateInfo={updateInfo}
-                            onOpenUpdateModal={() => setShowUpdateModal(true)}
                             onSelectRunningInstance={handleSelectRunningInstance}
                             onNavigate={(tab) => handleTabChange(tab)}
                         />
@@ -395,10 +368,7 @@ function App() {
                             showJavaModal={showJavaModal} setShowJavaModal={setShowJavaModal} handleJavaInstallComplete={handleJavaInstallComplete} refreshJavas={refreshJavas} requiredJavaVersion={requiredJavaVersion}
                             errorModal={errorModal} setErrorModal={setErrorModal}
                             crashModal={crashModal} setCrashModal={setCrashModal}
-                            showUpdateModal={showUpdateModal} setShowUpdateModal={setShowUpdateModal}
                             updateStatus={updateStatus} updateInfo={updateInfo} downloadProgress={downloadProgress}
-                            onDownloadUpdate={downloadUpdate}
-                            onInstallUpdate={quitAndInstall}
                         />
                     </React.Suspense>
                 </>

@@ -3,7 +3,7 @@ const STORE_KEY = 'cached_discover_servers';
 class DiscoveryService {
     constructor() {
         this.store = null;
-        this.memoryCache = null; // Instant tab switching cache
+        this.memoryCacheMap = new Map(); // Per-filter cache for instant tab switching
     }
 
     init(store) {
@@ -11,7 +11,16 @@ class DiscoveryService {
     }
 
     getMemoryCache() {
-        return this.memoryCache;
+        // Return default cache (no filters)
+        const cached = this.memoryCacheMap.get('all-all-all-empty');
+        if (cached && (Date.now() - cached.timestamp < 300000)) {
+            return cached.data;
+        }
+        return null;
+    }
+
+    clearCache() {
+        this.memoryCacheMap.clear();
     }
 
     // Disk cache (deprecated for initial load, kept for backup fallback?)
@@ -92,7 +101,19 @@ class DiscoveryService {
         return { success: false, error: 'IPC Unavailable' };
     }
 
-    async fetchServers(offset = 0, limit = 9, category = 'all', version = null, language = null, query = null, isOfflineAccount = false) {
+    async fetchServers(offset = 0, limit = 9, category = 'all', version = null, language = null, query = null, isOfflineAccount = false, signal = null) {
+        // Create cache key based on filter combination
+        const cacheKey = `${category}-${version || 'all'}-${language || 'all'}-${query || 'empty'}`;
+
+        // Check cache (5 min TTL) for first page only
+        if (offset === 0 && !isOfflineAccount) {
+            const cached = this.memoryCacheMap.get(cacheKey);
+            if (cached && (Date.now() - cached.timestamp < 300000)) {
+                console.log('[DiscoveryService] Using cached servers for:', cacheKey);
+                return cached.data;
+            }
+        }
+
         if (window.electronAPI && window.electronAPI.getDiscoverServers) {
             try {
                 const res = await window.electronAPI.getDiscoverServers({ offset, limit, category, version, language, query, isOfflineAccount });
@@ -108,9 +129,18 @@ class DiscoveryService {
 
                 const cleanedRes = Array.isArray(res) ? validServers : { ...res, servers: validServers };
 
-                // If clean fetch (first page, no filters), update memory cache with CLEAN data
-                if (cleanedRes && (cleanedRes.servers || Array.isArray(cleanedRes)) && offset === 0 && !query && category === 'all' && !version && !language && !isOfflineAccount) {
-                    this.memoryCache = cleanedRes.servers || cleanedRes;
+                // Update cache for first page
+                if (offset === 0 && cleanedRes && !isOfflineAccount) {
+                    this.memoryCacheMap.set(cacheKey, {
+                        data: cleanedRes,
+                        timestamp: Date.now()
+                    });
+
+                    // Limit cache size to 20 entries (prevent memory bloat)
+                    if (this.memoryCacheMap.size > 20) {
+                        const firstKey = this.memoryCacheMap.keys().next().value;
+                        this.memoryCacheMap.delete(firstKey);
+                    }
                 }
 
                 return cleanedRes;

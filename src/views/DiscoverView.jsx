@@ -5,6 +5,7 @@ import { Info, Globe, ShieldAlert, Check, ChevronRight } from "lucide-react";
 import { useDiscover } from "../hooks/useDiscover";
 import DiscoverHeader from "../components/discover/DiscoverHeader";
 import DiscoverGrid from "../components/discover/DiscoverGrid";
+import DiscoverSkeleton from "../components/skeletons/DiscoverSkeleton";
 import sprinkleBg from '/images/sprinkle_bg.svg';
 
 const DiscoverView = ({ selectedInstance, activeAccount }) => {
@@ -75,20 +76,24 @@ const DiscoverView = ({ selectedInstance, activeAccount }) => {
                     />
 
                     <div className="mt-6">
-                        <DiscoverGrid
-                            loading={loading}
-                            servers={servers}
-                            sections={sections}
-                            hasMore={hasMore}
-                            loadingMore={loadingMore}
-                            loadServers={loadServers}
-                            handleJoin={handleJoin}
-                            handleCopy={handleCopy}
-                            handleStop={handleStop}
-                            joiningServers={joiningServers}
-                            playingServerIp={playingServerIp}
-                            isBusy={isBusy}
-                        />
+                        {loading && servers.length === 0 ? (
+                            <DiscoverSkeleton />
+                        ) : (
+                            <DiscoverGrid
+                                loading={loading}
+                                servers={servers}
+                                sections={sections}
+                                hasMore={hasMore}
+                                loadingMore={loadingMore}
+                                loadServers={loadServers}
+                                handleJoin={handleJoin}
+                                handleCopy={handleCopy}
+                                handleStop={handleStop}
+                                joiningServers={joiningServers}
+                                playingServerIp={playingServerIp}
+                                isBusy={isBusy}
+                            />
+                        )}
 
                         {/* Disclaimer Footer */}
                         <div className="mt-12 mb-4 text-center">

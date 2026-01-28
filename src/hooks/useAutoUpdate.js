@@ -1,11 +1,9 @@
 import { useState, useEffect } from 'react';
-import { useToast } from '../contexts/ToastContext';
 
 export function useAutoUpdate() {
     const [updateStatus, setUpdateStatus] = useState('idle'); // idle, checking, available, downloading, downloaded, error
     const [updateInfo, setUpdateInfo] = useState(null);
     const [downloadProgress, setDownloadProgress] = useState(null);
-    const { addToast } = useToast();
 
     useEffect(() => {
         if (!window.electronAPI?.onUpdateStatus) return;
@@ -16,63 +14,40 @@ export function useAutoUpdate() {
 
             if (data.status === 'available') {
                 setUpdateInfo(data.info);
-                addToast(`Update available: ${data.info.version}`, 'info');
+                console.log(`[AutoUpdate] Update available: ${data.info?.version}. Auto-downloading...`);
             } else if (data.status === 'downloading') {
                 setDownloadProgress(data.progress);
             } else if (data.status === 'downloaded') {
                 setUpdateInfo(data.info);
-                addToast(`Update ready to install!`, 'success');
+                console.log('[AutoUpdate] Update downloaded. Restarting...');
             } else if (data.status === 'error') {
-                console.error('Update error:', data.error);
-                // addToast(`Update error: ${data.error}`, 'error'); // Optional: hide error from user if frequent
+                console.error('[AutoUpdate] Update error:', data.error);
             }
         };
 
         window.electronAPI.onUpdateStatus(handleStatus);
 
-        // Defer update check to avoid startup contention
-        const updateCheckTimeout = setTimeout(() => {
-            if (window.electronAPI?.checkForUpdates) {
-                window.electronAPI.checkForUpdates().catch(err => console.error("Failed to check for updates:", err));
-            }
-        }, 10000);
+        // Check for updates immediately on startup
+        if (window.electronAPI?.checkForUpdates) {
+            window.electronAPI.checkForUpdates().catch(err =>
+                console.error('[AutoUpdate] Failed to check for updates:', err)
+            );
+        }
 
         return () => {
-            clearTimeout(updateCheckTimeout);
             if (window.electronAPI?.removeUpdateListener) {
                 window.electronAPI.removeUpdateListener();
             }
         };
-    }, [addToast]);
+    }, []);
 
-    const downloadUpdate = async () => {
-        // Prevent duplicate download calls
-        if (updateStatus === 'downloading' || updateStatus === 'downloaded') {
-            console.log('[AutoUpdate] Download already in progress or completed');
-            return;
-        }
-
-        if (window.electronAPI) {
-            try {
-                await window.electronAPI.downloadUpdate();
-            } catch (err) {
-                console.error('[AutoUpdate] Failed to download update:', err);
-                addToast('Failed to download update', 'error');
-            }
-        }
-    };
-
-    const quitAndInstall = async () => {
-        if (window.electronAPI) {
-            await window.electronAPI.quitAndInstall();
-        }
-    };
+    // True when we should block the UI with the update overlay
+    const isUpdating = updateStatus === 'downloading' || updateStatus === 'downloaded';
 
     return {
         updateStatus,
         updateInfo,
         downloadProgress,
-        downloadUpdate,
-        quitAndInstall
+        isUpdating
     };
 }

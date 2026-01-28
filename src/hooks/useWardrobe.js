@@ -8,6 +8,7 @@ import { normalizeSkin, categorizeCosmetics, getDefaultModel } from '../utils/wa
 export const useWardrobe = (activeAccount) => {
     const { addToast } = useToast();
     const [activeTab, setActiveTab] = useState('skins');
+    const abortControllerRef = useRef(null); // Request cancellation support
 
     // Saved Skins Library (Local Storage)
     const [savedSkins, setSavedSkins] = useState(() => {
@@ -170,6 +171,16 @@ export const useWardrobe = (activeAccount) => {
     // Load Cosmetics
     const loadCosmetics = async (username, forceRefresh = false) => {
         console.log('[useWardrobe] loadCosmetics called for:', username, 'force:', forceRefresh);
+
+        // Cancel previous request if still in flight
+        if (abortControllerRef.current) {
+            abortControllerRef.current.abort();
+        }
+
+        // Create new abort controller for this request
+        const abortController = new AbortController();
+        abortControllerRef.current = abortController;
+
         setIsLoadingCosmetics(true);
         try {
             // 1. Fetch Catalog & Ownership in parallel
@@ -177,23 +188,23 @@ export const useWardrobe = (activeAccount) => {
 
             const uuid = activeAccount?.uuid || activeAccount?.id;
 
-            // 15s Caching Check
+            // 5-minute Caching Check (Performance Optimization)
             if (!forceRefresh && uuid) {
                 const lastFetch = localStorage.getItem(`craftcorps_cosmetics_last_fetch_${uuid}`);
-                if (lastFetch && (Date.now() - parseInt(lastFetch) < 15000)) {
-                    console.log('[useWardrobe] Using 15s cached cosmetics');
+                if (lastFetch && (Date.now() - parseInt(lastFetch) < 300000)) {
+                    console.log('[useWardrobe] Using 5-minute cached cosmetics');
                     setIsLoadingCosmetics(false);
                     return;
                 }
             }
 
-            // Define the fetches
-            const catalogPromise = fetchAllCosmetics();
+            // Define the fetches with abort signal
+            const catalogPromise = fetchAllCosmetics(abortController.signal);
 
             // Only use cached detailed if not forcing refresh AND it's actually populated
             // CORTEX FIX: Removed activeAccount.cosmetics shortcut because it can be stale on startup, caused equipped items to vanish.
             const hasDetailedCache = false;
-            const ownershipPromise = fetchDetailedCosmetics(activeAccount.backendAccessToken || activeAccount.accessToken, uuid);
+            const ownershipPromise = fetchDetailedCosmetics(activeAccount.backendAccessToken || activeAccount.accessToken, uuid, abortController.signal);
 
             const [allCosmetics, detailed] = await Promise.all([catalogPromise, ownershipPromise]);
 
@@ -275,6 +286,11 @@ export const useWardrobe = (activeAccount) => {
             }
 
         } catch (e) {
+            // Ignore abort errors (request was cancelled)
+            if (e.name === 'AbortError') {
+                console.log('[useWardrobe] Request cancelled');
+                return;
+            }
             console.error("Failed to load cosmetics", e);
             setOwnedCosmetics([]);
         } finally {
@@ -286,42 +302,62 @@ export const useWardrobe = (activeAccount) => {
 
     useEffect(() => {
         if (activeAccount?.name) {
-            // Load cached cosmetics immediately for the new account
             const accountId = activeAccount.uuid || activeAccount.id;
-            try {
-                // 1. Sync Active (Equipped) items
-                const savedActive = localStorage.getItem(`craftcorps_active_cosmetics_${accountId}`);
-                if (savedActive) {
-                    setActiveCosmetics(JSON.parse(savedActive));
-                } else {
-                    setActiveCosmetics([]);
-                }
 
-                // 2. Sync Owned list (to avoid "locked" look)
+            // PHASE 1: Load cache INSTANTLY (Stale-While-Revalidate)
+            try {
+                const savedActive = localStorage.getItem(`craftcorps_active_cosmetics_${accountId}`);
                 const savedOwned = localStorage.getItem(`craftcorps_owned_cosmetics_${accountId}`);
-                if (savedOwned) {
-                    setOwnedCosmetics(JSON.parse(savedOwned));
-                } else {
-                    // Start fresh if no cache
-                    setOwnedCosmetics([]);
+                const savedCatalog = localStorage.getItem(`craftcorps_cosmetics_catalog_${accountId}`);
+
+                if (savedActive) setActiveCosmetics(JSON.parse(savedActive));
+                if (savedOwned) setOwnedCosmetics(JSON.parse(savedOwned));
+                if (savedCatalog) {
+                    // Use catalog as fallback if owned is missing
+                    if (!savedOwned) setOwnedCosmetics(JSON.parse(savedCatalog));
                 }
             } catch (e) {
+                console.error('[useWardrobe] Cache load failed:', e);
                 setActiveCosmetics([]);
                 setOwnedCosmetics([]);
             }
 
-            // Defer heavy network calls to let UI mount smoothly
-            setIsInitializing(true);
-            const timer = setTimeout(() => {
-                Promise.all([
-                    loadCurrentSkin(activeAccount.name),
-                    loadCosmetics(activeAccount.name)
-                ]).finally(() => {
-                    setIsInitializing(false);
-                });
-            }, 200); // Reduced delay for snappier feel
+            // PHASE 2: Check if refresh is needed
+            const lastFetch = localStorage.getItem(`craftcorps_cosmetics_last_fetch_${accountId}`);
+            const isStale = !lastFetch || (Date.now() - parseInt(lastFetch) > 300000);
 
-            return () => clearTimeout(timer);
+            if (isStale) {
+                // Cache is stale - refresh in background WITHOUT loading spinner
+                setIsInitializing(true);
+                const timer = setTimeout(() => {
+                    Promise.all([
+                        loadCurrentSkin(activeAccount.name),
+                        loadCosmetics(activeAccount.name, true)
+                    ]).finally(() => {
+                        setIsInitializing(false);
+                    });
+                }, 50);
+                return () => {
+                    clearTimeout(timer);
+                    if (abortControllerRef.current) {
+                        abortControllerRef.current.abort();
+                    }
+                };
+            } else {
+                // Cache is fresh - just load current skin
+                setIsInitializing(true);
+                const timer = setTimeout(() => {
+                    loadCurrentSkin(activeAccount.name).finally(() => {
+                        setIsInitializing(false);
+                    });
+                }, 50);
+                return () => {
+                    clearTimeout(timer);
+                    if (abortControllerRef.current) {
+                        abortControllerRef.current.abort();
+                    }
+                };
+            }
         } else {
             setIsInitializing(false);
         }

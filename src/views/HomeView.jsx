@@ -52,13 +52,19 @@ const HomeView = ({
     const { activeCosmetics, isLoadingCosmetics, refreshCosmetics } = useWardrobe(activeAccount);
 
     useEffect(() => {
-        // Give time for backend caches and auth state to settle
-        const timer = setTimeout(() => {
-            if (activeAccount) {
-                refreshCosmetics();
+        // Only refresh cosmetics if cache is stale (> 5 minutes)
+        if (activeAccount) {
+            const uuid = activeAccount.uuid || activeAccount.id;
+            const lastFetch = localStorage.getItem(`craftcorps_cosmetics_last_fetch_${uuid}`);
+
+            // Only refresh if > 5 minutes old
+            if (!lastFetch || (Date.now() - parseInt(lastFetch) > 300000)) {
+                const timer = setTimeout(() => {
+                    refreshCosmetics();
+                }, 50); // Reduced delay for snappier feel
+                return () => clearTimeout(timer);
             }
-        }, 200);
-        return () => clearTimeout(timer);
+        }
     }, [activeAccount]);
 
     const [installedMods, setInstalledMods] = useState([]);
@@ -428,15 +434,14 @@ const HomeView = ({
         setInstalledShaders([]);
         setHasLoadedMods(false);
 
-        // Immediately trigger metadata load for modded instances to avoid "0 mods" text
-        if (selectedInstance && selectedInstance.loader !== 'Vanilla') {
+        // ONLY load mods/shaders/resource packs when Advanced panel is shown (Performance Optimization)
+        if (selectedInstance && selectedInstance.loader !== 'Vanilla' && showAdvanced) {
             handleRefreshMods();
-            // We can keep these lazy or trigger them too
             handleRefreshResourcePacks();
             handleRefreshShaders();
             setHasLoadedMods(true);
         }
-    }, [selectedInstance]); // No need to add handleRefresh... because they are stable or we want them fresh
+    }, [selectedInstance, showAdvanced]); // Added showAdvanced dependency
 
     useEffect(() => {
         if (!selectedInstance || selectedInstance.loader === 'Vanilla' || hasLoadedMods) return;

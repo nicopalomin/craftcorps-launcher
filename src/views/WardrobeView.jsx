@@ -2,6 +2,7 @@ import React from 'react';
 import { User, ShieldAlert } from 'lucide-react';
 import WardrobePreview from '../components/wardrobe/WardrobePreview';
 import WardrobeLibrary from '../components/wardrobe/WardrobeLibrary';
+import WardrobeSkeleton from '../components/skeletons/WardrobeSkeleton';
 import { useWardrobe } from '../hooks/useWardrobe';
 
 /**
@@ -58,6 +59,11 @@ const WardrobeView = ({ theme, activeAccount, isActive }) => {
         refreshCosmetics,
         isInitializing
     } = useWardrobe(activeAccount);
+
+    // Show skeleton on first visit (no cached data + loading)
+    if (isLoadingCosmetics && !currentSkin.skinUrl && categorizedCosmetics && Object.keys(categorizedCosmetics).length === 0) {
+        return <WardrobeSkeleton />;
+    }
 
     return (
         <div className="flex-1 overflow-hidden h-full flex flex-col relative bg-slate-950 p-8 animate-in fade-in slide-in-from-bottom-4 duration-500 select-none">

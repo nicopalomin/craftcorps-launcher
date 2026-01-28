@@ -10,9 +10,6 @@ function TitleBar({
     authError,
     onOpenConsole,
     onRefreshAuth,
-    updateStatus,
-    updateInfo,
-    onOpenUpdateModal,
     onSelectRunningInstance,
     onNavigate
 }) {
@@ -48,26 +45,6 @@ function TitleBar({
                         </div>
                     </div>
                 )}
-                {/* Update Indicator */}
-                {(updateStatus === 'available' || updateStatus === 'downloaded' || updateStatus === 'downloading') && (
-                    <div className="relative group ml-3 no-drag">
-                        <button
-                            onClick={onOpenUpdateModal}
-                            className="flex items-center gap-1.5 text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-full border border-emerald-500/30 hover:bg-emerald-500/20 transition-colors cursor-pointer"
-                        >
-                            <RefreshCw size={10} className={updateStatus === 'downloading' ? 'animate-spin' : ''} />
-                            <span className="font-medium">
-                                {updateStatus === 'downloaded' ? 'Update Ready' : 'Update Available'}
-                            </span>
-                        </button>
-                        <div className="absolute top-full left-0 mt-2 w-64 p-2.5 bg-slate-900/95 backdrop-blur border border-emerald-500/30 rounded-lg shadow-xl text-xs text-slate-300 opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none z-[100]">
-                            {updateStatus === 'downloaded'
-                                ? `Version ${updateInfo?.version || 'Unknown'} is ready to install. Click to restart.`
-                                : `Version ${updateInfo?.version || 'Unknown'} is available. Click to download.`}
-                        </div>
-                    </div>
-                )}
-
                 {/* Active Instances Indicator */}
                 <ActiveInstances onInstanceClick={onSelectRunningInstance} />
             </div>

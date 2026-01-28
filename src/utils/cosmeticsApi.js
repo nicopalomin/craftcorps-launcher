@@ -25,9 +25,11 @@ export const fetchPlayerCosmetics = async (playerUuid) => {
 /**
  * Fetch Cosmetics owned/active for the authenticated user
  * Endpoint: GET /cosmetics/player
- * @param {string} token 
+ * @param {string} token
+ * @param {string} uuid
+ * @param {AbortSignal} signal - Optional abort signal for request cancellation
  */
-export const fetchDetailedCosmetics = async (token, uuid) => {
+export const fetchDetailedCosmetics = async (token, uuid, signal = null) => {
     try {
         // Use Electron IPC to handle authenticated request with auto-refresh
         if (window.electronAPI?.fetchDetailedCosmetics) {
@@ -42,12 +44,15 @@ export const fetchDetailedCosmetics = async (token, uuid) => {
             headers: {
                 'Authorization': `Bearer ${token}`,
                 'Content-Type': 'application/json'
-            }
+            },
+            signal // Add abort signal support
         });
 
         if (!response.ok) return null;
         return await response.json();
     } catch (error) {
+        // Propagate abort errors
+        if (error.name === 'AbortError') throw error;
         console.error('Error fetching detailed cosmetics:', error);
         return null;
     }
@@ -56,11 +61,12 @@ export const fetchDetailedCosmetics = async (token, uuid) => {
 
 /**
  * Fetch Available Cosmetics (Catalog)
+ * @param {AbortSignal} signal - Optional abort signal for request cancellation
  * @returns {Promise<Array>}
  */
-export const fetchAllCosmetics = async () => {
+export const fetchAllCosmetics = async (signal = null) => {
     try {
-        const response = await fetch(`${BASE_URL}/cosmetics/catalog?t=${Date.now()}`);
+        const response = await fetch(`${BASE_URL}/cosmetics/catalog?t=${Date.now()}`, { signal });
         if (response.ok) {
             const data = await response.json();
             return data;
@@ -68,6 +74,8 @@ export const fetchAllCosmetics = async () => {
         console.warn('Catalog endpoint failed');
         return [];
     } catch (error) {
+        // Propagate abort errors
+        if (error.name === 'AbortError') throw error;
         console.error('Error fetching catalog:', error);
         return [];
     }

@@ -1,7 +1,7 @@
 {
   "name": "craftcorps-launcher",
   "private": true,
-  "version": "0.4.5",
+  "version": "0.4.6",
   "main": "electron/main.cjs",
   "author": "CraftCorps Authors",
   "description": "Premium Minecraft Instance Manager",
@@ -47,13 +47,22 @@
       "artifactName": "CraftCorps-${version}-windows.exe"
     },
     "mac": {
-      "target": {
-        "target": "dmg",
-        "arch": [
-          "x64",
-          "arm64"
-        ]
-      },
+      "target": [
+        {
+          "target": "zip",
+          "arch": [
+            "x64",
+            "arm64"
+          ]
+        },
+        {
+          "target": "dmg",
+          "arch": [
+            "x64",
+            "arm64"
+          ]
+        }
+      ],
       "category": "public.app-category.games",
       "icon": "public/icon.png",
       "artifactName": "CraftCorps-${version}-mac-${arch}.${ext}"

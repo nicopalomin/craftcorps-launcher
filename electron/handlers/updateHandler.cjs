@@ -31,12 +31,9 @@ function setupUpdateHandlers(getMainWindow) {
     // Disable differential downloads (use full download instead)
     autoUpdater.disableDifferentialDownload = true;
 
-    // Disable auto-downloading if you want to ask the user first
-    // autoUpdater.autoDownload = false; 
-    // For this implementation, let's keep it true for seamless updates, 
-    // or we can make it false to show a "Update Available" button.
-    // Let's go with autoDownload = false to give user control.
-    autoUpdater.autoDownload = false;
+    // Discord-style: auto-download updates silently
+    autoUpdater.autoDownload = true;
+    autoUpdater.autoInstallOnAppQuit = true;
 
     const safeSend = (channel, ...args) => {
         const win = getMainWindow();
@@ -84,8 +81,14 @@ function setupUpdateHandlers(getMainWindow) {
     });
 
     autoUpdater.on('update-downloaded', (info) => {
-        log.info('Update downloaded');
+        log.info('Update downloaded. Auto-installing in 3 seconds...');
         safeSend('update-status', { status: 'downloaded', info });
+
+        // Discord-style: auto quit and install after brief delay
+        setTimeout(() => {
+            log.info('Auto quit-and-install triggered');
+            autoUpdater.quitAndInstall(true, true);
+        }, 3000);
     });
 
     // --- IPC Handlers ---
