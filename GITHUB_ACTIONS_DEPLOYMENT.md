@@ -162,19 +162,93 @@ This is configured in `package.json`:
 
 ---
 
+## Complete Deployment Process
+
+⚠️ **IMPORTANT:** Deploying a new launcher version requires TWO steps:
+
+1. **Build & Upload to R2** (via GitHub Actions) - Automated ✅
+2. **Update Web App** (via Wrangler) - Manual ❌
+
+The GitHub Actions workflow **does NOT** automatically update the website. You must manually update the web app to point to the new version.
+
+---
+
 ## Deployment Checklist
 
-Use this checklist when deploying a new version:
+### Phase 1: Build Launcher (GitHub Actions)
 
-- [ ] **Update version** in `package.json` (e.g., `0.4.3` → `0.4.4`)
-- [ ] **Commit and push** changes to GitHub
-- [ ] **Trigger workflow** via web interface or CLI
-- [ ] **Monitor build** - ensure all 3 platforms complete successfully
-- [ ] **Verify uploads** - check all download URLs return 200 OK
-- [ ] **Update web app** - change `LAUNCHER_VERSION` in `craftcorps-web/src/lib/launcher-downloads.ts`
-- [ ] **Deploy web app** - run `npm run build && npx wrangler deploy`
-- [ ] **Test downloads** - verify files download and install correctly
-- [ ] **Create deployment doc** - document changes in `DEPLOYMENT_v{version}.md`
+- [ ] **Update version** in `package.json`
+  ```bash
+  cd /Users/nico/Desktop/craftcorps-launcher
+  # Edit package.json: "version": "0.4.4"
+  ```
+
+- [ ] **Commit and push** changes
+  ```bash
+  git add package.json
+  git commit -m "Bump version to 0.4.4"
+  git push nico main
+  ```
+
+- [ ] **Trigger GitHub Actions workflow**
+  - Visit: https://github.com/nicopalomin/craftcorps-launcher/actions/workflows/deploy.yml
+  - Click "Run workflow" → Select "Stable" → Click "Run workflow"
+
+- [ ] **Monitor build progress**
+  - Watch all 3 platforms (Windows, macOS, Linux) complete successfully
+  - Typical completion time: 3-5 minutes
+
+- [ ] **Verify R2 uploads**
+  ```bash
+  curl -I https://download.craftcorps.net/CraftCorps-0.4.4-windows.exe
+  curl -I https://download.craftcorps.net/CraftCorps-0.4.4-mac-x64.dmg
+  curl -I https://download.craftcorps.net/CraftCorps-0.4.4-linux.AppImage
+  # All should return: HTTP/2 200
+  ```
+
+### Phase 2: Update Web App (Cloudflare Workers)
+
+⚠️ **The website will NOT show the new version until you complete these steps:**
+
+- [ ] **Update launcher version constant**
+  ```bash
+  cd /Users/nico/Desktop/craftcorps-web
+  # Edit src/lib/launcher-downloads.ts
+  # Change: export const LAUNCHER_VERSION = '0.4.3';
+  # To:     export const LAUNCHER_VERSION = '0.4.4';
+  ```
+
+- [ ] **Build web app**
+  ```bash
+  npm run build
+  ```
+
+- [ ] **Deploy to Cloudflare Workers**
+  ```bash
+  npx wrangler deploy
+  ```
+
+- [ ] **Verify website shows new version**
+  - Visit: https://craftcorps.net/launcher/download
+  - Confirm version number displays as v0.4.4
+  - Click download buttons to verify URLs are correct
+
+### Phase 3: Post-Deployment
+
+- [ ] **Test downloads**
+  - Download and install on each platform
+  - Verify launcher launches correctly
+  - Check new features work as expected
+
+- [ ] **Create deployment documentation**
+  ```bash
+  cd /Users/nico/Desktop/craftcorps-launcher
+  # Create DEPLOYMENT_v0.4.4.md documenting changes
+  ```
+
+- [ ] **Announce release** (optional)
+  - Post in Discord: https://discord.gg/YXG2BZhe29
+  - Update changelog if needed
 
 ---
 
