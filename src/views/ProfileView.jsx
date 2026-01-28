@@ -12,6 +12,7 @@ import { fetchPlayerCosmetics, fetchDetailedCosmetics, fetchAllCosmetics, getCos
 import { FALLBACK_COSMETICS } from '../data/fallbackCosmetics';
 import Cape2DRender from '../components/common/Cape2DRender';
 import InstanceIcon from '../components/common/InstanceIcon';
+import FriendsList from '../components/profile/FriendsList';
 
 const getRarityColor = (rarity) => {
     switch (rarity) {
@@ -94,6 +95,7 @@ const ProfileView = ({ activeAccount, accounts, instances, theme, onLogout, onLo
     const [isLoadingProfile, setIsLoadingProfile] = useState(false);
     const [totalPlayTime, setTotalPlayTime] = useState(0);
     const [joinedDate, setJoinedDate] = useState(null);
+    const [seedsBalance, setSeedsBalance] = useState(0);
 
     // Secure Account State
     const [isSecuring, setIsSecuring] = useState(false);
@@ -125,6 +127,12 @@ const ProfileView = ({ activeAccount, accounts, instances, theme, onLogout, onLo
             if (window.electronAPI?.getTotalPlayTime) {
                 const ms = await window.electronAPI.getTotalPlayTime();
                 setTotalPlayTime(ms || 0);
+            }
+
+            // Fetch Seeds balance
+            if (window.electronAPI?.getBalance) {
+                const balanceData = await window.electronAPI.getBalance();
+                setSeedsBalance(balanceData.balance || 0);
             }
         } catch (e) {
             console.error("Failed to load profile", e);
@@ -332,7 +340,7 @@ const ProfileView = ({ activeAccount, accounts, instances, theme, onLogout, onLo
                                 Seeds
                             </div>
                             <div className="flex items-baseline justify-end gap-2 leading-none">
-                                <span className="text-4xl font-black text-white tabular-nums tracking-tighter drop-shadow-md">0</span>
+                                <span className="text-4xl font-black text-white tabular-nums tracking-tighter drop-shadow-md">{seedsBalance.toLocaleString()}</span>
                                 <span className="text-sm font-bold text-slate-500 tracking-wide">Seeds</span>
                             </div>
                         </div>
@@ -499,8 +507,10 @@ const ProfileView = ({ activeAccount, accounts, instances, theme, onLogout, onLo
 
                         </div>
 
-                        {/* Right Column: Servers, Playtime, & Cosmetics */}
+                        {/* Right Column: Friends, Servers, Playtime, & Cosmetics */}
                         <div className="lg:col-span-2 space-y-8">
+                            {/* Friends List */}
+                            <FriendsList activeAccount={activeAccount} />
 
                             {/* Instances Section */}
                             <div className="bg-slate-800/50 backdrop-blur-md rounded-2xl border border-white/5 p-6 relative overflow-hidden group">

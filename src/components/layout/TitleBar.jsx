@@ -2,6 +2,7 @@ import React from 'react';
 import { Terminal, Maximize2, Minimize2, X, RefreshCw } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import ActiveInstances from '../common/ActiveInstances';
+import NotificationBell from '../common/NotificationBell';
 
 function TitleBar({
     launchStatus,
@@ -12,7 +13,8 @@ function TitleBar({
     updateStatus,
     updateInfo,
     onOpenUpdateModal,
-    onSelectRunningInstance
+    onSelectRunningInstance,
+    onNavigate
 }) {
     const { t } = useTranslation();
 
@@ -78,6 +80,7 @@ function TitleBar({
                         <Terminal size={12} /> {t('top_bar_console')}
                     </button>
                 )}
+                <NotificationBell onNavigate={onNavigate} />
                 <div className="flex items-center gap-2">
                     <button
                         onClick={() => window.electronAPI?.minimize()}

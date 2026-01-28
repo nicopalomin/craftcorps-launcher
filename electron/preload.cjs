@@ -197,4 +197,14 @@ contextBridge.exposeInMainWorld('electronAPI', {
     // System/App Settings
     getStartOnStartup: () => ipcRenderer.invoke('get-start-on-startup'),
     setStartOnStartup: (value) => ipcRenderer.invoke('set-start-on-startup', value),
+
+    // Notifications
+    getNotifications: () => ipcRenderer.invoke('get-notifications'),
+    getUnreadCount: () => ipcRenderer.invoke('get-unread-count'),
+    markNotificationsRead: (ids) => ipcRenderer.invoke('mark-notifications-read', { ids }),
+
+    // Launcher Data
+    getBalance: () => ipcRenderer.invoke('get-balance'),
+    getFriends: () => ipcRenderer.invoke('get-friends'),
+    getDashboardStats: () => ipcRenderer.invoke('get-dashboard-stats'),
 });

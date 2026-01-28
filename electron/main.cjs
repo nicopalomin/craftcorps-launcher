@@ -401,6 +401,9 @@ app.whenReady().then(async () => {
     const { setupDiscoveryHandlers } = require('./handlers/discoveryHandler.cjs');
     setupDiscoveryHandlers();
 
+    const { setupNotificationHandlers } = require('./handlers/notificationHandler.cjs');
+    setupNotificationHandlers();
+
     // --- Lazy Handlers (Performance) ---
 
     /**

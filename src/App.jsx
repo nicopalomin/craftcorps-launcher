@@ -362,6 +362,7 @@ function App() {
                             updateInfo={updateInfo}
                             onOpenUpdateModal={() => setShowUpdateModal(true)}
                             onSelectRunningInstance={handleSelectRunningInstance}
+                            onNavigate={(tab) => handleTabChange(tab)}
                         />
 
                         <AppContent
