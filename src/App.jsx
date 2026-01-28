@@ -252,7 +252,7 @@ function App() {
     } = useGameLaunch(selectedInstance, ram, activeAccount, () => updateLastPlayed(selectedInstance?.id), hideOnLaunch, javaPath, setJavaPath);
 
     // Auto Update (Discord-style: fully automatic)
-    const { updateStatus, updateInfo, downloadProgress, isUpdating } = useAutoUpdate();
+    const { updateStatus, updateInfo, downloadProgress, updateError, updatePath, isUpdating } = useAutoUpdate();
 
     // Update Discord RPC
     useEffect(() => {
@@ -368,7 +368,7 @@ function App() {
                             showJavaModal={showJavaModal} setShowJavaModal={setShowJavaModal} handleJavaInstallComplete={handleJavaInstallComplete} refreshJavas={refreshJavas} requiredJavaVersion={requiredJavaVersion}
                             errorModal={errorModal} setErrorModal={setErrorModal}
                             crashModal={crashModal} setCrashModal={setCrashModal}
-                            updateStatus={updateStatus} updateInfo={updateInfo} downloadProgress={downloadProgress}
+                            updateStatus={updateStatus} updateInfo={updateInfo} downloadProgress={downloadProgress} updateError={updateError} updatePath={updatePath}
                         />
                     </React.Suspense>
                 </>

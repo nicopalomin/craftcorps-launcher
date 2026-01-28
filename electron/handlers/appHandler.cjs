@@ -49,6 +49,17 @@ function setupAppHandlers(getMainWindow, store) {
         return app.getVersion();
     });
 
+    // Open path in file explorer
+    ipcMain.handle('open-path', async (event, pathToOpen) => {
+        try {
+            await shell.openPath(pathToOpen);
+            return { success: true };
+        } catch (error) {
+            log.error('Failed to open path:', pathToOpen, error);
+            return { success: false, error: error.message };
+        }
+    });
+
     ipcMain.handle('get-device-id', async () => {
         // Use node-machine-id for consistent device identification
         try {

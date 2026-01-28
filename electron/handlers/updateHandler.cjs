@@ -63,12 +63,29 @@ function setupUpdateHandlers(getMainWindow) {
         log.error('Error in auto-updater:', err);
         log.error('Error stack:', err.stack);
         log.error('Error details:', JSON.stringify(err, Object.getOwnPropertyNames(err)));
-        safeSend('update-status', {
-            status: 'error',
-            error: err.message,
-            errorCode: err.code,
-            errorDetails: err.toString()
-        });
+
+        // Check if this is a code signing error (macOS unsigned build)
+        const isCodeSignError = err.message && err.message.includes('code signature');
+
+        if (isCodeSignError) {
+            const homedir = require('os').homedir();
+            const updatePath = require('path').join(homedir, 'Library', 'Caches', 'craftcorps-launcher-updater', 'pending');
+
+            log.warn('Code signing error detected. App is not signed. User will need to manually install.');
+            safeSend('update-status', {
+                status: 'manual-install-required',
+                error: 'Auto-install requires code-signed app',
+                updatePath: updatePath,
+                reason: 'code-signing'
+            });
+        } else {
+            safeSend('update-status', {
+                status: 'error',
+                error: err.message,
+                errorCode: err.code,
+                errorDetails: err.toString()
+            });
+        }
     });
 
     autoUpdater.on('download-progress', (progressObj) => {
@@ -86,8 +103,22 @@ function setupUpdateHandlers(getMainWindow) {
 
         // Discord-style: auto quit and install after brief delay
         setTimeout(() => {
-            log.info('Auto quit-and-install triggered');
-            autoUpdater.quitAndInstall(true, true);
+            try {
+                log.info('Auto quit-and-install triggered');
+                autoUpdater.quitAndInstall(true, true);
+            } catch (err) {
+                // If auto-install fails (e.g., code signing error on macOS)
+                log.error('Auto-install failed:', err);
+                const homedir = require('os').homedir();
+                const updatePath = require('path').join(homedir, 'Library', 'Caches', 'craftcorps-launcher-updater', 'pending');
+
+                safeSend('update-status', {
+                    status: 'manual-install-required',
+                    error: err.message,
+                    updatePath: updatePath,
+                    info: info
+                });
+            }
         }, 3000);
     });
 

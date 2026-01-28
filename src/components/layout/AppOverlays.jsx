@@ -24,7 +24,7 @@ const AppOverlays = ({
     // Crash
     crashModal, setCrashModal,
     // Update
-    updateStatus, updateInfo, downloadProgress,
+    updateStatus, updateInfo, downloadProgress, updateError, updatePath,
     instanceCount
 }) => {
     return (
@@ -88,6 +88,8 @@ const AppOverlays = ({
                 updateStatus={updateStatus}
                 updateInfo={updateInfo}
                 downloadProgress={downloadProgress}
+                updateError={updateError}
+                updatePath={updatePath}
             />
         </>
     );

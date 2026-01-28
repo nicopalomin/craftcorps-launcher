@@ -1,9 +1,11 @@
 import { useState, useEffect } from 'react';
 
 export function useAutoUpdate() {
-    const [updateStatus, setUpdateStatus] = useState('idle'); // idle, checking, available, downloading, downloaded, error
+    const [updateStatus, setUpdateStatus] = useState('idle'); // idle, checking, available, downloading, downloaded, error, manual-install-required
     const [updateInfo, setUpdateInfo] = useState(null);
     const [downloadProgress, setDownloadProgress] = useState(null);
+    const [updateError, setUpdateError] = useState(null);
+    const [updatePath, setUpdatePath] = useState(null);
 
     useEffect(() => {
         if (!window.electronAPI?.onUpdateStatus) return;
@@ -20,7 +22,13 @@ export function useAutoUpdate() {
             } else if (data.status === 'downloaded') {
                 setUpdateInfo(data.info);
                 console.log('[AutoUpdate] Update downloaded. Restarting...');
+            } else if (data.status === 'manual-install-required') {
+                setUpdateError(data.error);
+                setUpdatePath(data.updatePath);
+                setUpdateInfo(data.info);
+                console.warn('[AutoUpdate] Manual install required:', data.error);
             } else if (data.status === 'error') {
+                setUpdateError(data.error);
                 console.error('[AutoUpdate] Update error:', data.error);
             }
         };
@@ -42,12 +50,14 @@ export function useAutoUpdate() {
     }, []);
 
     // True when we should block the UI with the update overlay
-    const isUpdating = updateStatus === 'downloading' || updateStatus === 'downloaded';
+    const isUpdating = updateStatus === 'downloading' || updateStatus === 'downloaded' || updateStatus === 'manual-install-required';
 
     return {
         updateStatus,
         updateInfo,
         downloadProgress,
+        updateError,
+        updatePath,
         isUpdating
     };
 }
