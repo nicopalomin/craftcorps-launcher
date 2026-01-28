@@ -1,0 +1,21 @@
+FROM --platform=linux/amd64 electronuserland/builder:wine
+
+WORKDIR /project
+
+# Copy package files
+COPY package*.json ./
+
+# Install dependencies
+RUN npm ci
+
+# Copy source code
+COPY . .
+
+# Build Windows executable
+# Skip native module rebuilding to avoid cross-compilation issues
+ENV npm_config_build_from_source=false
+RUN npx rimraf release && \
+    npm run build && \
+    npx electron-builder --win --x64 --ia32 -c.npmRebuild=false
+
+# The output will be in /project/release/

@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { Users, Crown, BadgeCheck, Flame } from 'lucide-react';
+import { Users, Crown, BadgeCheck, Flame, Shield } from 'lucide-react';
 
 const ServerBadge = React.memo(({ server, isHot }) => {
     // Determine priority status
@@ -9,7 +9,12 @@ const ServerBadge = React.memo(({ server, isHot }) => {
     let label = "Community";
     let colorClass = "bg-slate-700 text-slate-200 border-l-2 border-slate-500 shadow-[0_0_15px_rgba(71,85,105,0.4)]";
 
-    if (server.featured) {
+    if (server.official) {
+        type = "official";
+        icon = Shield;
+        label = "Official Server";
+        colorClass = "bg-gradient-to-r from-emerald-500 to-teal-600 text-white shadow-[0_0_20px_rgba(16,185,129,0.6)] border-l-2 border-emerald-300";
+    } else if (server.featured) {
         type = "featured";
         icon = Crown;
         label = "Featured";

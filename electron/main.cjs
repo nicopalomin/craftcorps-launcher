@@ -119,8 +119,8 @@ let store;
 async function createWindow() {
     console.time('[MAIN] createWindow');
     const iconPath = process.env.NODE_ENV === 'development'
-        ? path.join(__dirname, '../public/images/cc-logo.png')
-        : path.join(__dirname, '../dist/images/cc-logo.png');
+        ? path.join(__dirname, '../public/icon.png')
+        : path.join(__dirname, '../dist/icon.png');
 
     // Dynamic import for ESM module support
     // (Store initialization moved to app.whenReady)
@@ -685,7 +685,13 @@ app.whenReady().then(async () => {
     });
 
     app.on('activate', () => {
-        if (BrowserWindow.getAllWindows().length === 0) {
+        // macOS: Show hidden window or create new one when clicking dock icon
+        if (mainWindow && !mainWindow.isDestroyed()) {
+            if (!mainWindow.isVisible()) {
+                mainWindow.show();
+            }
+            mainWindow.focus();
+        } else if (BrowserWindow.getAllWindows().length === 0) {
             createWindow();
         }
     });
@@ -695,6 +701,11 @@ app.on('window-all-closed', () => {
     if (process.platform !== 'darwin') {
         app.quit();
     }
+});
+
+app.on('before-quit', () => {
+    // Set flag so window close event knows we're actually quitting
+    app.isQuitting = true;
 });
 
 app.on('will-quit', () => {

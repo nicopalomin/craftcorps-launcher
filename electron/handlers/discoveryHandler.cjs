@@ -8,6 +8,46 @@ const path = require('path');
 const API_BASE = 'https://api.craftcorps.net';
 
 /**
+ * Official CraftCorps servers that always appear first
+ */
+const OFFICIAL_SERVERS = [
+    {
+        id: '6-7-smp-eu',
+        name: '6-7 SMP EU',
+        ip: 'play.6-7.uk',
+        port: 25565,
+        category: 'survival',
+        badge: 'OFFICIAL SERVER',
+        description: 'Official 6-7 SMP European Server - Premium survival experience',
+        players: null, // Will be updated by ping if available
+        maxPlayers: null,
+        version: '1.21.11',
+        icon: null, // Will use default or fetch from server
+        verified: true,
+        official: true,
+        website: 'https://6-7.uk',
+        discord: 'https://discord.gg/YXG2BZhe29'
+    },
+    {
+        id: '6-7-smp-asia',
+        name: '6-7 SMP ASIA',
+        ip: 'in.6-7.uk',
+        port: 25565,
+        category: 'survival',
+        badge: 'OFFICIAL SERVER',
+        description: 'Official 6-7 SMP Asian Server - Premium survival experience',
+        players: null,
+        maxPlayers: null,
+        version: '1.21.11',
+        icon: null,
+        verified: true,
+        official: true,
+        website: 'https://6-7.uk',
+        discord: 'https://discord.gg/YXG2BZhe29'
+    }
+];
+
+/**
  * Fetch discover servers from the backend
  */
 async function getDiscoverServers(event, payload = {}) {
@@ -37,10 +77,39 @@ async function getDiscoverServers(event, payload = {}) {
         }
 
         const data = await response.json();
+
+        // Prepend official servers on first page only (offset === 0)
+        if (offset === 0 && !query) {
+            const servers = data.servers || [];
+
+            // Filter official servers based on category if specified
+            let officialServers = OFFICIAL_SERVERS;
+            if (category !== 'all') {
+                officialServers = OFFICIAL_SERVERS.filter(s => s.category === category);
+            }
+
+            // Prepend official servers to the results
+            const combinedServers = [...officialServers, ...servers];
+
+            return {
+                ...data,
+                servers: combinedServers,
+                hasMore: data.hasMore || false
+            };
+        }
+
         return data;
 
     } catch (error) {
         log.error('[Discovery] Failed to fetch servers:', error);
+        // Return official servers even if API fails (on first page)
+        if (offset === 0 && !query) {
+            return {
+                success: true,
+                servers: OFFICIAL_SERVERS,
+                hasMore: false
+            };
+        }
         return { success: false, error: error.message, servers: [] };
     }
 }
